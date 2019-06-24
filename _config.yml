@@ -1,0 +1,11 @@
+name: kafka4s
+baseurl: /kafka4s
+description: Functional programming with Kafka and Scala
+highlighter: rouge
+docs: true
+collections:
+  tut:
+    output: true
+version: 2.1.0-M6
+org: Jack Henry & Associates, Inc.®
+markdown: kramdown
