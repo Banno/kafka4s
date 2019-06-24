@@ -12,4 +12,3 @@ libraryDependencies ++= Seq(
   "com.banno" %% "kafka4s" % "<version>"
 )
 ```
-
