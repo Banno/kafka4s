@@ -119,7 +119,7 @@ lazy val releaseSettings = {
         )
     ).toSeq,
     publishArtifact in Test := false,
-    releasePublishArtifactsAction := PgpKeys.publishSigned.value,
+    // releasePublishArtifactsAction := PgpKeys.publishSigned.value,
     scmInfo := Some(
       ScmInfo(
         url("https://github.com/banno/kafka4s"),
