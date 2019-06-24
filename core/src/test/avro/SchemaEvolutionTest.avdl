@@ -1,0 +1,122 @@
+@namespace("com.banno")
+protocol SchemaEvolutionTest {
+
+    record A {
+        string a;
+    }
+
+    record A2 {
+        string a;
+    }
+
+    record B {
+        int b;
+    }
+
+    record C {
+        boolean c;
+    }
+    
+    record ReorderFields1 {
+        int a;
+        string b;
+    }
+
+    record ReorderFields2 {
+        string b;
+        int a;
+    }
+
+    record RenameField1 {
+        int a1;
+    }
+
+    record RenameField2 {
+        int @aliases(["a1"]) a2;
+    }
+
+    record RenameOuterRecord1 {
+        int a;
+    }
+
+    @aliases(["RenameOuterRecord1"])
+    record RenameOuterRecord2 {
+        int a;
+    }
+
+    record RenameInnerRecord1 {
+        A a;
+    }
+
+    record RenameInnerRecord2 {
+        A2 a;
+    }
+
+    record AddFieldWithoutDefault1 {
+        int a;
+    }
+
+    record AddFieldWithoutDefault2 {
+        int a;
+        string b;
+    }
+
+    record AddFieldWithDefault1 {
+        int a;
+    }
+
+    record AddFieldWithDefault2 {
+        int a;
+        string b = "";
+    }
+
+    record RemoveFieldWithoutDefault1 {
+        int a;
+        string b;
+    }
+
+    record RemoveFieldWithoutDefault2 {
+        int a;
+    }
+
+    record RemoveFieldWithDefault1 {
+        int a;
+        string b = "";
+    }
+
+    record RemoveFieldWithDefault2 {
+        int a;
+    }
+
+    //TODO change record field types...
+
+    record ReorderUnionTypes1 { //what about with/without default?
+        union { A, B } u;
+    }
+
+    record ReorderUnionTypes2 {
+        union { B, A } u;
+    }
+
+    record AddUnionType1 { //what about with/without default?
+        union { A, B } u;
+    }
+
+    record AddUnionType2 {
+        union { A, B, C } u;
+    }
+
+    record RemoveUnionType1 { //what about with/without default?
+        union { A, B, C } u;
+    }
+
+    record RemoveUnionType2 {
+        union { A, B } u;
+    }
+
+    //workaround for https://github.com/julianpeeters/avrohugger/issues/83
+    record RecordWithADefaultValue {
+        union { int, string, boolean } isb = 0;
+    }
+
+}

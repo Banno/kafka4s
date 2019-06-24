@@ -1,0 +1,15 @@
+options:
+  - title: Getting Started
+    url: docs/index.html
+
+  - title: Kafka Producers
+    url: docs/kafka-producers.html
+
+  - title: Kafka Consumers
+    url: docs/kafka-consumers.html
+
+  - title: Schema Registry Utils
+    url: docs/schema-registry.html
+
+  - title: Kafka Client Metrics
+    url: docs/kafka-client-metrics.html
