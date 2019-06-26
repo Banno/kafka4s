@@ -27,6 +27,7 @@ lazy val V = new {
   val confluent = "5.2.2"
   val avro4s = "1.8.4"
   val log4cats = "0.3.0"
+  val scalacheckMagnolia = "0.0.2"
 }
 
 lazy val commonSettings = Seq(
@@ -72,7 +73,7 @@ lazy val commonSettings = Seq(
     "org.slf4j"                     % "log4j-over-slf4j"          % "1.7.26"         % "test",
     "org.scalacheck"               %% "scalacheck"                % "1.14.0"         % "test",
     "org.scalatest"                %% "scalatest"                 % "3.0.8"          % "test",
-    "com.github.alexarchambault"   %% "scalacheck-shapeless_1.14" % "1.2.3"          % "test",
+    "com.mrdziuban"                %% "scalacheck-magnolia"       % V.scalacheckMagnolia % "test",
     "org.typelevel"                %% "cats-laws"                 % V.cats           % "test",
     "org.typelevel"                %% "discipline"                % "0.11.1"         % "test"
   ),
