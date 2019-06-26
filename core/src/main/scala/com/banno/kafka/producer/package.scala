@@ -23,7 +23,8 @@ package object producer {
   implicit def producerOps[F[_], K, V](p: ProducerApi[F, K, V]): ProducerOps[F, K, V] =
     ProducerOps[F, K, V](p)
   implicit def genericProducerOps[F[_]](
-      p: ProducerApi[F, GenericRecord, GenericRecord]): GenericProducerOps[F] =
+      p: ProducerApi[F, GenericRecord, GenericRecord]
+  ): GenericProducerOps[F] =
     GenericProducerOps(p)
 
 }

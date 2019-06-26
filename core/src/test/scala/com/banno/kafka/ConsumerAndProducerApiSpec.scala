@@ -46,7 +46,8 @@ class ConsumerAndProducerApiSpec
       producer: ProducerApi[F, K, V],
       consumer: ConsumerApi[F, K, V],
       topic: String,
-      values: Vector[(K, V)]): Stream[F, (K, V)] =
+      values: Vector[(K, V)]
+  ): Stream[F, (K, V)] =
     Stream
       .emits(values)
       .covary[F]
@@ -64,7 +65,8 @@ class ConsumerAndProducerApiSpec
     forAll { strings: Vector[String] =>
       val s = for {
         producer <- Stream.eval(
-          ProducerApi.create[IO, String, String](BootstrapServers(bootstrapServer)))
+          ProducerApi.create[IO, String, String](BootstrapServers(bootstrapServer))
+        )
         rm <- Stream
           .emits(strings)
           .covary[IO]
@@ -89,7 +91,8 @@ class ConsumerAndProducerApiSpec
       val io = for {
         producer <- ProducerApi.create[IO, String, String](BootstrapServers(bootstrapServer))
         rms <- producer.sendSyncBatch(
-          strings.map { case (k, v) => new ProducerRecord(topic, k, v) })
+          strings.map { case (k, v) => new ProducerRecord(topic, k, v) }
+        )
         _ <- producer.close
       } yield rms
       val rms = io.unsafeRunSync()
@@ -112,7 +115,8 @@ class ConsumerAndProducerApiSpec
       c <- ConsumerApi.create[IO, String, String](
         BootstrapServers(bootstrapServer),
         GroupId(groupId),
-        AutoOffsetReset.earliest)
+        AutoOffsetReset.earliest
+      )
       _ <- c.subscribe(topic)
       _ <- Concurrent[IO].start(c.pollAndRecoverWakeupWithClose(10 seconds))
       _ <- IO(Thread.sleep(1000)) *> c.closeAndRecoverConcurrentModificationWithWakeup(1 second)
@@ -123,7 +127,8 @@ class ConsumerAndProducerApiSpec
 
     def program[F[_]: ConcurrentEffect: Timer](
         producer: ProducerApi[F, String, String],
-        consumer: ConsumerApi[F, String, String]): Stream[F, String] = {
+        consumer: ConsumerApi[F, String, String]
+    ): Stream[F, String] = {
       val s0 = Stream(new ProducerRecord(topic, "a", "a")).covary[F].through(producer.sinkWithClose) //halts after emitting "a" to Kafka
       val s1 = consumer.recordStream(consumer.subscribe(topic), 1 second).map(_.value) //consumes from kafka, never halting
       val s2 = Stream("b").covary[F].delayBy(5 seconds) //after 5 seconds, 1 element will be emitted and this stream will halt
@@ -137,7 +142,8 @@ class ConsumerAndProducerApiSpec
       c <- ConsumerApi.create[IO, String, String](
         BootstrapServers(bootstrapServer),
         GroupId(groupId2),
-        AutoOffsetReset.earliest)
+        AutoOffsetReset.earliest
+      )
       v <- program[IO](p, c).compile.toVector
     } yield v
     io.unsafeRunSync().toSet should ===(Set("a", "b"))
@@ -154,7 +160,8 @@ class ConsumerAndProducerApiSpec
         c <- ConsumerApi.create[IO, String, String](
           BootstrapServers(bootstrapServer),
           GroupId(groupId),
-          AutoOffsetReset.earliest)
+          AutoOffsetReset.earliest
+        )
         v <- writeAndRead(p, c, topic, values).compile.toVector
       } yield v
       val actual = io.unsafeRunSync()
@@ -171,11 +178,13 @@ class ConsumerAndProducerApiSpec
       val io = for {
         p <- ProducerApi.createShifting[IO, Int, String](
           producerContext,
-          BootstrapServers(bootstrapServer))
+          BootstrapServers(bootstrapServer)
+        )
         c <- ConsumerApi.createShifting[IO, Int, String](
           BootstrapServers(bootstrapServer),
           GroupId(groupId),
-          AutoOffsetReset.earliest)
+          AutoOffsetReset.earliest
+        )
         v <- writeAndRead(p, c, topic, values).compile.toVector
       } yield v
       val actual = io.unsafeRunSync()
@@ -205,7 +214,8 @@ class ConsumerAndProducerApiSpec
       //max.poll.records=1 forces stream to repeat a few times, so we validate the takeThrough predicate
       c <- ConsumerApi.create[IO, String, String](
         BootstrapServers(bootstrapServer),
-        MaxPollRecords(1))
+        MaxPollRecords(1)
+      )
       _ <- c.assign(List(tp0, tp1, tp2))
       _ <- c.seekToBeginning(List(tp0))
       _ <- c.seek(tp1, 1)
@@ -257,7 +267,9 @@ class ConsumerAndProducerApiSpec
             BootstrapServers(bootstrapServer),
             GroupId(groupId),
             AutoOffsetReset.earliest,
-            EnableAutoCommit(false)))
+            EnableAutoCommit(false)
+          )
+        )
         v <- c.readProcessCommit(c.subscribe(topic), 100 millis)(r => storeOrFail(values, r.value)) //only consumes until a failure
       } yield v
       _ <- consume.attempt.repeat
@@ -283,12 +295,14 @@ class ConsumerAndProducerApiSpec
       val io = for {
         p <- ProducerApi.avro[IO, String, Person](
           BootstrapServers(bootstrapServer),
-          SchemaRegistryUrl(schemaRegistryUrl))
+          SchemaRegistryUrl(schemaRegistryUrl)
+        )
         c <- ConsumerApi.avroSpecific[IO, String, Person](
           BootstrapServers(bootstrapServer),
           GroupId(groupId),
           AutoOffsetReset.earliest,
-          SchemaRegistryUrl(schemaRegistryUrl))
+          SchemaRegistryUrl(schemaRegistryUrl)
+        )
         v <- writeAndRead(p, c, topic, values).compile.toVector
       } yield v
       val actual = io.unsafeRunSync()
@@ -309,12 +323,14 @@ class ConsumerAndProducerApiSpec
       val io = for {
         p <- ProducerApi.avro4s[IO, PersonId, Person2](
           BootstrapServers(bootstrapServer),
-          SchemaRegistryUrl(schemaRegistryUrl))
+          SchemaRegistryUrl(schemaRegistryUrl)
+        )
         c <- ConsumerApi.avro4s[IO, PersonId, Person2](
           BootstrapServers(bootstrapServer),
           GroupId(groupId),
           AutoOffsetReset.earliest,
-          SchemaRegistryUrl(schemaRegistryUrl))
+          SchemaRegistryUrl(schemaRegistryUrl)
+        )
         v <- writeAndRead(p, c, topic, values).compile.toVector
       } yield v
       val actual = io.unsafeRunSync()

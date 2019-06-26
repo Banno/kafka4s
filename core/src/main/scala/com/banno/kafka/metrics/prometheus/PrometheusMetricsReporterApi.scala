@@ -43,13 +43,15 @@ object PrometheusMetricsReporterApi {
       MetricId(
         m.metricName.group,
         m.metricName.name,
-        m.metricName.tags.asScala.toList.map(_._1).sorted)
+        m.metricName.tags.asScala.toList.map(_._1).sorted
+      )
   }
 
   case class MetricSource[F[_]](
       metric: KafkaMetric,
       name: String,
-      additionalTags: Map[String, String] = Map.empty)(implicit F: Sync[F]) {
+      additionalTags: Map[String, String] = Map.empty
+  )(implicit F: Sync[F]) {
     val sortedTags: List[(String, String)] =
       (metric.metricName.tags.asScala ++ additionalTags).toList
         .map { case (k, v) => (underscore(k), v) }
@@ -73,20 +75,26 @@ object PrometheusMetricsReporterApi {
     def add(m: MetricSource[F]): MetricAdapter[F]
   }
   case class GaugeMetricAdapter[F[_]](metrics: List[MetricSource[F]], gauge: Gauge)(
-      implicit F: Sync[F])
-      extends MetricAdapter[F] {
+      implicit F: Sync[F]
+  ) extends MetricAdapter[F] {
     def add(m: MetricSource[F]): MetricAdapter[F] = copy(metrics = metrics :+ m)
     def update: F[Unit] =
       metrics.traverse_(m => m.value.flatMap(v => F.delay(gauge.labels(m.labels: _*).set(v))))
   }
   case class CounterMetricAdapter[F[_]](metrics: List[MetricSource[F]], counter: Counter)(
-      implicit F: Sync[F])
-      extends MetricAdapter[F] {
+      implicit F: Sync[F]
+  ) extends MetricAdapter[F] {
     def add(m: MetricSource[F]): MetricAdapter[F] = copy(metrics = metrics :+ m)
     def update: F[Unit] =
-      metrics.traverse_(m =>
-        m.value.flatMap(v =>
-          F.delay(counter.labels(m.labels: _*).inc(max(0, v - counter.labels(m.labels: _*).get))))) //should always be positive, but protect against negative, TODO might want to log on negative?
+      metrics.traverse_(
+        m =>
+          m.value.flatMap(
+            v =>
+              F.delay(
+                counter.labels(m.labels: _*).inc(max(0, v - counter.labels(m.labels: _*).get))
+            )
+        )
+      ) //should always be positive, but protect against negative, TODO might want to log on negative?
   }
 
   abstract class PrometheusMetricsReporterApi[F[_]](
@@ -124,7 +132,8 @@ object PrometheusMetricsReporterApi {
         metric: KafkaMetric,
         name: String,
         additionalTags: Map[String, String],
-        create: MetricSource[F] => F[MetricAdapter[F]]): F[Unit] =
+        create: MetricSource[F] => F[MetricAdapter[F]]
+    ): F[Unit] =
       for {
         name <- s"${prefix}_${name}".pure[F]
         source = MetricSource(metric, name, additionalTags)
@@ -137,7 +146,8 @@ object PrometheusMetricsReporterApi {
         metric: KafkaMetric,
         name: String,
         additionalTags: Map[String, String],
-        create: MetricSource[F] => F[MetricAdapter[F]]): F[Unit] =
+        create: MetricSource[F] => F[MetricAdapter[F]]
+    ): F[Unit] =
       // TODO Name thread? Scheduler(1, threadPrefix = s"${prefix}_prometheus_adapter").flatMap(_.retry(
       Stream
         .retry(
@@ -165,14 +175,16 @@ object PrometheusMetricsReporterApi {
             metric,
             name,
             Map.empty,
-            source => source.createGauge(registry).map(GaugeMetricAdapter(List(source), _)))
+            source => source.createGauge(registry).map(GaugeMetricAdapter(List(source), _))
+          )
 
         def counter(name: String): F[Unit] =
           adapter(
             metric,
             name,
             Map.empty,
-            source => source.createCounter(registry).map(CounterMetricAdapter(List(source), _)))
+            source => source.createCounter(registry).map(CounterMetricAdapter(List(source), _))
+          )
 
         MetricId(metric) match {
           case MetricId("producer-metrics", "batch-size-avg", List("client-id")) =>
@@ -210,7 +222,8 @@ object PrometheusMetricsReporterApi {
           case MetricId(
               "producer-node-metrics",
               "incoming-byte-total",
-              List("client-id", "node-id")) =>
+              List("client-id", "node-id")
+              ) =>
             counter("node_incoming_byte_total")
           case MetricId("producer-metrics", "io-ratio", List("client-id")) => gauge("io_ratio")
           case MetricId("producer-metrics", "io-time-ns-avg", List("client-id")) =>
@@ -232,7 +245,8 @@ object PrometheusMetricsReporterApi {
           case MetricId(
               "producer-node-metrics",
               "outgoing-byte-total",
-              List("client-id", "node-id")) =>
+              List("client-id", "node-id")
+              ) =>
             counter("node_outgoing_byte_total")
           case MetricId("producer-metrics", "produce-throttle-time-avg", List("client-id")) =>
             gauge("produce_throttle_time_avg")
@@ -243,21 +257,24 @@ object PrometheusMetricsReporterApi {
           case MetricId(
               "producer-topic-metrics",
               "record-error-total",
-              List("client-id", "topic")) =>
+              List("client-id", "topic")
+              ) =>
             counter("topic_record_error_total")
           case MetricId("producer-metrics", "record-retry-total", List("client-id")) =>
             counter("record_retry_total")
           case MetricId(
               "producer-topic-metrics",
               "record-retry-total",
-              List("client-id", "topic")) =>
+              List("client-id", "topic")
+              ) =>
             counter("topic_record_retry_total")
           case MetricId("producer-metrics", "record-send-total", List("client-id")) =>
             counter("record_send_total")
           case MetricId(
               "producer-topic-metrics",
               "record-send-total",
-              List("client-id", "topic")) =>
+              List("client-id", "topic")
+              ) =>
             counter("topic_record_send_total")
           case MetricId("producer-metrics", "record-size-max", List("client-id")) =>
             gauge("record_size_max")
@@ -280,12 +297,14 @@ object PrometheusMetricsReporterApi {
           case MetricId(
               "producer-node-metrics",
               "request-size-avg",
-              List("client-id", "node-id")) =>
+              List("client-id", "node-id")
+              ) =>
             gauge("node_request_size_avg")
           case MetricId(
               "producer-node-metrics",
               "request-size-max",
-              List("client-id", "node-id")) =>
+              List("client-id", "node-id")
+              ) =>
             gauge("node_request_size_max")
           case MetricId("producer-metrics", "response-total", List("client-id")) =>
             counter("response_total")
@@ -298,12 +317,14 @@ object PrometheusMetricsReporterApi {
           case MetricId(
               "producer-node-metrics",
               "request-latency-avg",
-              List("client-id", "node-id")) =>
+              List("client-id", "node-id")
+              ) =>
             gauge("node_request_latency_avg")
           case MetricId(
               "producer-node-metrics",
               "request-latency-max",
-              List("client-id", "node-id")) =>
+              List("client-id", "node-id")
+              ) =>
             gauge("node_request_latency_max")
           case MetricId("producer-metrics", "requests-in-flight", List("client-id")) =>
             gauge("requests_in_flight")
@@ -345,17 +366,20 @@ object PrometheusMetricsReporterApi {
           case MetricId(
               "producer-metrics",
               "successful-reauthentication-total",
-              List("client-id")) =>
+              List("client-id")
+              ) =>
             ignore
           case MetricId(
               "producer-metrics",
               "successful-reauthentication-rate",
-              List("client-id")) =>
+              List("client-id")
+              ) =>
             ignore
           case MetricId(
               "producer-metrics",
               "successful-authentication-no-reauth-total",
-              List("client-id")) =>
+              List("client-id")
+              ) =>
             ignore
           case MetricId("producer-metrics", "failed-reauthentication-total", List("client-id")) =>
             ignore
@@ -387,14 +411,16 @@ object PrometheusMetricsReporterApi {
             metric,
             name,
             additionalTags,
-            source => source.createGauge(registry).map(GaugeMetricAdapter(List(source), _)))
+            source => source.createGauge(registry).map(GaugeMetricAdapter(List(source), _))
+          )
 
         def counter(name: String): F[Unit] =
           adapter(
             metric,
             name,
             Map.empty,
-            source => source.createCounter(registry).map(CounterMetricAdapter(List(source), _)))
+            source => source.createCounter(registry).map(CounterMetricAdapter(List(source), _))
+          )
 
         MetricId(metric) match {
           case MetricId("consumer-coordinator-metrics", "assigned-partitions", List("client-id")) =>
@@ -402,12 +428,14 @@ object PrometheusMetricsReporterApi {
           case MetricId(
               "consumer-fetch-manager-metrics",
               "bytes-consumed-total",
-              List("client-id")) =>
+              List("client-id")
+              ) =>
             counter("bytes_consumed_total")
           case MetricId(
               "consumer-fetch-manager-metrics",
               "bytes-consumed-total",
-              List("client-id", "topic")) =>
+              List("client-id", "topic")
+              ) =>
             counter("topic_bytes_consumed_total")
           case MetricId("consumer-coordinator-metrics", "commit-latency-avg", List("client-id")) =>
             gauge("commit_latency_avg")
@@ -434,29 +462,34 @@ object PrometheusMetricsReporterApi {
           case MetricId(
               "consumer-fetch-manager-metrics",
               "fetch-size-avg",
-              List("client-id", "topic")) =>
+              List("client-id", "topic")
+              ) =>
             gauge("topic_fetch_size_avg")
           case MetricId("consumer-fetch-manager-metrics", "fetch-size-max", List("client-id")) =>
             gauge("fetch_size_max")
           case MetricId(
               "consumer-fetch-manager-metrics",
               "fetch-size-max",
-              List("client-id", "topic")) =>
+              List("client-id", "topic")
+              ) =>
             gauge("topic_fetch_size_max")
           case MetricId(
               "consumer-fetch-manager-metrics",
               "fetch-throttle-time-avg",
-              List("client-id")) =>
+              List("client-id")
+              ) =>
             gauge("fetch_throttle_time_avg")
           case MetricId(
               "consumer-fetch-manager-metrics",
               "fetch-throttle-time-max",
-              List("client-id")) =>
+              List("client-id")
+              ) =>
             gauge("fetch_throttle_time_max")
           case MetricId(
               "consumer-coordinator-metrics",
               "heartbeat-response-time-max",
-              List("client-id")) =>
+              List("client-id")
+              ) =>
             gauge("heartbeat_response_time_max")
           case MetricId("consumer-coordinator-metrics", "heartbeat-total", List("client-id")) =>
             counter("heartbeat_total")
@@ -465,7 +498,8 @@ object PrometheusMetricsReporterApi {
           case MetricId(
               "consumer-node-metrics",
               "incoming-byte-total",
-              List("client-id", "node-id")) =>
+              List("client-id", "node-id")
+              ) =>
             counter("node_incoming_byte_total")
           case MetricId("consumer-metrics", "io-wait-time-ns-avg", List("client-id")) =>
             gauge("io_wait_time_ns_avg")
@@ -487,7 +521,8 @@ object PrometheusMetricsReporterApi {
           case MetricId(
               "consumer-coordinator-metrics",
               "last-heartbeat-seconds-ago",
-              List("client-id")) =>
+              List("client-id")
+              ) =>
             gauge("last_heartbeat_seconds_ago")
           case MetricId("consumer-metrics", "network-io-total", List("client-id")) =>
             counter("network_io_total")
@@ -496,61 +531,72 @@ object PrometheusMetricsReporterApi {
           case MetricId(
               "consumer-node-metrics",
               "outgoing-byte-total",
-              List("client-id", "node-id")) =>
+              List("client-id", "node-id")
+              ) =>
             counter("node_outgoing_byte_total")
           case MetricId(
               "consumer-fetch-manager-metrics",
               "records-per-request-avg",
-              List("client-id")) =>
+              List("client-id")
+              ) =>
             gauge("records_per_request_avg")
           case MetricId(
               "consumer-fetch-manager-metrics",
               "records-per-request-avg",
-              List("client-id", "topic")) =>
+              List("client-id", "topic")
+              ) =>
             gauge("topic_records_per_request_avg")
           case MetricId(
               "consumer-fetch-manager-metrics",
               "records-consumed-total",
-              List("client-id")) =>
+              List("client-id")
+              ) =>
             counter("records_consumed_total")
           case MetricId(
               "consumer-fetch-manager-metrics",
               "records-consumed-total",
-              List("client-id", "topic")) =>
+              List("client-id", "topic")
+              ) =>
             counter("topic_records_consumed_total")
           case MetricId(
               "consumer-fetch-manager-metrics",
               "records-lag",
-              List("client-id", "partition", "topic")) =>
+              List("client-id", "partition", "topic")
+              ) =>
             gauge("topic_records_lag")
           case MetricId(
               "consumer-fetch-manager-metrics",
               "records-lag-avg",
-              List("client-id", "partition", "topic")) =>
+              List("client-id", "partition", "topic")
+              ) =>
             gauge("topic_records_lag_avg")
           case MetricId("consumer-fetch-manager-metrics", "records-lag-max", List("client-id")) =>
             gauge("records_lag_max")
           case MetricId(
               "consumer-fetch-manager-metrics",
               "records-lag-max",
-              List("client-id", "partition", "topic")) =>
+              List("client-id", "partition", "topic")
+              ) =>
             gauge("topic_records_lag_max")
           case MetricId(
               "consumer-fetch-manager-metrics",
               "records-lead",
-              List("client-id", "partition", "topic")) =>
+              List("client-id", "partition", "topic")
+              ) =>
             gauge("topic_records_lead")
           case MetricId(
               "consumer-fetch-manager-metrics",
               "records-lead-avg",
-              List("client-id", "partition", "topic")) =>
+              List("client-id", "partition", "topic")
+              ) =>
             gauge("topic_records_lead_avg")
           case MetricId("consumer-fetch-manager-metrics", "records-lead-min", List("client-id")) =>
             gauge("records_lead_min")
           case MetricId(
               "consumer-fetch-manager-metrics",
               "records-lead-min",
-              List("client-id", "partition", "topic")) =>
+              List("client-id", "partition", "topic")
+              ) =>
             gauge("topic_records_lead_min")
           case MetricId("consumer-metrics", "request-total", List("client-id")) =>
             counter("request_total")
@@ -561,24 +607,28 @@ object PrometheusMetricsReporterApi {
           case MetricId(
               "consumer-node-metrics",
               "request-size-avg",
-              List("client-id", "node-id")) =>
+              List("client-id", "node-id")
+              ) =>
             gauge("node_request_size_avg")
           case MetricId("consumer-metrics", "request-size-max", List("client-id")) =>
             gauge("request_size_max")
           case MetricId(
               "consumer-node-metrics",
               "request-size-max",
-              List("client-id", "node-id")) =>
+              List("client-id", "node-id")
+              ) =>
             gauge("node_request_size_max")
           case MetricId(
               "consumer-node-metrics",
               "request-latency-avg",
-              List("client-id", "node-id")) =>
+              List("client-id", "node-id")
+              ) =>
             gauge("node_request_latency_avg")
           case MetricId(
               "consumer-node-metrics",
               "request-latency-max",
-              List("client-id", "node-id")) =>
+              List("client-id", "node-id")
+              ) =>
             gauge("node_request_latency_max")
           case MetricId("consumer-metrics", "response-total", List("client-id")) =>
             counter("response_total")
@@ -624,17 +674,20 @@ object PrometheusMetricsReporterApi {
           case MetricId(
               "consumer-metrics",
               "successful-reauthentication-total",
-              List("client-id")) =>
+              List("client-id")
+              ) =>
             ignore
           case MetricId(
               "consumer-metrics",
               "successful-reauthentication-rate",
-              List("client-id")) =>
+              List("client-id")
+              ) =>
             ignore
           case MetricId(
               "consumer-metrics",
               "successful-authentication-no-reauth-total",
-              List("client-id")) =>
+              List("client-id")
+              ) =>
             ignore
           case MetricId("consumer-metrics", "failed-reauthentication-total", List("client-id")) =>
             ignore
@@ -647,17 +700,20 @@ object PrometheusMetricsReporterApi {
           case MetricId(
               "consumer-metrics",
               "successful-reauthentication-total",
-              List("client-id")) =>
+              List("client-id")
+              ) =>
             ignore
           case MetricId(
               "consumer-metrics",
               "successful-reauthentication-rate",
-              List("client-id")) =>
+              List("client-id")
+              ) =>
             ignore
           case MetricId(
               "consumer-metrics",
               "successful-authentication-no-reauth-total",
-              List("client-id")) =>
+              List("client-id")
+              ) =>
             ignore
           case MetricId("consumer-metrics", "failed-reauthentication-total", List("client-id")) =>
             ignore

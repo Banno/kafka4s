@@ -51,7 +51,8 @@ package object kafka {
     /** This only works when both key and value are non-null. */
     def toGenericRecord(
         implicit ktr: ToRecord[K],
-        vtr: ToRecord[V]): ProducerRecord[GenericRecord, GenericRecord] =
+        vtr: ToRecord[V]
+    ): ProducerRecord[GenericRecord, GenericRecord] =
       bimap(ktr.apply, vtr.apply)
   }
 
@@ -107,7 +108,8 @@ package object kafka {
     /** This only works when both key and value are non-null. */
     def fromGenericRecord[K, V](
         implicit kfr: FromRecord[K],
-        vfr: FromRecord[V]): ConsumerRecord[K, V] =
+        vfr: FromRecord[V]
+    ): ConsumerRecord[K, V] =
       cr.bimap(kfr.apply, vfr.apply)
   }
 
@@ -117,7 +119,8 @@ package object kafka {
         crs.partitions.asScala
           .map(tp => (tp, crs.records(tp).asScala.map(_.fromGenericRecord[K, V]).asJava))
           .toMap
-          .asJava)
+          .asJava
+      )
   }
 
   implicit def eqProducerRecord[K, V]: Eq[ProducerRecord[K, V]] =

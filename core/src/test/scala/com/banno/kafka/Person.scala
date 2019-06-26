@@ -27,5 +27,6 @@ case class Person(var name: String) extends org.apache.avro.specific.SpecificRec
 
 object Person {
   val SCHEMA$ = new org.apache.avro.Schema.Parser().parse(
-    "{\"type\":\"record\",\"name\":\"Person\",\"namespace\":\"com.banno.kafka\",\"fields\":[{\"name\":\"name\",\"type\":\"string\"}]}")
+    "{\"type\":\"record\",\"name\":\"Person\",\"namespace\":\"com.banno.kafka\",\"fields\":[{\"name\":\"name\",\"type\":\"string\"}]}"
+  )
 }

@@ -39,19 +39,22 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
   def partitionsFor(topic: String): F[Seq[PartitionInfo]] = F.delay(p.partitionsFor(topic).asScala)
   def sendOffsetsToTransaction(
       offsets: Map[TopicPartition, OffsetAndMetadata],
-      consumerGroupId: String): F[Unit] =
+      consumerGroupId: String
+  ): F[Unit] =
     F.delay(p.sendOffsetsToTransaction(offsets.asJava, consumerGroupId))
 
   private[producer] def sendRaw(record: ProducerRecord[K, V]): JFuture[RecordMetadata] =
     p.send(record)
   private[producer] def sendRaw(
       record: ProducerRecord[K, V],
-      callback: Callback): JFuture[RecordMetadata] = p.send(record, callback)
+      callback: Callback
+  ): JFuture[RecordMetadata] = p.send(record, callback)
 
   /** Convenience operation that accepts a callback function instead of a Callback instance. */
   private[producer] def sendRaw(
       record: ProducerRecord[K, V],
-      callback: Either[Exception, RecordMetadata] => Unit): Unit = {
+      callback: Either[Exception, RecordMetadata] => Unit
+  ): Unit = {
     sendRaw(record, new Callback() {
       def onCompletion(rm: RecordMetadata, e: Exception): Unit =
         if (rm == null) callback(Left(e)) else callback(Right(rm))

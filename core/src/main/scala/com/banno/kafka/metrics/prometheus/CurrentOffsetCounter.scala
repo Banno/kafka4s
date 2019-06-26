@@ -25,7 +25,8 @@ import scala.math.max
 object CurrentOffsetCounter {
 
   def apply[F[_]](cr: CollectorRegistry, prefix: String, clientId: String)(
-      implicit F: Sync[F]): F[ConsumerRecord[_, _] => F[Unit]] =
+      implicit F: Sync[F]
+  ): F[ConsumerRecord[_, _] => F[Unit]] =
     F.delay {
         Counter
           .build()

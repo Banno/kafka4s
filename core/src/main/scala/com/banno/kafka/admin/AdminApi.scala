@@ -44,12 +44,15 @@ trait AdminApi[F[_]] {
   def alterConfigs(configs: Map[ConfigResource, Config]): F[AlterConfigsResult]
   def alterConfigs(
       configs: Map[ConfigResource, Config],
-      options: AlterConfigsOptions): F[AlterConfigsResult]
+      options: AlterConfigsOptions
+  ): F[AlterConfigsResult]
   def alterReplicaLogDirs(
-      replicaAssignment: Map[TopicPartitionReplica, String]): F[AlterReplicaLogDirsResult]
+      replicaAssignment: Map[TopicPartitionReplica, String]
+  ): F[AlterReplicaLogDirsResult]
   def alterReplicaLogDirs(
       replicaAssignment: Map[TopicPartitionReplica, String],
-      options: AlterReplicaLogDirsOptions): F[AlterReplicaLogDirsResult]
+      options: AlterReplicaLogDirsOptions
+  ): F[AlterReplicaLogDirsResult]
   def close: F[Unit]
   def close(duration: FiniteDuration): F[Unit]
   def createAcls(acls: Iterable[AclBinding]): F[CreateAclsResult]
@@ -57,15 +60,18 @@ trait AdminApi[F[_]] {
   def createPartitions(newPartitions: Map[String, NewPartitions]): F[CreatePartitionsResult]
   def createPartitions(
       newPartitions: Map[String, NewPartitions],
-      options: CreatePartitionsOptions): F[CreatePartitionsResult]
+      options: CreatePartitionsOptions
+  ): F[CreatePartitionsResult]
   def createTopics(newTopics: Iterable[NewTopic]): F[CreateTopicsResult]
   def createTopics(
       newTopics: Iterable[NewTopic],
-      options: CreateTopicsOptions): F[CreateTopicsResult]
+      options: CreateTopicsOptions
+  ): F[CreateTopicsResult]
   def deleteAcls(filters: Iterable[AclBindingFilter]): F[DeleteAclsResult]
   def deleteAcls(
       filters: Iterable[AclBindingFilter],
-      options: DeleteAclsOptions): F[DeleteAclsResult]
+      options: DeleteAclsOptions
+  ): F[DeleteAclsResult]
   def deleteTopics(topics: Iterable[String]): F[DeleteTopicsResult]
   def deleteTopics(topics: Iterable[String], options: DeleteTopicsOptions): F[DeleteTopicsResult]
   def describeAcls(filter: AclBindingFilter): F[DescribeAclsResult]
@@ -75,20 +81,25 @@ trait AdminApi[F[_]] {
   def describeConfigs(resources: Iterable[ConfigResource]): F[DescribeConfigsResult]
   def describeConfigs(
       resources: Iterable[ConfigResource],
-      options: DescribeConfigsOptions): F[DescribeConfigsResult]
+      options: DescribeConfigsOptions
+  ): F[DescribeConfigsResult]
   def describeLogDirs(brokers: Iterable[Int]): F[DescribeLogDirsResult]
   def describeLogDirs(
       brokers: Iterable[Int],
-      options: DescribeLogDirsOptions): F[DescribeLogDirsResult]
+      options: DescribeLogDirsOptions
+  ): F[DescribeLogDirsResult]
   def describeReplicaLogDirs(
-      replicas: Iterable[TopicPartitionReplica]): F[DescribeReplicaLogDirsResult]
+      replicas: Iterable[TopicPartitionReplica]
+  ): F[DescribeReplicaLogDirsResult]
   def describeReplicaLogDirs(
       replicas: Iterable[TopicPartitionReplica],
-      options: DescribeReplicaLogDirsOptions): F[DescribeReplicaLogDirsResult]
+      options: DescribeReplicaLogDirsOptions
+  ): F[DescribeReplicaLogDirsResult]
   def describeTopics(topicNames: Iterable[String]): F[DescribeTopicsResult]
   def describeTopics(
       topicNames: Iterable[String],
-      options: DescribeTopicsOptions): F[DescribeTopicsResult]
+      options: DescribeTopicsOptions
+  ): F[DescribeTopicsResult]
   def listTopics: F[ListTopicsResult]
   def listTopics(options: ListTopicsOptions): F[ListTopicsResult]
 }
@@ -110,7 +121,9 @@ object AdminApi {
 
   def createTopicsIdempotent[F[_]: Sync: Bracket[?[_], Throwable]](
       bootstrapServers: String,
-      topics: Iterable[NewTopic]): F[CreateTopicsResult] =
-    Bracket[F, Throwable].bracket(AdminApi[F](BootstrapServers(bootstrapServers)))(a =>
-      a.createTopicsIdempotent(topics))(_.close)
+      topics: Iterable[NewTopic]
+  ): F[CreateTopicsResult] =
+    Bracket[F, Throwable].bracket(AdminApi[F](BootstrapServers(bootstrapServers)))(
+      a => a.createTopicsIdempotent(topics)
+    )(_.close)
 }

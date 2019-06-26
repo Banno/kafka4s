@@ -26,16 +26,19 @@ import org.apache.kafka.clients.producer._
 
 case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
 
-  def sendAndForgetBatch[G[_]: Foldable](records: G[ProducerRecord[K, V]])(
-      implicit F: Applicative[F]): F[Unit] =
+  def sendAndForgetBatch[G[_]: Foldable](
+      records: G[ProducerRecord[K, V]]
+  )(implicit F: Applicative[F]): F[Unit] =
     records.traverse_(producer.sendAndForget)
 
-  def sendSyncBatch[G[_]: Traverse](records: G[ProducerRecord[K, V]])(
-      implicit F: Applicative[F]): F[G[RecordMetadata]] =
+  def sendSyncBatch[G[_]: Traverse](
+      records: G[ProducerRecord[K, V]]
+  )(implicit F: Applicative[F]): F[G[RecordMetadata]] =
     records.traverse(producer.sendSync)
 
-  def sendAsyncBatch[G[_]: Traverse](records: G[ProducerRecord[K, V]])(
-      implicit F: Applicative[F]): F[G[RecordMetadata]] =
+  def sendAsyncBatch[G[_]: Traverse](
+      records: G[ProducerRecord[K, V]]
+  )(implicit F: Applicative[F]): F[G[RecordMetadata]] =
     records.traverse(producer.sendAsync)
 
   def pipeSync: Pipe[F, ProducerRecord[K, V], RecordMetadata] =
@@ -59,7 +62,8 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
   def transaction[G[_]: Foldable](
       records: G[ProducerRecord[K, V]],
       offsets: Map[TopicPartition, OffsetAndMetadata],
-      consumerGroupId: String)(implicit F: MonadError[F, Throwable]): F[Unit] =
+      consumerGroupId: String
+  )(implicit F: MonadError[F, Throwable]): F[Unit] =
     (for {
       _ <- producer.beginTransaction
       _ <- sendAndForgetBatch(records) //should be no need to wait for RecordMetadatas or errors, since commitTransaction flushes and throws

@@ -29,22 +29,24 @@ import com.banno.kafka._
 //this is a Bifunctor[ConsumerApi]
 
 case class Avro4sConsumerImpl[F[_]: Functor, K: FromRecord, V: FromRecord](
-    c: ConsumerApi[F, GenericRecord, GenericRecord])
-    extends ConsumerApi[F, K, V] {
+    c: ConsumerApi[F, GenericRecord, GenericRecord]
+) extends ConsumerApi[F, K, V] {
   def assign(partitions: Iterable[TopicPartition]): F[Unit] = c.assign(partitions)
   def assignment: F[Set[TopicPartition]] = c.assignment
   def beginningOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
     c.beginningOffsets(partitions)
   def beginningOffsets(
       partitions: Iterable[TopicPartition],
-      timeout: FiniteDuration): F[Map[TopicPartition, Long]] =
+      timeout: FiniteDuration
+  ): F[Map[TopicPartition, Long]] =
     c.beginningOffsets(partitions, timeout)
   def close: F[Unit] = c.close
   def close(timeout: FiniteDuration): F[Unit] = c.close(timeout)
   def commitAsync: F[Unit] = c.commitAsync
   def commitAsync(
       offsets: Map[TopicPartition, OffsetAndMetadata],
-      callback: OffsetCommitCallback): F[Unit] = c.commitAsync(offsets, callback)
+      callback: OffsetCommitCallback
+  ): F[Unit] = c.commitAsync(offsets, callback)
   def commitAsync(callback: OffsetCommitCallback): F[Unit] = c.commitAsync(callback)
   def commitSync: F[Unit] = c.commitSync
   def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] = c.commitSync(offsets)
@@ -53,17 +55,20 @@ case class Avro4sConsumerImpl[F[_]: Functor, K: FromRecord, V: FromRecord](
     c.endOffsets(partitions)
   def endOffsets(
       partitions: Iterable[TopicPartition],
-      timeout: FiniteDuration): F[Map[TopicPartition, Long]] = c.endOffsets(partitions, timeout)
+      timeout: FiniteDuration
+  ): F[Map[TopicPartition, Long]] = c.endOffsets(partitions, timeout)
   def listTopics: F[Map[String, Seq[PartitionInfo]]] = c.listTopics
   def listTopics(timeout: FiniteDuration): F[Map[String, Seq[PartitionInfo]]] =
     c.listTopics(timeout)
   def metrics: F[Map[MetricName, Metric]] = c.metrics
   def offsetsForTimes(
-      timestampsToSearch: Map[TopicPartition, Long]): F[Map[TopicPartition, OffsetAndTimestamp]] =
+      timestampsToSearch: Map[TopicPartition, Long]
+  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
     c.offsetsForTimes(timestampsToSearch)
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long],
-      timeout: FiniteDuration): F[Map[TopicPartition, OffsetAndTimestamp]] =
+      timeout: FiniteDuration
+  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
     c.offsetsForTimes(timestampsToSearch, timeout)
   def partitionsFor(topic: String): F[Seq[PartitionInfo]] = c.partitionsFor(topic)
   def partitionsFor(topic: String, timeout: FiniteDuration): F[Seq[PartitionInfo]] =

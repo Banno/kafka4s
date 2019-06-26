@@ -28,7 +28,8 @@ import scala.concurrent.ExecutionContext
 
 case class ShiftingProducerImpl[F[_]: Async, K, V](
     p: ProducerApi[F, K, V],
-    blockingContext: ExecutionContext)(implicit CS: ContextShift[F])
+    blockingContext: ExecutionContext
+)(implicit CS: ContextShift[F])
     extends ProducerApi[F, K, V] {
   def abortTransaction: F[Unit] = CS.evalOn(blockingContext)(p.abortTransaction)
   def beginTransaction: F[Unit] = CS.evalOn(blockingContext)(p.beginTransaction)
@@ -42,17 +43,20 @@ case class ShiftingProducerImpl[F[_]: Async, K, V](
     CS.evalOn(blockingContext)(p.partitionsFor(topic))
   def sendOffsetsToTransaction(
       offsets: Map[TopicPartition, OffsetAndMetadata],
-      consumerGroupId: String): F[Unit] =
+      consumerGroupId: String
+  ): F[Unit] =
     CS.evalOn(blockingContext)(p.sendOffsetsToTransaction(offsets, consumerGroupId))
 
   private[producer] def sendRaw(record: ProducerRecord[K, V]): JFuture[RecordMetadata] =
     p.sendRaw(record)
   private[producer] def sendRaw(
       record: ProducerRecord[K, V],
-      callback: Callback): JFuture[RecordMetadata] = p.sendRaw(record, callback)
+      callback: Callback
+  ): JFuture[RecordMetadata] = p.sendRaw(record, callback)
   private[producer] def sendRaw(
       record: ProducerRecord[K, V],
-      callback: Either[Exception, RecordMetadata] => Unit): Unit = p.sendRaw(record, callback)
+      callback: Either[Exception, RecordMetadata] => Unit
+  ): Unit = p.sendRaw(record, callback)
 
   def sendAndForget(record: ProducerRecord[K, V]): F[Unit] =
     CS.evalOn(blockingContext)(p.sendAndForget(record))

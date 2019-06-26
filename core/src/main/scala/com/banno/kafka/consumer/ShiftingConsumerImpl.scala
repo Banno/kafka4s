@@ -27,8 +27,8 @@ import org.apache.kafka.clients.consumer._
 import scala.concurrent.ExecutionContext
 
 case class ShiftingConsumerImpl[F[_]: Async, K, V](c: ConsumerApi[F, K, V])(
-    implicit CS: ContextShift[F])
-    extends ConsumerApi[F, K, V] {
+    implicit CS: ContextShift[F]
+) extends ConsumerApi[F, K, V] {
   val consumerContext: ExecutionContext =
     ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1))
 
@@ -39,14 +39,16 @@ case class ShiftingConsumerImpl[F[_]: Async, K, V](c: ConsumerApi[F, K, V])(
     CS.evalOn(consumerContext)(c.beginningOffsets(partitions))
   def beginningOffsets(
       partitions: Iterable[TopicPartition],
-      timeout: FiniteDuration): F[Map[TopicPartition, Long]] =
+      timeout: FiniteDuration
+  ): F[Map[TopicPartition, Long]] =
     CS.evalOn(consumerContext)(c.beginningOffsets(partitions, timeout))
   def close: F[Unit] = CS.evalOn(consumerContext)(c.close)
   def close(timeout: FiniteDuration): F[Unit] = CS.evalOn(consumerContext)(c.close(timeout))
   def commitAsync: F[Unit] = CS.evalOn(consumerContext)(c.commitAsync)
   def commitAsync(
       offsets: Map[TopicPartition, OffsetAndMetadata],
-      callback: OffsetCommitCallback): F[Unit] =
+      callback: OffsetCommitCallback
+  ): F[Unit] =
     CS.evalOn(consumerContext)(c.commitAsync(offsets, callback))
   def commitAsync(callback: OffsetCommitCallback): F[Unit] =
     CS.evalOn(consumerContext)(c.commitAsync(callback))
@@ -59,18 +61,21 @@ case class ShiftingConsumerImpl[F[_]: Async, K, V](c: ConsumerApi[F, K, V])(
     CS.evalOn(consumerContext)(c.endOffsets(partitions))
   def endOffsets(
       partitions: Iterable[TopicPartition],
-      timeout: FiniteDuration): F[Map[TopicPartition, Long]] =
+      timeout: FiniteDuration
+  ): F[Map[TopicPartition, Long]] =
     CS.evalOn(consumerContext)(c.endOffsets(partitions, timeout))
   def listTopics: F[Map[String, Seq[PartitionInfo]]] = CS.evalOn(consumerContext)(c.listTopics)
   def listTopics(timeout: FiniteDuration): F[Map[String, Seq[PartitionInfo]]] =
     CS.evalOn(consumerContext)(c.listTopics(timeout))
   def metrics: F[Map[MetricName, Metric]] = CS.evalOn(consumerContext)(c.metrics)
   def offsetsForTimes(
-      timestampsToSearch: Map[TopicPartition, Long]): F[Map[TopicPartition, OffsetAndTimestamp]] =
+      timestampsToSearch: Map[TopicPartition, Long]
+  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
     CS.evalOn(consumerContext)(c.offsetsForTimes(timestampsToSearch))
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long],
-      timeout: FiniteDuration): F[Map[TopicPartition, OffsetAndTimestamp]] =
+      timeout: FiniteDuration
+  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
     CS.evalOn(consumerContext)(c.offsetsForTimes(timestampsToSearch, timeout))
   def partitionsFor(topic: String): F[Seq[PartitionInfo]] =
     CS.evalOn(consumerContext)(c.partitionsFor(topic))

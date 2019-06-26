@@ -44,7 +44,8 @@ object Compatibility {
   def compatible(
       validator: SchemaValidator,
       newSchema: Schema,
-      previousSchemas: Seq[Schema]): Boolean =
+      previousSchemas: Seq[Schema]
+  ): Boolean =
     try {
       validator.validate(newSchema, previousSchemas.reverse.asJava) // Validator checks in list order, but checks should occur in reverse chronological order
       true
@@ -75,7 +76,8 @@ class AvrohuggerAvro4sSchemaEvolutionSpec
 
   val client = new MockSchemaRegistryClient()
   val configs = Map(
-    AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG -> "http://inmemorytest").asJava
+    AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG -> "http://inmemorytest"
+  ).asJava
   val serializer = new KafkaAvroSerializer(client)
   serializer.configure(configs, false)
   val deserializer = new KafkaAvroDeserializer(client)
@@ -185,7 +187,8 @@ class AvrohuggerAvro4sSchemaEvolutionSpec
     val b1 = serializer.serialize(topic, rf1.to(r1))
     rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]) should ===(r1)
     a[NullPointerException] should be thrownBy rf2.from(
-      deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord])
+      deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]
+    )
 
     val b2 = serializer.serialize(topic, rf2.to(r2))
     rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]) should ===(r1)
@@ -231,7 +234,8 @@ class AvrohuggerAvro4sSchemaEvolutionSpec
 
     val b2 = serializer.serialize(topic, rf2.to(r2))
     a[NullPointerException] should be thrownBy rf1.from(
-      deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord])
+      deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]
+    )
     rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]) should ===(r2)
   }
 
@@ -301,7 +305,8 @@ class AvrohuggerAvro4sSchemaEvolutionSpec
 
     val b3 = serializer.serialize(topic, rf2.to(r3))
     a[RuntimeException] should be thrownBy rf1.from(
-      deserializer.deserialize(topic, b3).asInstanceOf[GenericRecord])
+      deserializer.deserialize(topic, b3).asInstanceOf[GenericRecord]
+    )
     rf2.from(deserializer.deserialize(topic, b3).asInstanceOf[GenericRecord]) should ===(r3)
   }
 
@@ -330,7 +335,8 @@ class AvrohuggerAvro4sSchemaEvolutionSpec
     val b3 = serializer.serialize(topic, rf1.to(r3))
     rf1.from(deserializer.deserialize(topic, b3).asInstanceOf[GenericRecord]) should ===(r3)
     a[RuntimeException] should be thrownBy rf2.from(
-      deserializer.deserialize(topic, b3).asInstanceOf[GenericRecord])
+      deserializer.deserialize(topic, b3).asInstanceOf[GenericRecord]
+    )
   }
 
 }

@@ -53,8 +53,9 @@ case class SchemaRegistryOps[F[_]](registry: SchemaRegistryApi[F]) {
   def isValueCompatible[V: SchemaFor](topic: String): F[Boolean] =
     isCompatible[V](valueSubject(topic))
 
-  def isCompatible[K: SchemaFor, V: SchemaFor](topic: String)(
-      implicit F: FlatMap[F]): F[(Boolean, Boolean)] =
+  def isCompatible[K: SchemaFor, V: SchemaFor](
+      topic: String
+  )(implicit F: FlatMap[F]): F[(Boolean, Boolean)] =
     for {
       k <- isKeyCompatible[K](topic)
       v <- isValueCompatible[V](topic)

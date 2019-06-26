@@ -28,8 +28,8 @@ import com.banno.kafka._
 //this is like Bifunctor[ProducerApi] but is contravariant in both arguments, cats does not seem to have anything like ContravriantBifunctor...
 
 case class Avro4sProducerImpl[F[_], K: ToRecord, V: ToRecord](
-    p: ProducerApi[F, GenericRecord, GenericRecord])
-    extends ProducerApi[F, K, V] {
+    p: ProducerApi[F, GenericRecord, GenericRecord]
+) extends ProducerApi[F, K, V] {
   def abortTransaction: F[Unit] = p.abortTransaction
   def beginTransaction: F[Unit] = p.beginTransaction
   def close: F[Unit] = p.close
@@ -41,16 +41,19 @@ case class Avro4sProducerImpl[F[_], K: ToRecord, V: ToRecord](
   def partitionsFor(topic: String): F[Seq[PartitionInfo]] = p.partitionsFor(topic)
   def sendOffsetsToTransaction(
       offsets: Map[TopicPartition, OffsetAndMetadata],
-      consumerGroupId: String): F[Unit] = p.sendOffsetsToTransaction(offsets, consumerGroupId)
+      consumerGroupId: String
+  ): F[Unit] = p.sendOffsetsToTransaction(offsets, consumerGroupId)
 
   private[producer] def sendRaw(record: ProducerRecord[K, V]): JFuture[RecordMetadata] =
     p.sendRaw(record.toGenericRecord)
   private[producer] def sendRaw(
       record: ProducerRecord[K, V],
-      callback: Callback): JFuture[RecordMetadata] = p.sendRaw(record.toGenericRecord, callback)
+      callback: Callback
+  ): JFuture[RecordMetadata] = p.sendRaw(record.toGenericRecord, callback)
   private[producer] def sendRaw(
       record: ProducerRecord[K, V],
-      callback: Either[Exception, RecordMetadata] => Unit): Unit =
+      callback: Either[Exception, RecordMetadata] => Unit
+  ): Unit =
     p.sendRaw(record.toGenericRecord, callback)
 
   def sendAndForget(record: ProducerRecord[K, V]): F[Unit] = p.sendAndForget(record.toGenericRecord)
