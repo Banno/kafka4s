@@ -19,7 +19,7 @@ import java.util.concurrent.Executors
 import cats.effect.concurrent.Ref
 
 import scala.util.Random
-import org.scalacheck.ScalacheckShapeless._
+import com.mrdziuban.ScalacheckMagnolia._
 import org.apache.kafka.common.TopicPartition
 import org.scalatestplus.scalacheck._
 
