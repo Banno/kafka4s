@@ -16,29 +16,29 @@
 
 package com.banno.kafka.metrics
 
-import org.apache.kafka.common.metrics.{MetricsReporter, KafkaMetric}
+import org.apache.kafka.common.metrics.{KafkaMetric, MetricsReporter}
 import cats.effect.IO
 import java.util.{Map => JMap, List => JList}
 import scala.collection.JavaConverters._
 
-/** Adapts our pure MetricsReporterApi to Kafka's impure MetricsReporter. The end of the universe for metrics reporters. 
+/** Adapts our pure MetricsReporterApi to Kafka's impure MetricsReporter. The end of the universe for metrics reporters.
   * Actual reporters should extend this, so Kafka client can instantiate it via reflection. */
 abstract class IOMetricsReporter(reporter: MetricsReporterApi[IO]) extends MetricsReporter {
 
   //TODO probably should run these a bit safer, like attempt, log non-fatal, etc
 
-  override def configure(configs: JMap[String, _]): Unit = 
+  override def configure(configs: JMap[String, _]): Unit =
     reporter.configure(configs.asScala.toMap).unsafeRunSync()
 
-  override def init(metrics: JList[KafkaMetric]): Unit = 
+  override def init(metrics: JList[KafkaMetric]): Unit =
     reporter.init(metrics.asScala.toList).unsafeRunSync()
 
-  override def metricChange(metric: KafkaMetric): Unit = 
+  override def metricChange(metric: KafkaMetric): Unit =
     reporter.add(metric).unsafeRunSync()
 
-  override def metricRemoval(metric: KafkaMetric): Unit = 
+  override def metricRemoval(metric: KafkaMetric): Unit =
     reporter.remove(metric).unsafeRunSync()
 
-  override def close(): Unit = 
+  override def close(): Unit =
     reporter.close.unsafeRunSync()
 }

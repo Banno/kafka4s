@@ -23,8 +23,9 @@ import org.apache.kafka.clients.admin._
 case class AdminOps[F[_]](admin: AdminApi[F]) {
 
   /** Only creates the specified topics that do not already exist. */
-  def createTopicsIdempotent(newTopics: Iterable[NewTopic])(implicit F: Sync[F]): F[CreateTopicsResult] = 
-    for { 
+  def createTopicsIdempotent(newTopics: Iterable[NewTopic])(
+      implicit F: Sync[F]): F[CreateTopicsResult] =
+    for {
       ltr <- admin.listTopics
       ns <- F.delay(ltr.names().get())
       ctr <- admin.createTopics(newTopics.filterNot(t => ns.contains(t.name)))

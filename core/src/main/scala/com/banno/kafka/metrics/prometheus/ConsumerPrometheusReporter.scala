@@ -32,6 +32,6 @@ object ConsumerPrometheusReporter {
     PrometheusMetricsReporterApi.consumer[IO]().unsafeRunSync()
 }
 
-/** Kafka consumer will instantiate this class via reflection. 
+/** Kafka consumer will instantiate this class via reflection.
   * Specify this consumer config: metric.reporters=com.banno.kafka.metrics.prometheus.ConsumerPrometheusReporter. */
 class ConsumerPrometheusReporter extends IOMetricsReporter(ConsumerPrometheusReporter.reporter)

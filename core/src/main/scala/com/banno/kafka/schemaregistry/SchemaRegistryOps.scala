@@ -26,34 +26,35 @@ case class SchemaRegistryOps[F[_]](registry: SchemaRegistryApi[F]) {
   def keySubject(topic: String): String = topic + "-key"
   def valueSubject(topic: String): String = topic + "-value"
 
-  def register[A](subject: String)(implicit SF: SchemaFor[A]): F[Int] = 
+  def register[A](subject: String)(implicit SF: SchemaFor[A]): F[Int] =
     registry.register(subject, SF())
 
-  def registerKey[K: SchemaFor](topic: String): F[Int] = 
+  def registerKey[K: SchemaFor](topic: String): F[Int] =
     register[K](keySubject(topic))
 
-  def registerValue[V: SchemaFor](topic: String): F[Int] = 
+  def registerValue[V: SchemaFor](topic: String): F[Int] =
     register[V](valueSubject(topic))
 
-  def register[K: SchemaFor, V: SchemaFor](topic: String)(implicit F: FlatMap[F]): F[(Int, Int)] = 
+  def register[K: SchemaFor, V: SchemaFor](topic: String)(implicit F: FlatMap[F]): F[(Int, Int)] =
     for {
       k <- registerKey[K](topic)
       v <- registerValue[V](topic)
     } yield (k, v)
 
-  def isCompatible(subject: String, schema: Schema): F[Boolean] = 
+  def isCompatible(subject: String, schema: Schema): F[Boolean] =
     registry.testCompatibility(subject, schema)
 
-  def isCompatible[A](subject: String)(implicit SF: SchemaFor[A]): F[Boolean] = 
+  def isCompatible[A](subject: String)(implicit SF: SchemaFor[A]): F[Boolean] =
     isCompatible(subject, SF())
 
-  def isKeyCompatible[K: SchemaFor](topic: String): F[Boolean] = 
+  def isKeyCompatible[K: SchemaFor](topic: String): F[Boolean] =
     isCompatible[K](keySubject(topic))
 
-  def isValueCompatible[V: SchemaFor](topic: String): F[Boolean] = 
+  def isValueCompatible[V: SchemaFor](topic: String): F[Boolean] =
     isCompatible[V](valueSubject(topic))
 
-  def isCompatible[K: SchemaFor, V: SchemaFor](topic: String)(implicit F: FlatMap[F]): F[(Boolean, Boolean)] = 
+  def isCompatible[K: SchemaFor, V: SchemaFor](topic: String)(
+      implicit F: FlatMap[F]): F[(Boolean, Boolean)] =
     for {
       k <- isKeyCompatible[K](topic)
       v <- isValueCompatible[V](topic)

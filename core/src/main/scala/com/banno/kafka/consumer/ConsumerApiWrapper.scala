@@ -25,19 +25,25 @@ trait ConsumerApiWrapper[F[_], K, V] extends ConsumerApi[F, K, V] {
   def api: ConsumerApi[F, K, V]
   def assign(partitions: Iterable[TopicPartition]): F[Unit] = api.assign(partitions)
   def assignment: F[Set[TopicPartition]] = api.assignment
-  def beginningOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] = api.beginningOffsets(partitions)
+  def beginningOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
+    api.beginningOffsets(partitions)
   def close: F[Unit] = api.close
   def close(timeout: FiniteDuration): F[Unit] = api.close(timeout)
   def commitAsync: F[Unit] = api.commitAsync
-  def commitAsync(offsets: Map[TopicPartition, OffsetAndMetadata], callback: OffsetCommitCallback): F[Unit] = api.commitAsync(offsets, callback)
+  def commitAsync(
+      offsets: Map[TopicPartition, OffsetAndMetadata],
+      callback: OffsetCommitCallback): F[Unit] = api.commitAsync(offsets, callback)
   def commitAsync(callback: OffsetCommitCallback): F[Unit] = api.commitAsync(callback)
   def commitSync: F[Unit] = api.commitSync
   def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] = api.commitSync(offsets)
   def committed(partition: TopicPartition): F[OffsetAndMetadata] = api.committed(partition)
-  def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] = api.endOffsets(partitions)
+  def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
+    api.endOffsets(partitions)
   def listTopics: F[Map[String, Seq[PartitionInfo]]] = api.listTopics
   def metrics: F[Map[MetricName, Metric]] = api.metrics
-  def offsetsForTimes(timestampsToSearch: Map[TopicPartition, Long]): F[Map[TopicPartition, OffsetAndTimestamp]] = api.offsetsForTimes(timestampsToSearch)
+  def offsetsForTimes(
+      timestampsToSearch: Map[TopicPartition, Long]): F[Map[TopicPartition, OffsetAndTimestamp]] =
+    api.offsetsForTimes(timestampsToSearch)
   def partitionsFor(topic: String): F[Seq[PartitionInfo]] = api.partitionsFor(topic)
   def pause(partitions: Iterable[TopicPartition]): F[Unit] = api.pause(partitions)
   def paused: F[Set[TopicPartition]] = api.paused
@@ -45,12 +51,15 @@ trait ConsumerApiWrapper[F[_], K, V] extends ConsumerApi[F, K, V] {
   def position(partition: TopicPartition): F[Long] = api.position(partition)
   def resume(partitions: Iterable[TopicPartition]): F[Unit] = api.resume(partitions)
   def seek(partition: TopicPartition, offset: Long): F[Unit] = api.seek(partition, offset)
-  def seekToBeginning(partitions: Iterable[TopicPartition]): F[Unit] = api.seekToBeginning(partitions)
+  def seekToBeginning(partitions: Iterable[TopicPartition]): F[Unit] =
+    api.seekToBeginning(partitions)
   def seekToEnd(partitions: Iterable[TopicPartition]): F[Unit] = api.seekToEnd(partitions)
   def subscribe(topics: Iterable[String]): F[Unit] = api.subscribe(topics)
-  def subscribe(topics: Iterable[String], callback: ConsumerRebalanceListener): F[Unit] = api.subscribe(topics, callback)
+  def subscribe(topics: Iterable[String], callback: ConsumerRebalanceListener): F[Unit] =
+    api.subscribe(topics, callback)
   def subscribe(pattern: Pattern): F[Unit] = api.subscribe(pattern)
-  def subscribe(pattern: Pattern, callback: ConsumerRebalanceListener): F[Unit] = api.subscribe(pattern, callback)
+  def subscribe(pattern: Pattern, callback: ConsumerRebalanceListener): F[Unit] =
+    api.subscribe(pattern, callback)
   def subscription: F[Set[String]] = api.subscription
   def unsubscribe: F[Unit] = api.unsubscribe
   def wakeup: F[Unit] = api.wakeup

@@ -11,7 +11,7 @@ class AdminApiSpec extends FlatSpec with Matchers with InMemoryKafka {
   //Probably don't need to test every single AdminClient operation; this is just a sanity check that it is all wired up properly
 
   "Admin API" should "create topics idempotently" in {
-    def program[F[_]](admin: AdminApi[F])(implicit F: Sync[F]) = 
+    def program[F[_]](admin: AdminApi[F])(implicit F: Sync[F]) =
       for {
         ltr1 <- admin.listTopics
         ns1 <- F.delay(ltr1.names().get())
@@ -28,7 +28,7 @@ class AdminApiSpec extends FlatSpec with Matchers with InMemoryKafka {
     } yield results
     val (before, after) = io.unsafeRunSync()
     before should not contain ("test1")
-    after should contain ("test1")
+    after should contain("test1")
   }
 
 }

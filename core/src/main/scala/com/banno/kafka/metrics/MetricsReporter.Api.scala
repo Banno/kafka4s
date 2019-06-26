@@ -20,14 +20,19 @@ import org.apache.kafka.common.metrics.KafkaMetric
 
 /** So we can write pure code to report Kafka client metrics. */
 trait MetricsReporterApi[F[_]] {
+
   /** Called once, with client's configs. */
   def configure(configs: Map[String, Any]): F[Unit]
+
   /** Called once, with all initial metrics. */
   def init(metrics: List[KafkaMetric]): F[Unit]
+
   /** Called when a new metric is registered. */
   def add(metric: KafkaMetric): F[Unit]
+
   /** Called when a metric is unregistered. */
   def remove(metric: KafkaMetric): F[Unit]
+
   /** Called once on shutdown. */
   def close: F[Unit]
 }

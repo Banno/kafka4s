@@ -1,12 +1,13 @@
 package com.banno.kafka
 
-import org.scalacheck.{Gen, Arbitrary, Cogen}
+import org.scalacheck.{Arbitrary, Cogen, Gen}
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecord
 
 package object test {
 
-  implicit def arbitraryProducerRecord[K: Arbitrary, V: Arbitrary]: Arbitrary[ProducerRecord[K, V]] = Arbitrary {
+  implicit def arbitraryProducerRecord[K: Arbitrary, V: Arbitrary]
+    : Arbitrary[ProducerRecord[K, V]] = Arbitrary {
     for {
       t <- Gen.identifier
       k <- Arbitrary.arbitrary[K]
@@ -14,7 +15,8 @@ package object test {
     } yield new ProducerRecord(t, k, v)
   }
 
-  implicit def arbitraryConsumerRecord[K: Arbitrary, V: Arbitrary]: Arbitrary[ConsumerRecord[K, V]] = Arbitrary {
+  implicit def arbitraryConsumerRecord[K: Arbitrary, V: Arbitrary]
+    : Arbitrary[ConsumerRecord[K, V]] = Arbitrary {
     for {
       t <- Gen.identifier
       p <- Gen.posNum[Int]
@@ -25,6 +27,8 @@ package object test {
   }
 
   //these things are necessary for EqSpec
-  implicit def producerRecordCogen[K, V]: Cogen[ProducerRecord[K, V]] = Cogen(pr => pr.key.toString.length.toLong + pr.value.toString.length.toLong) // ¯\_(ツ)_/¯
-  implicit def consumerRecordCogen[K, V]: Cogen[ConsumerRecord[K, V]] = Cogen(cr => cr.key.toString.length.toLong + cr.value.toString.length.toLong) // ¯\_(ツ)_/¯
+  implicit def producerRecordCogen[K, V]: Cogen[ProducerRecord[K, V]] =
+    Cogen(pr => pr.key.toString.length.toLong + pr.value.toString.length.toLong) // ¯\_(ツ)_/¯
+  implicit def consumerRecordCogen[K, V]: Cogen[ConsumerRecord[K, V]] =
+    Cogen(cr => cr.key.toString.length.toLong + cr.value.toString.length.toLong) // ¯\_(ツ)_/¯
 }

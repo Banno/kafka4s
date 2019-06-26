@@ -26,7 +26,10 @@ import org.apache.kafka.clients.producer._
 
 import scala.concurrent.ExecutionContext
 
-case class ShiftingProducerImpl[F[_]: Async, K, V](p: ProducerApi[F, K, V], blockingContext: ExecutionContext)(implicit CS: ContextShift[F]) extends ProducerApi[F, K, V] {
+case class ShiftingProducerImpl[F[_]: Async, K, V](
+    p: ProducerApi[F, K, V],
+    blockingContext: ExecutionContext)(implicit CS: ContextShift[F])
+    extends ProducerApi[F, K, V] {
   def abortTransaction: F[Unit] = CS.evalOn(blockingContext)(p.abortTransaction)
   def beginTransaction: F[Unit] = CS.evalOn(blockingContext)(p.beginTransaction)
   def close: F[Unit] = CS.evalOn(blockingContext)(p.close)
@@ -35,14 +38,26 @@ case class ShiftingProducerImpl[F[_]: Async, K, V](p: ProducerApi[F, K, V], bloc
   def flush: F[Unit] = CS.evalOn(blockingContext)(p.flush)
   def initTransactions: F[Unit] = CS.evalOn(blockingContext)(p.initTransactions)
   def metrics: F[Map[MetricName, Metric]] = CS.evalOn(blockingContext)(p.metrics)
-  def partitionsFor(topic: String): F[Seq[PartitionInfo]] = CS.evalOn(blockingContext)(p.partitionsFor(topic))
-  def sendOffsetsToTransaction(offsets: Map[TopicPartition, OffsetAndMetadata], consumerGroupId: String): F[Unit] = CS.evalOn(blockingContext)(p.sendOffsetsToTransaction(offsets, consumerGroupId))
+  def partitionsFor(topic: String): F[Seq[PartitionInfo]] =
+    CS.evalOn(blockingContext)(p.partitionsFor(topic))
+  def sendOffsetsToTransaction(
+      offsets: Map[TopicPartition, OffsetAndMetadata],
+      consumerGroupId: String): F[Unit] =
+    CS.evalOn(blockingContext)(p.sendOffsetsToTransaction(offsets, consumerGroupId))
 
-  private[producer] def sendRaw(record: ProducerRecord[K, V]): JFuture[RecordMetadata] = p.sendRaw(record)
-  private[producer] def sendRaw(record: ProducerRecord[K, V], callback: Callback): JFuture[RecordMetadata] = p.sendRaw(record, callback)
-  private[producer] def sendRaw(record: ProducerRecord[K, V], callback: Either[Exception, RecordMetadata] => Unit): Unit = p.sendRaw(record, callback)
+  private[producer] def sendRaw(record: ProducerRecord[K, V]): JFuture[RecordMetadata] =
+    p.sendRaw(record)
+  private[producer] def sendRaw(
+      record: ProducerRecord[K, V],
+      callback: Callback): JFuture[RecordMetadata] = p.sendRaw(record, callback)
+  private[producer] def sendRaw(
+      record: ProducerRecord[K, V],
+      callback: Either[Exception, RecordMetadata] => Unit): Unit = p.sendRaw(record, callback)
 
-  def sendAndForget(record: ProducerRecord[K, V]): F[Unit] = CS.evalOn(blockingContext)(p.sendAndForget(record))
-  def sendSync(record: ProducerRecord[K, V]): F[RecordMetadata] = CS.evalOn(blockingContext)(p.sendSync(record))
-  def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata] = CS.evalOn(blockingContext)(p.sendAsync(record))
+  def sendAndForget(record: ProducerRecord[K, V]): F[Unit] =
+    CS.evalOn(blockingContext)(p.sendAndForget(record))
+  def sendSync(record: ProducerRecord[K, V]): F[RecordMetadata] =
+    CS.evalOn(blockingContext)(p.sendSync(record))
+  def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata] =
+    CS.evalOn(blockingContext)(p.sendAsync(record))
 }
