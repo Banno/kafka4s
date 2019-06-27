@@ -18,4 +18,4 @@ libraryDependencies ++= Seq(
 
 ## Learning more
 
-To learn more about kafka4s, start with our [Getting Started Guide](/kafka4s/docs/).
+To learn more about kafka4s, start with our [Getting Started Guide](/kafka4s/docs/) or check out the [kafka4s Scaladoc](https://www.javadoc.io/doc/com.banno/kafka4s_2.12) for more info..
