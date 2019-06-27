@@ -15,3 +15,7 @@ libraryDependencies ++= Seq(
   "com.banno" %% "kafka4s" % "<version>"
 )
 ```
+
+## Learning more
+
+To learn more about kafka4s, start with our [Getting Started Guide](/kafka4s/docs/).
