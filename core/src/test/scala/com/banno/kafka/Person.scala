@@ -5,19 +5,19 @@ import scala.annotation.switch
 
 case class Person(var name: String) extends org.apache.avro.specific.SpecificRecordBase {
   def this() = this("")
-  def get(field$: Int): AnyRef = {
-    (field$: @switch) match {
+  def get(field$ : Int): AnyRef =
+    (field$ : @switch) match {
       case 0 => {
         name
       }.asInstanceOf[AnyRef]
       case _ => new org.apache.avro.AvroRuntimeException("Bad index")
     }
-  }
-  def put(field$: Int, value: Any): Unit = {
-    (field$: @switch) match {
-      case 0 => this.name = {
-        value.toString
-      }.asInstanceOf[String]
+  def put(field$ : Int, value: Any): Unit = {
+    (field$ : @switch) match {
+      case 0 =>
+        this.name = {
+          value.toString
+        }.asInstanceOf[String]
       case _ => new org.apache.avro.AvroRuntimeException("Bad index")
     }
     ()
@@ -26,5 +26,7 @@ case class Person(var name: String) extends org.apache.avro.specific.SpecificRec
 }
 
 object Person {
-  val SCHEMA$ = new org.apache.avro.Schema.Parser().parse("{\"type\":\"record\",\"name\":\"Person\",\"namespace\":\"com.banno.kafka\",\"fields\":[{\"name\":\"name\",\"type\":\"string\"}]}")
+  val SCHEMA$ = new org.apache.avro.Schema.Parser().parse(
+    "{\"type\":\"record\",\"name\":\"Person\",\"namespace\":\"com.banno.kafka\",\"fields\":[{\"name\":\"name\",\"type\":\"string\"}]}"
+  )
 }

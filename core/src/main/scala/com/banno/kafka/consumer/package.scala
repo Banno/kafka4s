@@ -18,6 +18,7 @@ package com.banno.kafka
 
 package object consumer {
 
-  implicit def consumerOps[F[_], K, V](c: ConsumerApi[F, K, V]): ConsumerOps[F, K, V] = ConsumerOps[F, K, V](c)
+  implicit def consumerOps[F[_], K, V](c: ConsumerApi[F, K, V]): ConsumerOps[F, K, V] =
+    ConsumerOps[F, K, V](c)
 
 }

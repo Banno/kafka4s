@@ -22,16 +22,17 @@ class PrometheusMetricsReporterApiSpec extends FlatSpec with Matchers with InMem
   //when kafka clients change their metrics, this test will help identify the changes we need to make
   "Prometheus reporter" should "register Prometheus collectors for all known Kafka metrics" in {
     val topic = createTopic(2)
-    val records = List(new ProducerRecord(topic, 0, "a", "a"), new ProducerRecord(topic, 1, "b", "b"))
+    val records =
+      List(new ProducerRecord(topic, 0, "a", "a"), new ProducerRecord(topic, 1, "b", "b"))
     val io = for {
       p <- ProducerApi.create[IO, String, String](
-        BootstrapServers(bootstrapServer), 
+        BootstrapServers(bootstrapServer),
         MetricReporters[ProducerPrometheusReporter]
       )
       _ <- p.sendSyncBatch(records)
 
       c1 <- ConsumerApi.create[IO, String, String](
-        BootstrapServers(bootstrapServer), 
+        BootstrapServers(bootstrapServer),
         ClientId("c1"),
         MetricReporters[ConsumerPrometheusReporter]
       )
@@ -40,7 +41,7 @@ class PrometheusMetricsReporterApiSpec extends FlatSpec with Matchers with InMem
       _ <- c1.poll(1 second)
 
       c2 <- ConsumerApi.create[IO, String, String](
-        BootstrapServers(bootstrapServer), 
+        BootstrapServers(bootstrapServer),
         ClientId("c2"),
         MetricReporters[ConsumerPrometheusReporter]
       )
@@ -54,12 +55,18 @@ class PrometheusMetricsReporterApiSpec extends FlatSpec with Matchers with InMem
       _ <- c2.close
     } yield {
       val registry = CollectorRegistry.defaultRegistry
-      registry.metricFamilySamples.asScala.count(_.name startsWith "kafka_producer") should === (56)
-      registry.metricFamilySamples.asScala.find(_.name == "kafka_producer_record_send_total").map(_.samples.asScala.map(_.value)) should === (Some(List(2)))
+      registry.metricFamilySamples.asScala.count(_.name.startsWith("kafka_producer")) should ===(56)
+      registry.metricFamilySamples.asScala
+        .find(_.name == "kafka_producer_record_send_total")
+        .map(_.samples.asScala.map(_.value)) should ===(Some(List(2)))
 
-      registry.metricFamilySamples.asScala.count(_.name startsWith "kafka_consumer") should === (50)
-      registry.metricFamilySamples.asScala.find(_.name == "kafka_consumer_records_consumed_total").map(_.samples.asScala.map(_.value)) should === (Some(List(2, 2)))
-      registry.metricFamilySamples.asScala.find(_.name == "kafka_consumer_topic_records_consumed_total").map(_.samples.asScala.map(_.value)) should === (Some(List(2, 2)))
+      registry.metricFamilySamples.asScala.count(_.name.startsWith("kafka_consumer")) should ===(50)
+      registry.metricFamilySamples.asScala
+        .find(_.name == "kafka_consumer_records_consumed_total")
+        .map(_.samples.asScala.map(_.value)) should ===(Some(List(2, 2)))
+      registry.metricFamilySamples.asScala
+        .find(_.name == "kafka_consumer_topic_records_consumed_total")
+        .map(_.samples.asScala.map(_.value)) should ===(Some(List(2, 2)))
     }
     io.unsafeRunSync()
   }

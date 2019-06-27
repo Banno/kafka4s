@@ -32,6 +32,6 @@ object ProducerPrometheusReporter {
     PrometheusMetricsReporterApi.producer[IO]().unsafeRunSync()
 }
 
-/** Kafka producer will instantiate this class via reflection. 
+/** Kafka producer will instantiate this class via reflection.
   * Specify this producer config: metric.reporters=com.banno.kafka.metrics.prometheus.ProducerPrometheusReporter. */
 class ProducerPrometheusReporter extends IOMetricsReporter(ProducerPrometheusReporter.reporter)

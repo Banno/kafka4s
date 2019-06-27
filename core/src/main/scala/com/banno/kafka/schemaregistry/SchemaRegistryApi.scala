@@ -30,7 +30,7 @@ trait SchemaRegistryApi[F[_]] {
 
   def getAllSubjects: F[Iterable[String]]
   def getById(id: Int): F[Schema]
-  def getBySubjectAndId(subject: String, id: Int): F[Schema]  
+  def getBySubjectAndId(subject: String, id: Int): F[Schema]
   def getCompatibility(subject: String): F[CompatibilityLevel]
   def getLatestSchemaMetadata(subject: String): F[SchemaMetadata]
   def getSchemaMetadata(subject: String, version: Int): F[SchemaMetadata]
@@ -42,18 +42,30 @@ trait SchemaRegistryApi[F[_]] {
 
 object SchemaRegistryApi {
 
-  def createClient[F[_]: Sync](baseUrl: String, identityMapCapacity: Int): F[CachedSchemaRegistryClient] = 
+  def createClient[F[_]: Sync](
+      baseUrl: String,
+      identityMapCapacity: Int
+  ): F[CachedSchemaRegistryClient] =
     Sync[F].delay(new CachedSchemaRegistryClient(baseUrl, identityMapCapacity))
-  def createClient[F[_]: Sync](baseUrls: Seq[String], identityMapCapacity: Int): F[CachedSchemaRegistryClient] = 
+  def createClient[F[_]: Sync](
+      baseUrls: Seq[String],
+      identityMapCapacity: Int
+  ): F[CachedSchemaRegistryClient] =
     Sync[F].delay(new CachedSchemaRegistryClient(baseUrls.asJava, identityMapCapacity))
-  def createClient[F[_]: Sync](restService: RestService, identityMapCapacity: Int): F[CachedSchemaRegistryClient] = 
+  def createClient[F[_]: Sync](
+      restService: RestService,
+      identityMapCapacity: Int
+  ): F[CachedSchemaRegistryClient] =
     Sync[F].delay(new CachedSchemaRegistryClient(restService, identityMapCapacity))
 
-  def apply[F[_]: Sync](baseUrl: String, identityMapCapacity: Int): F[SchemaRegistryApi[F]] = 
+  def apply[F[_]: Sync](baseUrl: String, identityMapCapacity: Int): F[SchemaRegistryApi[F]] =
     createClient[F](baseUrl, identityMapCapacity).map(SchemaRegistryImpl[F](_))
-  def apply[F[_]: Sync](baseUrls: Seq[String], identityMapCapacity: Int): F[SchemaRegistryApi[F]] = 
+  def apply[F[_]: Sync](baseUrls: Seq[String], identityMapCapacity: Int): F[SchemaRegistryApi[F]] =
     createClient[F](baseUrls, identityMapCapacity).map(SchemaRegistryImpl[F](_))
-  def apply[F[_]: Sync](restService: RestService, identityMapCapacity: Int): F[SchemaRegistryApi[F]] = 
+  def apply[F[_]: Sync](
+      restService: RestService,
+      identityMapCapacity: Int
+  ): F[SchemaRegistryApi[F]] =
     createClient[F](restService, identityMapCapacity).map(SchemaRegistryImpl[F](_))
 
   sealed trait CompatibilityLevel {

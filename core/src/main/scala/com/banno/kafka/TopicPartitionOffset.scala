@@ -21,6 +21,6 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata
 
 case class TopicPartitionOffset(topic: String, partition: Int, offset: Long)
 object TopicPartitionOffset {
-  implicit def toMap(o: TopicPartitionOffset): Map[TopicPartition, OffsetAndMetadata] = 
+  implicit def toMap(o: TopicPartitionOffset): Map[TopicPartition, OffsetAndMetadata] =
     Map(new TopicPartition(o.topic, o.partition) -> new OffsetAndMetadata(o.offset))
 }

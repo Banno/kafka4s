@@ -12,8 +12,8 @@ trait InMemoryKafka extends BeforeAndAfterAll { this: Suite =>
 
   val log = Slf4jLogger.getLoggerFromClass[IO](this.getClass)
 
-  val kafkaCluster      = new EmbeddedSingleNodeKafkaCluster()
-  def bootstrapServer   = kafkaCluster.bootstrapServers()
+  val kafkaCluster = new EmbeddedSingleNodeKafkaCluster()
+  def bootstrapServer = kafkaCluster.bootstrapServers()
   def schemaRegistryUrl = kafkaCluster.schemaRegistryUrl()
 
   override def beforeAll(): Unit = {
@@ -31,7 +31,9 @@ trait InMemoryKafka extends BeforeAndAfterAll { this: Suite =>
   def genTopic: String = randomId
   def createTopic(partitionCount: Int = 1): String = {
     val topic = genTopic
-    AdminApi.createTopicsIdempotent[IO](bootstrapServer, List(new NewTopic(topic, partitionCount, 1))).unsafeRunSync()
+    AdminApi
+      .createTopicsIdempotent[IO](bootstrapServer, List(new NewTopic(topic, partitionCount, 1)))
+      .unsafeRunSync()
     topic
   }
 

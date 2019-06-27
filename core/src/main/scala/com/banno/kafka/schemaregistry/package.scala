@@ -18,6 +18,7 @@ package com.banno.kafka
 
 package object schemaregistry {
 
-  implicit def schemaRegistryOps[F[_]](r: SchemaRegistryApi[F]): SchemaRegistryOps[F] = SchemaRegistryOps[F](r)
+  implicit def schemaRegistryOps[F[_]](r: SchemaRegistryApi[F]): SchemaRegistryOps[F] =
+    SchemaRegistryOps[F](r)
 
 }
