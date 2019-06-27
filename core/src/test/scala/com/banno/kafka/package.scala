@@ -7,7 +7,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 package object test {
 
   implicit def arbitraryProducerRecord[K: Arbitrary, V: Arbitrary]
-    : Arbitrary[ProducerRecord[K, V]] = Arbitrary {
+      : Arbitrary[ProducerRecord[K, V]] = Arbitrary {
     for {
       t <- Gen.identifier
       k <- Arbitrary.arbitrary[K]
@@ -16,7 +16,7 @@ package object test {
   }
 
   implicit def arbitraryConsumerRecord[K: Arbitrary, V: Arbitrary]
-    : Arbitrary[ConsumerRecord[K, V]] = Arbitrary {
+      : Arbitrary[ConsumerRecord[K, V]] = Arbitrary {
     for {
       t <- Gen.identifier
       p <- Gen.posNum[Int]

@@ -198,7 +198,7 @@ class ConsumerAndProducerApiSpec
     val data = Map(
       0 -> List("0-0", "0-1"),
       1 -> List("1-0", "1-1"),
-      2 -> List("2-0", "2-1"),
+      2 -> List("2-0", "2-1")
     )
     val records = data.toList.flatMap {
       case (p, vs) => vs.map(v => new ProducerRecord(topic, p, v, v))

@@ -132,9 +132,9 @@ object TransactionalId {
 
 object IsolationLevel {
   val ReadCommitted
-    : (String, String) = (org.apache.kafka.clients.consumer.ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
+      : (String, String) = (org.apache.kafka.clients.consumer.ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
   val ReadUncommitted
-    : (String, String) = (org.apache.kafka.clients.consumer.ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_uncommitted")
+      : (String, String) = (org.apache.kafka.clients.consumer.ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_uncommitted")
 }
 
 object MaxPollRecords {

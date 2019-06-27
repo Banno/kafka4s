@@ -136,7 +136,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
                          else F.unit)
                     }
                 } else F.unit
-            }
+              }
             (caughtUpSignal, update)
           }
         }

@@ -92,8 +92,8 @@ object PrometheusMetricsReporterApi {
             v =>
               F.delay(
                 counter.labels(m.labels: _*).inc(max(0, v - counter.labels(m.labels: _*).get))
-            )
-        )
+              )
+          )
       ) //should always be positive, but protect against negative, TODO might want to log on negative?
   }
 
