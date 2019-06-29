@@ -47,16 +47,6 @@ final class ExampleApp[F[_]: Async: ContextShift] {
     )
     .toVector
 
-  val producerResource: Resource[F, ProducerApi[F, CustomerId, Customer]] =
-    ProducerApi.defaultBlockingContext.flatMap(
-      ProducerApi.resourceAvro4sShifting(
-        _,
-        BootstrapServers(kafkaBootstrapServers),
-        SchemaRegistryUrl(schemaRegistryUri),
-        ClientId("producer-example")
-      )
-    )
-
   val consumerResource = Resource.make(
     ConsumerApi.avro4sShifting[F, CustomerId, Customer](
       BootstrapServers(kafkaBootstrapServers),
@@ -74,7 +64,14 @@ final class ExampleApp[F[_]: Async: ContextShift] {
       _ <- AdminApi.createTopicsIdempotent[F](kafkaBootstrapServers, topic)
       _ <- SchemaRegistryApi.register[F, CustomerId, Customer](schemaRegistryUri, topic.name)
 
-      _ <- producerResource.use(
+      _ <- ProducerApi.defaultBlockingContext.flatMap(
+        ProducerApi.resourceAvro4sShifting(
+          _,
+          BootstrapServers(kafkaBootstrapServers),
+          SchemaRegistryUrl(schemaRegistryUri),
+          ClientId("producer-example")
+        )
+      ).use(
         producer =>
           producerRecords.traverse_(
             pr =>
