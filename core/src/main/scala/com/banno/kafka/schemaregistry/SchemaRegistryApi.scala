@@ -21,7 +21,8 @@ import io.confluent.kafka.schemaregistry.client.{CachedSchemaRegistryClient, Sch
 import io.confluent.kafka.schemaregistry.client.rest.RestService
 import cats.implicits._
 import cats.effect.Sync
-
+import com.sksamuel.avro4s.SchemaFor
+import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
 import scala.collection.JavaConverters._
 import scala.util.control.NoStackTrace
 
@@ -41,6 +42,7 @@ trait SchemaRegistryApi[F[_]] {
 }
 
 object SchemaRegistryApi {
+  def log[F[_]: Sync] = Slf4jLogger.getLoggerFromClass(this.getClass)
 
   def createClient[F[_]: Sync](
       baseUrl: String,
@@ -69,6 +71,15 @@ object SchemaRegistryApi {
       identityMapCapacity: Int
   ): F[SchemaRegistryApi[F]] =
     createClient[F](restService, identityMapCapacity).map(SchemaRegistryImpl[F](_))
+
+  def register[F[_]: Sync, K: SchemaFor, V: SchemaFor](baseUrl: String, topic: String) =
+    for {
+      schemaRegistry <- apply(baseUrl)
+      k <- schemaRegistry.registerKey[K](topic)
+      _ <- log.debug(s"Registered key schema for topic ${topic} at ${baseUrl}")
+      v <- schemaRegistry.registerValue[V](topic)
+      _ <- log.debug(s"Registered value schema for topic ${topic} at ${baseUrl}")
+    } yield (k, v)
 
   sealed trait CompatibilityLevel {
     def asString: String
