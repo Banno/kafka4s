@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package example1
+package example2
 
 import cats.effect._
 import cats.implicits._
@@ -26,15 +26,13 @@ import com.banno.kafka.producer._
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.producer.ProducerRecord
 import scala.concurrent.duration._
-import java.util.concurrent.Executors
 import org.apache.kafka.common.TopicPartition
-import scala.concurrent.ExecutionContext
 
 final class ExampleApp[F[_]: Async: ContextShift] {
   import ExampleApp._
 
   // Change these for your environment as needed
-  val topic = new NewTopic(s"example1.customers", 1, 3)
+  val topic = new NewTopic(s"example2.customers", 1, 3)
   val kafkaBootstrapServers = "kafka.local:9092,kafka.local:9093"
   val schemaRegistryUri = "http://kafka.local:8081"
 
@@ -49,21 +47,14 @@ final class ExampleApp[F[_]: Async: ContextShift] {
     )
     .toVector
 
-  val producerThreadPoolResource = Resource.make(
-    Sync[F].delay(ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1)))
-  )(a => Sync[F].delay(a.shutdown()))
-
   val producerResource: Resource[F, ProducerApi[F, CustomerId, Customer]] =
-    producerThreadPoolResource.flatMap(
-      producerPool =>
-        Resource.make(
-          ProducerApi.avro4sShifting[F, CustomerId, Customer](
-            producerPool,
-            BootstrapServers(kafkaBootstrapServers),
-            SchemaRegistryUrl(schemaRegistryUri),
-            ClientId("producer-example")
-          )
-        )(_.close)
+    ProducerApi.defaultBlockingContext.flatMap(
+      ProducerApi.resourceAvro4sShifting(
+        _,
+        BootstrapServers(kafkaBootstrapServers),
+        SchemaRegistryUrl(schemaRegistryUri),
+        ClientId("producer-example")
+      )
     )
 
   val consumerResource = Resource.make(
@@ -81,14 +72,7 @@ final class ExampleApp[F[_]: Async: ContextShift] {
       _ <- Sync[F].delay(println("Starting kafka4s example"))
 
       _ <- AdminApi.createTopicsIdempotent[F](kafkaBootstrapServers, topic)
-      _ <- Sync[F].delay(println(s"Created topic ${topic.name}"))
-
-      schemaRegistry <- SchemaRegistryApi(schemaRegistryUri)
-      _ <- schemaRegistry.registerKey[CustomerId](topic.name)
-      _ <- Sync[F].delay(println(s"Registered key schema for topic ${topic.name}"))
-
-      _ <- schemaRegistry.registerValue[Customer](topic.name)
-      _ <- Sync[F].delay(println(s"Registered value schema for topic ${topic.name}"))
+      _ <- SchemaRegistryApi.register[F, CustomerId, Customer](schemaRegistryUri, topic.name)
 
       _ <- producerResource.use(
         producer =>
