@@ -31,21 +31,50 @@ import org.apache.kafka.common.TopicPartition
 import scala.concurrent.ExecutionContext
 
 final class ExampleApp[F[_]: Async: ContextShift] {
-  val topicName = s"topic-${java.util.UUID.randomUUID()}"
-  val topic = new NewTopic(topicName, 1, 3)
+  import ExampleApp._
+
+  // Change these for your environment as needed
+  val topic = new NewTopic(s"customers", 1, 3)
   val kafkaBootstrapServers = "kafka.local:9092,kafka.local:9093"
   val schemaRegistryUri = "http://kafka.local:8081"
 
-  val producerRecords: Vector[ProducerRecord[CustomerId, CustomerRecord]] = (1 to 10)
+  val producerRecords: Vector[ProducerRecord[CustomerId, Customer]] = (1 to 10)
     .map(
       a =>
         new ProducerRecord(
           topic.name,
           CustomerId(a.toString),
-          CustomerRecord(Customer(s"name-${a}", s"address-${a}"))
+          Customer(s"name-${a}", s"address-${a}")
         )
     )
     .toVector
+
+  val producerThreadPoolResource = Resource.make(
+    Sync[F].delay(ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1)))
+  )(a => Sync[F].delay(a.shutdown()))
+
+  val producerResource: Resource[F, ProducerApi[F, CustomerId, Customer]] =
+    producerThreadPoolResource.flatMap(
+      producerPool =>
+        Resource.make(
+          ProducerApi.avro4sShifting[F, CustomerId, Customer](
+            producerPool,
+            BootstrapServers(kafkaBootstrapServers),
+            SchemaRegistryUrl(schemaRegistryUri),
+            ClientId("producer-example")
+          )
+        )(_.close)
+    )
+
+  val consumerResource = Resource.make(
+    ConsumerApi.avro4sShifting[F, CustomerId, Customer](
+      BootstrapServers(kafkaBootstrapServers),
+      SchemaRegistryUrl(schemaRegistryUri),
+      ClientId("consumer-example"),
+      GroupId("consumer-example-group"),
+      EnableAutoCommit(false)
+    )
+  )(_.close)
 
   val example: F[Unit] =
     for {
@@ -57,46 +86,42 @@ final class ExampleApp[F[_]: Async: ContextShift] {
       schemaRegistry <- SchemaRegistryApi(schemaRegistryUri)
       _ <- schemaRegistry.registerKey[CustomerId](topic.name)
       _ <- Sync[F].delay(println(s"Registered key schema for topic ${topic.name}"))
-      _ <- schemaRegistry.registerValue[CustomerRecord](topic.name)
+
+      _ <- schemaRegistry.registerValue[Customer](topic.name)
       _ <- Sync[F].delay(println(s"Registered value schema for topic ${topic.name}"))
 
-      producer <- ProducerApi.avro4sShifting[F, CustomerId, CustomerRecord](
-        ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1)),
-        BootstrapServers(kafkaBootstrapServers),
-        SchemaRegistryUrl(schemaRegistryUri),
-        ClientId("producer-example")
+      _ <- producerResource.use(
+        producer =>
+          producerRecords.traverse_(
+            pr =>
+              producer.sendSync(pr) *> Sync[F]
+                .delay(println(s"Wrote producer record: key ${pr.key} and value ${pr.value}"))
+          )
       )
 
-      _ <- producerRecords.traverse_(
-        pr =>
-          producer.sendSync(pr) *> Sync[F]
-            .delay(println(s"Wrote producer record: key ${pr.key} and value ${pr.value}"))
+      _ <- consumerResource.use(
+        consumer =>
+          consumer
+            .recordStream(
+              initialize = consumer.assign(topic.name, Map.empty[TopicPartition, Long]),
+              pollTimeout = 1.second
+            )
+            .take(producerRecords.size.toLong)
+            .evalMap(
+              cr =>
+                Sync[F].delay(println(s"Read consumer record: key ${cr.key} and value ${cr.value}"))
+            )
+            .compile
+            .drain
       )
-
-      consumer <- ConsumerApi.avro4sShifting[F, CustomerId, CustomerRecord](
-        BootstrapServers(kafkaBootstrapServers),
-        SchemaRegistryUrl(schemaRegistryUri),
-        ClientId("consumer-example"),
-        GroupId("consumer-example-group"),
-        EnableAutoCommit(false)
-      )
-
-      _ <- consumer
-        .recordStream(
-          initialize = consumer.assign(topic.name, Map.empty[TopicPartition, Long]),
-          pollTimeout = 1.second
-        )
-        .take(producerRecords.size.toLong)
-        .evalMap(
-          cr => Sync[F].delay(println(s"Read consumer record: key ${cr.key} and value ${cr.value}"))
-        )
-        .compile
-        .drain
 
       _ <- Sync[F].delay(println("Finished kafka4s example"))
     } yield ()
 }
 
 object ExampleApp {
+  case class CustomerId(id: String)
+  case class Customer(name: String, address: String)
+
   def apply[F[_]: Async: ContextShift] = new ExampleApp[F]
 }
