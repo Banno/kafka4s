@@ -29,33 +29,48 @@ import scala.concurrent.duration._
 import org.apache.kafka.common.TopicPartition
 
 final class ExampleApp[F[_]: Async: ContextShift] {
-  import ExampleApp._
 
   // Change these for your environment as needed
-  val topic = new NewTopic(s"example2.customers", 1, 3)
+  val topic = new NewTopic(s"example1.customers.v1", 1, 3)
   val kafkaBootstrapServers = "kafka.local:9092,kafka.local:9093"
   val schemaRegistryUri = "http://kafka.local:8081"
 
-  val producerRecords: Vector[ProducerRecord[CustomerId, Customer]] = (1 to 10)
+  val producerRecords: Vector[ProducerRecord[CustomerId, Customer]] = (11 to 20)
     .map(
       a =>
         new ProducerRecord(
           topic.name,
           CustomerId(a.toString),
-          Customer(s"name-${a}", s"address-${a}")
+          Customer(
+            name = s"name-${a}",
+            address = s"address-${a}",
+            priority = a % 3 match {
+              case 0 => None
+              case 1 => Some(Gold)
+              case 2 => Some(Platinum)
+            }
+          )
         )
     )
     .toVector
 
-  val consumerResource = Resource.make(
-    ConsumerApi.avro4sShifting[F, CustomerId, Customer](
-      BootstrapServers(kafkaBootstrapServers),
-      SchemaRegistryUrl(schemaRegistryUri),
-      ClientId("consumer-example"),
-      GroupId("consumer-example-group"),
-      EnableAutoCommit(false)
+  val producer = ProducerApi.defaultBlockingContext
+    .flatMap(
+      ProducerApi.resourceAvro4sShifting[F, CustomerId, Customer](
+        _,
+        BootstrapServers(kafkaBootstrapServers),
+        SchemaRegistryUrl(schemaRegistryUri),
+        ClientId("producer-example")
+      )
     )
-  )(_.close)
+
+  val consumer = ConsumerApi.resourceAvro4sShifting[F, CustomerId, Customer](
+    BootstrapServers(kafkaBootstrapServers),
+    SchemaRegistryUrl(schemaRegistryUri),
+    ClientId("consumer-example"),
+    GroupId("consumer-example-group"),
+    EnableAutoCommit(false)
+  )
 
   val example: F[Unit] =
     for {
@@ -64,30 +79,24 @@ final class ExampleApp[F[_]: Async: ContextShift] {
       _ <- AdminApi.createTopicsIdempotent[F](kafkaBootstrapServers, topic)
       _ <- SchemaRegistryApi.register[F, CustomerId, Customer](schemaRegistryUri, topic.name)
 
-      _ <- ProducerApi.defaultBlockingContext.flatMap(
-        ProducerApi.resourceAvro4sShifting(
-          _,
-          BootstrapServers(kafkaBootstrapServers),
-          SchemaRegistryUrl(schemaRegistryUri),
-          ClientId("producer-example")
+      _ <- producer
+        .use(
+          producer =>
+            producerRecords.traverse_(
+              pr =>
+                producer.sendSync(pr) *> Sync[F]
+                  .delay(println(s"Wrote producer record: key ${pr.key} and value ${pr.value}"))
+            )
         )
-      ).use(
-        producer =>
-          producerRecords.traverse_(
-            pr =>
-              producer.sendSync(pr) *> Sync[F]
-                .delay(println(s"Wrote producer record: key ${pr.key} and value ${pr.value}"))
-          )
-      )
 
-      _ <- consumerResource.use(
+      _ <- consumer.use(
         consumer =>
           consumer
             .recordStream(
               initialize = consumer.assign(topic.name, Map.empty[TopicPartition, Long]),
               pollTimeout = 1.second
             )
-            .take(producerRecords.size.toLong)
+            .take(20L)
             .evalMap(
               cr =>
                 Sync[F].delay(println(s"Read consumer record: key ${cr.key} and value ${cr.value}"))
@@ -101,8 +110,11 @@ final class ExampleApp[F[_]: Async: ContextShift] {
 }
 
 object ExampleApp {
-  case class CustomerId(id: String)
-  case class Customer(name: String, address: String)
-
   def apply[F[_]: Async: ContextShift] = new ExampleApp[F]
 }
+
+case class CustomerId(id: String)
+sealed trait Priority
+case object Platinum extends Priority
+case object Gold extends Priority
+case class Customer(name: String, address: String, priority: Option[Priority] = None)
