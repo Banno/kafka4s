@@ -73,10 +73,12 @@ object ProducerApi {
   ): F[KafkaProducer[K, V]] =
     Sync[F].delay(new KafkaProducer[K, V](configs.toMap.asJava, keySerializer, valueSerializer))
 
-  def resource[F[_]: Sync, K, V](configs: (String, AnyRef)*): Resource[F, KafkaProducer[K, V]] =
+  def resourceKafkaProducer[F[_]: Sync, K, V](
+      configs: (String, AnyRef)*
+  ): Resource[F, KafkaProducer[K, V]] =
     Resource.make(createProducer[F, K, V](configs: _*))(a => Sync[F].delay(a.close()))
 
-  def resource[F[_]: Sync, K, V](
+  def resourceKafkaProducer[F[_]: Sync, K, V](
       keySerializer: Serializer[K],
       valueSerializer: Serializer[V],
       configs: (String, AnyRef)*
@@ -87,12 +89,24 @@ object ProducerApi {
 
   def apply[F[_]: Async, K, V](configs: (String, AnyRef)*): F[ProducerApi[F, K, V]] =
     createProducer[F, K, V](configs: _*).map(ProducerImpl[F, K, V](_))
+
   def apply[F[_]: Async, K, V](
       keySerializer: Serializer[K],
       valueSerializer: Serializer[V],
       configs: (String, AnyRef)*
   ): F[ProducerApi[F, K, V]] =
     createProducer[F, K, V](keySerializer, valueSerializer, configs: _*)
+      .map(ProducerImpl[F, K, V](_))
+
+  def resource[F[_]: Async, K, V](configs: (String, AnyRef)*): Resource[F, ProducerApi[F, K, V]] =
+    resourceKafkaProducer[F, K, V](configs: _*).map(ProducerImpl[F, K, V](_))
+
+  def resource[F[_]: Async, K, V](
+      keySerializer: Serializer[K],
+      valueSerializer: Serializer[V],
+      configs: (String, AnyRef)*
+  ): Resource[F, ProducerApi[F, K, V]] =
+    resourceKafkaProducer[F, K, V](keySerializer, valueSerializer, configs: _*)
       .map(ProducerImpl[F, K, V](_))
 
   def create[F[_]: Async, K: Serializer, V: Serializer](
@@ -105,6 +119,7 @@ object ProducerApi {
       configs: (String, AnyRef)*
   ): F[ProducerApi[F, K, V]] =
     apply[F, K, V](configs: _*).map(ShiftingProducerImpl[F, K, V](_, producerContext))
+
   def shifting[F[_]: Async: ContextShift, K, V](
       producerContext: ExecutionContext,
       keySerializer: Serializer[K],
@@ -150,7 +165,7 @@ object ProducerApi {
   def resourceGeneric[F[_]: Async](
       configs: (String, AnyRef)*
   ): Resource[F, ProducerApi[F, GenericRecord, GenericRecord]] =
-    resource[F, GenericRecord, GenericRecord](
+    resourceKafkaProducer[F, GenericRecord, GenericRecord](
       (
         configs.toMap +
           KeySerializerClass(classOf[KafkaAvroSerializer]) +
