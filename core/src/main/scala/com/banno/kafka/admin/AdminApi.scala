@@ -126,4 +126,12 @@ object AdminApi {
     Bracket[F, Throwable].bracket(AdminApi[F](BootstrapServers(bootstrapServers)))(
       a => a.createTopicsIdempotent(topics)
     )(_.close)
+
+  def createTopicsIdempotent[F[_]: Sync: Bracket[?[_], Throwable]](
+      bootstrapServers: String,
+      topics: NewTopic*
+  ): F[CreateTopicsResult] =
+    Bracket[F, Throwable].bracket(AdminApi[F](BootstrapServers(bootstrapServers)))(
+      a => a.createTopicsIdempotent(topics)
+    )(_.close)
 }

@@ -17,9 +17,8 @@
 package com.banno.kafka.consumer
 
 import cats.implicits._
-import cats.effect.{Async, ContextShift, Sync}
+import cats.effect.{Async, ContextShift, Resource, Sync}
 import java.util.regex.Pattern
-
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import org.apache.kafka.common._
@@ -87,6 +86,7 @@ object ConsumerApi {
 
   def createConsumer[F[_]: Sync, K, V](configs: (String, AnyRef)*): F[KafkaConsumer[K, V]] =
     Sync[F].delay(new KafkaConsumer[K, V](configs.toMap.asJava))
+
   def createConsumer[F[_]: Sync, K, V](
       keyDeserializer: Deserializer[K],
       valueDeserializer: Deserializer[V],
@@ -94,14 +94,39 @@ object ConsumerApi {
   ): F[KafkaConsumer[K, V]] =
     Sync[F].delay(new KafkaConsumer[K, V](configs.toMap.asJava, keyDeserializer, valueDeserializer))
 
+  def resourceKafkaConsumer[F[_]: Sync, K, V](
+      configs: (String, AnyRef)*
+  ): Resource[F, KafkaConsumer[K, V]] =
+    Resource.make(createConsumer[F, K, V](configs: _*))(a => Sync[F].delay(a.close()))
+
+  def resourceKafkaConsumer[F[_]: Sync, K, V](
+      keyDeserializer: Deserializer[K],
+      valueDeserializer: Deserializer[V],
+      configs: (String, AnyRef)*
+  ): Resource[F, KafkaConsumer[K, V]] =
+    Resource.make(createConsumer[F, K, V](keyDeserializer, valueDeserializer, configs: _*))(
+      a => Sync[F].delay(a.close())
+    )
+
   def apply[F[_]: Sync, K, V](configs: (String, AnyRef)*): F[ConsumerApi[F, K, V]] =
     createConsumer[F, K, V](configs: _*).map(ConsumerImpl(_))
+
   def apply[F[_]: Sync, K, V](
       keyDeserializer: Deserializer[K],
       valueDeserializer: Deserializer[V],
       configs: (String, AnyRef)*
   ): F[ConsumerApi[F, K, V]] =
     createConsumer[F, K, V](keyDeserializer, valueDeserializer, configs: _*).map(ConsumerImpl(_))
+
+  def resource[F[_]: Sync, K, V](configs: (String, AnyRef)*): Resource[F, ConsumerApi[F, K, V]] =
+    resourceKafkaConsumer[F, K, V](configs: _*).map(ConsumerImpl(_))
+
+  def resource[F[_]: Sync, K, V](
+      keyDeserializer: Deserializer[K],
+      valueDeserializer: Deserializer[V],
+      configs: (String, AnyRef)*
+  ): Resource[F, ConsumerApi[F, K, V]] =
+    resourceKafkaConsumer(keyDeserializer, valueDeserializer, configs: _*).map(ConsumerImpl(_))
 
   def create[F[_]: Sync, K: Deserializer, V: Deserializer](
       configs: (String, AnyRef)*
@@ -146,13 +171,34 @@ object ConsumerApi {
   ): F[ConsumerApi[F, GenericRecord, GenericRecord]] =
     createGenericConsumer[F](configs: _*).map(ConsumerImpl(_))
 
+  def resourceGeneric[F[_]: Async](
+      configs: (String, AnyRef)*
+  ): Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] =
+    resourceKafkaConsumer[F, GenericRecord, GenericRecord](
+      (
+        configs.toMap +
+          KeyDeserializerClass(classOf[KafkaAvroDeserializer]) +
+          ValueDeserializerClass(classOf[KafkaAvroDeserializer])
+      ).toSeq: _*
+    ).map(ConsumerImpl(_))
+
   def avro4s[F[_]: Async, K: FromRecord, V: FromRecord](
       configs: (String, AnyRef)*
   ): F[ConsumerApi[F, K, V]] =
     generic[F](configs: _*).map(Avro4sConsumerImpl(_))
 
+  def resourceAvro4s[F[_]: Async, K: FromRecord, V: FromRecord](
+      configs: (String, AnyRef)*
+  ): Resource[F, ConsumerApi[F, K, V]] =
+    resourceGeneric[F](configs: _*).map(Avro4sConsumerImpl(_))
+
   def avro4sShifting[F[_]: Async: ContextShift, K: FromRecord, V: FromRecord](
       configs: (String, AnyRef)*
   ): F[ConsumerApi[F, K, V]] =
     avro4s[F, K, V](configs: _*).map(ShiftingConsumerImpl(_))
+
+  def resourceAvro4sShifting[F[_]: Async: ContextShift, K: FromRecord, V: FromRecord](
+      configs: (String, AnyRef)*
+  ): Resource[F, ConsumerApi[F, K, V]] =
+    resourceAvro4s[F, K, V](configs: _*).map(ShiftingConsumerImpl(_))
 }
