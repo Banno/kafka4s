@@ -1,6 +1,6 @@
 lazy val kafka4s = project.in(file("."))
   .settings(commonSettings, releaseSettings, skipOnPublishSettings)
-  .aggregate(core, docs)
+  .aggregate(core, docs, examples)
 
 lazy val core = project
   .settings(commonSettings, releaseSettings, mimaSettings)
@@ -13,6 +13,13 @@ lazy val docs = project
   .dependsOn(core)
   .enablePlugins(MicrositesPlugin)
   .enablePlugins(TutPlugin)
+
+lazy val examples = project
+  .settings(commonSettings, skipOnPublishSettings)
+  .dependsOn(core)
+  .settings(
+     libraryDependencies += "dev.zio" %% "zio-interop-cats" % "1.3.1.0-RC2"
+  )
 
 lazy val contributors = Seq(
   "amohrland" -> "Andrew Mohrland",

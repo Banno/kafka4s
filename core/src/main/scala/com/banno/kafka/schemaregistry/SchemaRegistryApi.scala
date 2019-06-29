@@ -58,6 +58,8 @@ object SchemaRegistryApi {
   ): F[CachedSchemaRegistryClient] =
     Sync[F].delay(new CachedSchemaRegistryClient(restService, identityMapCapacity))
 
+  def apply[F[_]: Sync](baseUrl: String): F[SchemaRegistryApi[F]] =
+    createClient[F](baseUrl, identityMapCapacity = 1024).map(SchemaRegistryImpl[F](_))
   def apply[F[_]: Sync](baseUrl: String, identityMapCapacity: Int): F[SchemaRegistryApi[F]] =
     createClient[F](baseUrl, identityMapCapacity).map(SchemaRegistryImpl[F](_))
   def apply[F[_]: Sync](baseUrls: Seq[String], identityMapCapacity: Int): F[SchemaRegistryApi[F]] =

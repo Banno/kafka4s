@@ -120,8 +120,16 @@ object AdminApi {
   def apply[F[_]: Sync](configs: (String, AnyRef)*): F[AdminApi[F]] = apply[F](configs.toMap)
 
   def createTopicsIdempotent[F[_]: Sync: Bracket[?[_], Throwable]](
+    bootstrapServers: String,
+    topics: Iterable[NewTopic]
+  ): F[CreateTopicsResult] =
+    Bracket[F, Throwable].bracket(AdminApi[F](BootstrapServers(bootstrapServers)))(
+      a => a.createTopicsIdempotent(topics)
+    )(_.close)
+
+  def createTopicsIdempotent[F[_]: Sync: Bracket[?[_], Throwable]](
       bootstrapServers: String,
-      topics: Iterable[NewTopic]
+      topics: NewTopic*
   ): F[CreateTopicsResult] =
     Bracket[F, Throwable].bracket(AdminApi[F](BootstrapServers(bootstrapServers)))(
       a => a.createTopicsIdempotent(topics)
