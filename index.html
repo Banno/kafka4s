@@ -1,14 +1,42 @@
 <html><head><title>kafka4s</title><meta charset="utf-8" /><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Jack Henry &amp; Associates, Inc.®" /><meta name="description" content="Functional programming with Kafka and Scala" /><meta name="og:image" content="/kafka4s/img/poster.png" /><meta name="image" property="og:image" content="/kafka4s/img/poster.png" /><meta name="og:title" content="kafka4s" /><meta name="title" property="og:title" content="kafka4s" /><meta name="og:site_name" content="kafka4s" /><meta name="og:url" content="" /><meta name="og:type" content="website" /><meta name="og:description" content="Functional programming with Kafka and Scala" /><link rel="icon" type="image/png" href="/kafka4s/img/favicon.png" /><meta name="twitter:title" content="kafka4s" /><meta name="twitter:image" content="/kafka4s/img/poster.png" /><meta name="twitter:description" content="Functional programming with Kafka and Scala" /><meta name="twitter:card" content="summary_large_image" /><link rel="icon" type="image/png" sizes="16x16" href="/kafka4s/img/favicon16x16.png" /><link rel="icon" type="image/png" sizes="24x24" href="/kafka4s/img/favicon24x24.png" /><link rel="icon" type="image/png" sizes="32x32" href="/kafka4s/img/favicon32x32.png" /><link rel="icon" type="image/png" sizes="48x48" href="/kafka4s/img/favicon48x48.png" /><link rel="icon" type="image/png" sizes="57x57" href="/kafka4s/img/favicon57x57.png" /><link rel="icon" type="image/png" sizes="60x60" href="/kafka4s/img/favicon60x60.png" /><link rel="icon" type="image/png" sizes="64x64" href="/kafka4s/img/favicon64x64.png" /><link rel="icon" type="image/png" sizes="70x70" href="/kafka4s/img/favicon70x70.png" /><link rel="icon" type="image/png" sizes="72x72" href="/kafka4s/img/favicon72x72.png" /><link rel="icon" type="image/png" sizes="76x76" href="/kafka4s/img/favicon76x76.png" /><link rel="icon" type="image/png" sizes="96x96" href="/kafka4s/img/favicon96x96.png" /><link rel="icon" type="image/png" sizes="114x114" href="/kafka4s/img/favicon114x114.png" /><link rel="icon" type="image/png" sizes="120x120" href="/kafka4s/img/favicon120x120.png" /><link rel="icon" type="image/png" sizes="128x128" href="/kafka4s/img/favicon128x128.png" /><link rel="icon" type="image/png" sizes="144x144" href="/kafka4s/img/favicon144x144.png" /><link rel="icon" type="image/png" sizes="150x150" href="/kafka4s/img/favicon150x150.png" /><link rel="icon" type="image/png" sizes="152x152" href="/kafka4s/img/favicon152x152.png" /><link rel="icon" type="image/png" sizes="196x196" href="/kafka4s/img/favicon196x196.png" /><link rel="icon" type="image/png" sizes="310x310" href="/kafka4s/img/favicon310x310.png" /><link rel="icon" type="image/png" sizes="310x150" href="/kafka4s/img/favicon310x150.png" /><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" /><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" /><link rel="stylesheet" href="/kafka4s/highlight/styles/atom-one-light.css" /><link rel="stylesheet" href="/kafka4s/css/style.css" /><link rel="stylesheet" href="/kafka4s/css/palette.css" /><link rel="stylesheet" href="/kafka4s/css/codemirror.css" /></head><body><header id="site-header"><div class="navbar-wrapper"><div class="container"><div class="row"><div class="col-xs-6"><a href="/kafka4s/" class="brand"><div class="icon-wrapper"><span>kafka4s</span></div></a></div><div class="col-xs-6"><nav class="text-right"><ul class=""><li><a href="https://github.com/Banno/kafka4s"><i class="fa fa-github"></i><span class="hidden-xs">GitHub</span></a></li><li><a href="/kafka4s/docs"><i class="fa fa-file-text"></i><span class="hidden-xs">Documentation</span></a></li></ul></nav></div></div></div></div><div class="jumbotron"><div class="container"><h1 class="text-center">Functional programming with Kafka and Scala</h1><h2></h2><p class="text-center"><a href="https://github.com/Banno/kafka4s" class="btn btn-outline-inverse">View on GitHub</a></p></div></div><div><ul class="horizontalNav">                 <li><a class="" href="/kafka4s/changelog.html">changelog</a></li>  <li><a class="" href="/kafka4s/code-of-conduct.html">code of conduct</a></li>  <li><a class="" href="/kafka4s/license.html">license</a></li> </ul></div></header><main id="site-main"><section class="use"><div class="container"><div id="content"><h1 id="kafka4s---functional-programming-with-kafka-and-scala">kafka4s - Functional programming with Kafka and Scala</h1>
 
+<p>kafka4s provides pure, referentially transparent functions for working with Kafka, and integrates with FP libraries such as <a href="https://typelevel.org/cats-effect">cats-effect</a> and <a href="https://fs2.io">fs2</a>.</p>
+
 <h2 id="quick-start">Quick Start</h2>
 
 <p>To use kafka4s in an existing SBT project with Scala 2.12 or a later version, add the following dependencies to your
 <code class="highlighter-rouge">build.sbt</code> depending on your needs:</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">libraryDependencies</span> <span class="o">++=</span> <span class="nc">Seq</span><span class="o">(</span>
+<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">libraryDependencies</span> <span class="o">++=</span> <span class="nc">Seq</span><span class="o">(</span>
   <span class="s">"com.banno"</span> <span class="o">%%</span> <span class="s">"kafka4s"</span> <span class="o">%</span> <span class="s">"&lt;version&gt;"</span>
 <span class="o">)</span>
-</code></pre></div></div>
+</code></pre>
+</div>
+
+<p>Sending records to Kafka is an effect. If we wanted to periodically write random integers to a Kafka topic, we could do:</p>
+
+<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="nc">Stream</span>
+  <span class="o">.</span><span class="n">awakeDelay</span><span class="o">[</span><span class="kt">F</span><span class="o">](</span><span class="mi">1</span> <span class="n">second</span><span class="o">)</span>
+  <span class="o">.</span><span class="n">evalMap</span><span class="o">(</span>
+    <span class="k">_</span> <span class="k">=&gt;</span>
+      <span class="nc">Sync</span><span class="o">[</span><span class="kt">F</span><span class="o">]</span>
+        <span class="o">.</span><span class="n">delay</span><span class="o">(</span><span class="nc">Random</span><span class="o">.</span><span class="n">nextInt</span><span class="o">())</span>
+        <span class="o">.</span><span class="n">flatMap</span><span class="o">(</span><span class="n">i</span> <span class="k">=&gt;</span> <span class="n">producer</span><span class="o">.</span><span class="n">sendAndForget</span><span class="o">(</span><span class="k">new</span> <span class="nc">ProducerRecord</span><span class="o">(</span><span class="n">topic</span><span class="o">,</span> <span class="n">i</span><span class="o">,</span> <span class="n">i</span><span class="o">)))</span>
+  <span class="o">)</span>
+</code></pre>
+</div>
+
+<p>Polling Kafka for records is also an effect, and we can obtain a stream of records from a topic. We can print the even random integers from the above topic using:</p>
+
+<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">consumer</span><span class="o">.</span><span class="n">recordStream</span><span class="o">(</span>
+    <span class="n">initialize</span> <span class="k">=</span> <span class="n">consumer</span><span class="o">.</span><span class="n">subscribe</span><span class="o">(</span><span class="n">topic</span><span class="o">),</span>
+    <span class="n">pollTimeout</span> <span class="k">=</span> <span class="mf">1.</span><span class="n">second</span>
+  <span class="o">)</span>
+  <span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="k">_</span><span class="o">.</span><span class="n">value</span><span class="o">)</span>
+  <span class="o">.</span><span class="n">filter</span><span class="o">(</span><span class="k">_</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span>
+  <span class="o">.</span><span class="n">evalMap</span><span class="o">(</span><span class="n">i</span> <span class="k">=&gt;</span> <span class="nc">Sync</span><span class="o">[</span><span class="kt">F</span><span class="o">].</span><span class="n">delay</span><span class="o">(</span><span class="n">println</span><span class="o">(</span><span class="n">i</span><span class="o">)))</span>
+</code></pre>
+</div>
 
 <h2 id="learning-more">Learning more</h2>
 
