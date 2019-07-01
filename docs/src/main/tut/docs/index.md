@@ -145,17 +145,20 @@ import com.banno.kafka.consumer._
 
 Now we can create our consumer instance.
 
-We'll create a "shifting" Avro4s consumer. We need an implicit `ContextShift` instance in scope, since under the hood, shifting consumers use a dedicated execution context for their blocking calls. After receiving records, work is shifted back to the `ContextShift`'s default pool.
+We'll create a "shifting" Avro4s consumer, which will shift its blocking calls to a dedicated `ExecutionContext`, to avoid blocking the main work pool's (typically `ExecutionContext.global`) threads. After receiving records, work is then shifted back to the work pool. We'll want an implicit `ContextShift` instance in scope to manage this thread shifting for us.
 
 Here's our `ContextShift`:
+
 ```
 implicit val CS = IO.contextShift(scala.concurrent.ExecutionContext.global)
 ```
 
-And here's our consumer:
+And here's our consumer, along with the `ExecutionContext` we'll want our consumer to use:
 
 ```
+val blockingContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1)) 
 val consumer = ConsumerApi.avro4sShifting[IO, CustomerId, Customer](
+  blockingContext,
   BootstrapServers(kafkaBootstrapServers), 
   SchemaRegistryUrl(schemaRegistryUri),
   ClientId("consumer-example"),
