@@ -205,6 +205,14 @@ object ConsumerApi {
     avro4s[F, K, V](configs: _*).map(ShiftingConsumerImpl(_, blockingContext))
 
   def resourceAvro4sShifting[F[_]: Async: ContextShift, K: FromRecord, V: FromRecord](
+      configs: (String, AnyRef)*
+  ): Resource[F, ConsumerApi[F, K, V]] =
+    defaultBlockingContext.flatMap(
+      blockingContext =>
+        resourceAvro4s[F, K, V](configs: _*).map(ShiftingConsumerImpl(_, blockingContext))
+    )
+
+  def resourceAvro4sShiftingWithContext[F[_]: Async: ContextShift, K: FromRecord, V: FromRecord](
       blockingContext: ExecutionContext,
       configs: (String, AnyRef)*
   ): Resource[F, ConsumerApi[F, K, V]] =
