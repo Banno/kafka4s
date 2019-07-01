@@ -192,10 +192,18 @@ object ProducerApi {
     avro4s[F, K, V](configs: _*).map(ShiftingProducerImpl[F, K, V](_, producerContext))
 
   def resourceAvro4sShifting[F[_]: Async: ContextShift, K: ToRecord, V: ToRecord](
-      producerContext: ExecutionContext,
       configs: (String, AnyRef)*
   ): Resource[F, ProducerApi[F, K, V]] =
-    resourceAvro4s[F, K, V](configs: _*).map(ShiftingProducerImpl[F, K, V](_, producerContext))
+    defaultBlockingContext.flatMap(
+      blockingContext =>
+        resourceAvro4s[F, K, V](configs: _*).map(ShiftingProducerImpl[F, K, V](_, blockingContext))
+    )
+
+  def resourceAvro4sShiftingWithContext[F[_]: Async: ContextShift, K: ToRecord, V: ToRecord](
+      blockingContext: ExecutionContext,
+      configs: (String, AnyRef)*
+  ): Resource[F, ProducerApi[F, K, V]] =
+    resourceAvro4s[F, K, V](configs: _*).map(ShiftingProducerImpl[F, K, V](_, blockingContext))
 
   def defaultBlockingContext[F[_]: Sync] =
     Resource.make(
