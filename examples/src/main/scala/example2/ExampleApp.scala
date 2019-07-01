@@ -64,13 +64,17 @@ final class ExampleApp[F[_]: Async: ContextShift] {
       )
     )
 
-  val consumer = ConsumerApi.resourceAvro4sShifting[F, CustomerId, Customer](
-    BootstrapServers(kafkaBootstrapServers),
-    SchemaRegistryUrl(schemaRegistryUri),
-    ClientId("consumer-example"),
-    GroupId("consumer-example-group"),
-    EnableAutoCommit(false)
-  )
+  val consumer = ConsumerApi.defaultBlockingContext
+    .flatMap(
+      ConsumerApi.resourceAvro4sShifting[F, CustomerId, Customer](
+        _,
+        BootstrapServers(kafkaBootstrapServers),
+        SchemaRegistryUrl(schemaRegistryUri),
+        ClientId("consumer-example"),
+        GroupId("consumer-example-group"),
+        EnableAutoCommit(false)
+      )
+    )
 
   val example: F[Unit] =
     for {

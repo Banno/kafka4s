@@ -28,6 +28,8 @@ import org.apache.avro.generic.GenericRecord
 import com.sksamuel.avro4s.FromRecord
 import io.confluent.kafka.serializers.KafkaAvroDeserializer
 import com.banno.kafka._
+import java.util.concurrent.Executors
+import scala.concurrent.ExecutionContext
 
 trait ConsumerApi[F[_], K, V] {
   def assign(partitions: Iterable[TopicPartition]): F[Unit]
@@ -136,14 +138,16 @@ object ConsumerApi {
     apply[F, K, V](implicitly[Deserializer[K]], implicitly[Deserializer[V]], configs: _*)
 
   def shifting[F[_]: Async: ContextShift, K, V](
+      blockingContext: ExecutionContext,
       configs: (String, AnyRef)*
   ): F[ConsumerApi[F, K, V]] =
-    apply[F, K, V](configs: _*).map(ShiftingConsumerImpl(_))
+    apply[F, K, V](configs: _*).map(ShiftingConsumerImpl(_, blockingContext))
 
   def createShifting[F[_]: Async: ContextShift, K: Deserializer, V: Deserializer](
+      blockingContext: ExecutionContext,
       configs: (String, AnyRef)*
   ): F[ConsumerApi[F, K, V]] =
-    create[F, K, V](configs: _*).map(ShiftingConsumerImpl(_))
+    create[F, K, V](configs: _*).map(ShiftingConsumerImpl(_, blockingContext))
 
   def avro[F[_]: Async, K, V](configs: (String, AnyRef)*): F[ConsumerApi[F, K, V]] =
     apply[F, K, V](
@@ -195,12 +199,20 @@ object ConsumerApi {
     resourceGeneric[F](configs: _*).map(Avro4sConsumerImpl(_))
 
   def avro4sShifting[F[_]: Async: ContextShift, K: FromRecord, V: FromRecord](
+      blockingContext: ExecutionContext,
       configs: (String, AnyRef)*
   ): F[ConsumerApi[F, K, V]] =
-    avro4s[F, K, V](configs: _*).map(ShiftingConsumerImpl(_))
+    avro4s[F, K, V](configs: _*).map(ShiftingConsumerImpl(_, blockingContext))
 
   def resourceAvro4sShifting[F[_]: Async: ContextShift, K: FromRecord, V: FromRecord](
+      blockingContext: ExecutionContext,
       configs: (String, AnyRef)*
   ): Resource[F, ConsumerApi[F, K, V]] =
-    resourceAvro4s[F, K, V](configs: _*).map(ShiftingConsumerImpl(_))
+    resourceAvro4s[F, K, V](configs: _*).map(ShiftingConsumerImpl(_, blockingContext))
+
+  def defaultBlockingContext[F[_]: Sync] =
+    Resource.make(
+      Sync[F].delay(ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1)))
+    )(a => Sync[F].delay(a.shutdown()))
+
 }

@@ -31,6 +31,7 @@ class ConsumerAndProducerApiSpec
     with Matchers
     with InMemoryKafka {
   val producerContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(2))
+  val consumerContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(2))
   implicit val defaultContextShift = IO.contextShift(ExecutionContext.global)
   implicit val defaultConcurrent = IO.ioConcurrentEffect(defaultContextShift)
   implicit val defaultTimer = IO.timer(ExecutionContext.global)
@@ -181,6 +182,7 @@ class ConsumerAndProducerApiSpec
           BootstrapServers(bootstrapServer)
         )
         c <- ConsumerApi.createShifting[IO, Int, String](
+          consumerContext,
           BootstrapServers(bootstrapServer),
           GroupId(groupId),
           AutoOffsetReset.earliest
