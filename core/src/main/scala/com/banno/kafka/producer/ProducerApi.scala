@@ -98,7 +98,9 @@ object ProducerApi {
     createProducer[F, K, V](keySerializer, valueSerializer, configs: _*)
       .map(ProducerImpl[F, K, V](_))
 
-  def resource[F[_]: Async, K: Serializer, V: Serializer](configs: (String, AnyRef)*): Resource[F, ProducerApi[F, K, V]] =
+  def resource[F[_]: Async, K: Serializer, V: Serializer](
+      configs: (String, AnyRef)*
+  ): Resource[F, ProducerApi[F, K, V]] =
     resource[F, K, V](implicitly[Serializer[K]], implicitly[Serializer[V]], configs: _*)
 
   def resource[F[_]: Async, K, V](

@@ -118,7 +118,9 @@ object ConsumerApi {
   ): F[ConsumerApi[F, K, V]] =
     createConsumer[F, K, V](keyDeserializer, valueDeserializer, configs: _*).map(ConsumerImpl(_))
 
-  def resource[F[_]: Sync, K: Deserializer, V: Deserializer](configs: (String, AnyRef)*): Resource[F, ConsumerApi[F, K, V]] =
+  def resource[F[_]: Sync, K: Deserializer, V: Deserializer](
+      configs: (String, AnyRef)*
+  ): Resource[F, ConsumerApi[F, K, V]] =
     resource[F, K, V](implicitly[Deserializer[K]], implicitly[Deserializer[V]], configs: _*)
 
   def resource[F[_]: Sync, K, V](
