@@ -18,6 +18,9 @@ install:
   - gem update --system
   - gem install sass
   - gem install jekyll -v 3.2.1
+ 
+before_script:
+  - project/travis-before-build.sh
 
 script:
   - sbt ++$TRAVIS_SCALA_VERSION scalafmtCheckAll
