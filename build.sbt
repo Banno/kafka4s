@@ -215,6 +215,7 @@ lazy val micrositeSettings = {
     micrositeAuthor := "Jack Henry & Associates, Inc.®",
     micrositeGithubOwner := "Banno",
     micrositeGithubRepo := "kafka4s",
+    micrositeTwitter := "@kafka4s",
     micrositeBaseUrl := "/kafka4s",
     micrositeDocumentationUrl := "/kafka4s/docs",
     micrositeFooterText := None,
