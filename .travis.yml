@@ -18,6 +18,9 @@ install:
   - gem update --system
   - gem install sass
   - gem install jekyll -v 3.2.1
+ 
+before_script:
+  - project/travis-before-build.sh
 
 script:
   - sbt ++$TRAVIS_SCALA_VERSION scalafmtCheckAll
@@ -35,3 +38,5 @@ cache:
     - $HOME/.ivy2/cache
     - $HOME/.coursier/cache
     - $HOME/.sbt
+    - $HOME/.rvm/
+    - vendor/bundle
