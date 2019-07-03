@@ -180,4 +180,13 @@ And we can now read a stream of records from our Kafka topic:
 val messages = consumer.rawRecordStream(1.second).take(5).compile.toVector.unsafeRunSync
 ```
 
+To clean up after ourselves, we'll close and shut down our resources:
+```tut
+consumer.close.unsafeRunSync
+producer.close.unsafeRunSync
+blockingContext.shutdown
+```
+
+Note that kafka4s provides constructors that return `cats.effect.Resource`s for the above resources, so that their shutdown steps are guaranteed to run after use. We're manually shutting down resources simply for the sake of example.
+
 Now that we've seen a quick overview, we can take a look at more in-depth documentation of Kafka4s utilities.
