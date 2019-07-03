@@ -131,7 +131,7 @@ val avro4sProducer = producer.toAvro4s[CustomerId, Customer]
 We can now write our typed customer records successfully!
 
 ```tut
-recordsToBeWritten.traverse_(avro4sProducer.sendSync).unsafeRunSync
+recordsToBeWritten.traverse_(r => avro4sProducer.sendSync(r).flatMap(rmd => IO(println(s"Wrote record to ${rmd}")))).unsafeRunSync
 ```
 
 ### Read our records from Kafka
@@ -167,23 +167,17 @@ val consumer = ConsumerApi.avro4sShifting[IO, CustomerId, Customer](
 ).unsafeRunSync
 ```
 
-With our Kafka consumer in hand, we can now read a stream of messages from Kafka:
-
+With our Kafka consumer in hand, we'll assign to our consumer to our topic partition, with no offsets, so that it starts reading from the first record.
 ```tut
 import org.apache.kafka.common.TopicPartition
 val initialOffsets = Map.empty[TopicPartition, Long] // Start from beginning
-val messageStream = consumer.recordStream(
-  initialize = consumer.assign(topicName, initialOffsets),
-  pollTimeout = 1.second
-)
+consumer.assign(topicName, initialOffsets).unsafeRunSync
 ```
 
-And we can now run the stream to retrieve the topic's messages:
+And we can now read a stream of records from our Kafka topic:
 
+```tut
+val messages = consumer.rawRecordStream(1.second).take(5).compile.toVector.unsafeRunSync
 ```
-val messages = messageStream.take(5).compile.toVector.unsafeRunSync
-```
-
-Voila!
 
 Now that we've seen a quick overview, we can take a look at more in-depth documentation of Kafka4s utilities.
