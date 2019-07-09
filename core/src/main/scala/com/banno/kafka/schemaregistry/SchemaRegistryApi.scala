@@ -92,12 +92,24 @@ object SchemaRegistryApi {
       val asString = "BACKWARD"
     }
 
+    case object BackwardTransitive extends CompatibilityLevel {
+      val asString = "BACKWARD_TRANSITIVE"
+    }
+
     case object Forward extends CompatibilityLevel {
       val asString = "FORWARD"
     }
 
+    case object ForwardTransitive extends CompatibilityLevel {
+      val asString = "FORWARD_TRANSITIVE"
+    }
+
     case object Full extends CompatibilityLevel {
       val asString = "FULL"
+    }
+
+    case object FullTransitive extends CompatibilityLevel {
+      val asString = "FULL_TRANSITIVE"
     }
 
     case object None extends CompatibilityLevel {
@@ -106,8 +118,11 @@ object SchemaRegistryApi {
 
     def fromString(s: String): Option[CompatibilityLevel] = s match {
       case s if s === Backward.asString => Backward.some
+      case s if s === BackwardTransitive.asString => BackwardTransitive.some
       case s if s === Forward.asString => Forward.some
+      case s if s === ForwardTransitive.asString => ForwardTransitive.some
       case s if s === Full.asString => Full.some
+      case s if s === FullTransitive.asString => FullTransitive.some
       case s if s === None.asString => None.some
       case _ => none
     }
