@@ -34,16 +34,13 @@ final class ExampleApp[F[_]: Concurrent: ContextShift: Timer] {
   val topic = new NewTopic(s"example3", 1, 3)
   val kafkaBootstrapServers = "kafka.local:9092,kafka.local:9093"
 
-  val producer =
-    Stream.resource(ProducerApi.resource[F, Int, Int](BootstrapServers(kafkaBootstrapServers)))
+  val producer = ProducerApi.stream[F, Int, Int](BootstrapServers(kafkaBootstrapServers))
 
-  val consumer = Stream.resource(
-    ConsumerApi.resource[F, Int, Int](
-      BootstrapServers(kafkaBootstrapServers),
-      GroupId("example3"),
-      AutoOffsetReset.earliest,
-      EnableAutoCommit(true)
-    )
+  val consumer = ConsumerApi.stream[F, Int, Int](
+    BootstrapServers(kafkaBootstrapServers),
+    GroupId("example3"),
+    AutoOffsetReset.earliest,
+    EnableAutoCommit(true)
   )
 
   val example: F[Unit] =
@@ -64,16 +61,14 @@ final class ExampleApp[F[_]: Concurrent: ContextShift: Timer] {
             )
       )
 
-      readStream = consumer.flatMap(
-        c =>
-          c.recordStream(
-              initialize = c.subscribe(topic.name),
-              pollTimeout = 1.second
-            )
+      readStream = consumer
+        .evalTap(_.subscribe(topic.name))
+        .flatMap(
+          _.recordStream(1.second)
             .map(_.value)
             .filter(_ % 2 == 0)
             .evalMap(i => Sync[F].delay(println(i)))
-      )
+        )
 
       _ <- writeStream
         .merge(readStream)

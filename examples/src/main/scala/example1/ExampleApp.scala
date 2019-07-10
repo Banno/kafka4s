@@ -110,18 +110,17 @@ final class ExampleApp[F[_]: Async: ContextShift] {
 
       _ <- consumerResource.use(
         consumer =>
-          consumer
-            .recordStream(
-              initialize = consumer.assign(topic.name, Map.empty[TopicPartition, Long]),
-              pollTimeout = 1.second
-            )
-            .take(producerRecords.size.toLong)
-            .evalMap(
-              cr =>
-                Sync[F].delay(println(s"Read consumer record: key ${cr.key} and value ${cr.value}"))
-            )
-            .compile
-            .drain
+          consumer.assign(topic.name, Map.empty[TopicPartition, Long]) *>
+            consumer
+              .recordStream(1.second)
+              .take(producerRecords.size.toLong)
+              .evalMap(
+                cr =>
+                  Sync[F]
+                    .delay(println(s"Read consumer record: key ${cr.key} and value ${cr.value}"))
+              )
+              .compile
+              .drain
       )
 
       _ <- Sync[F].delay(println("Finished kafka4s example"))

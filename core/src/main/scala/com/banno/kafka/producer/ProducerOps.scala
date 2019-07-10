@@ -50,9 +50,6 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
   def sink: Pipe[F, ProducerRecord[K, V], Unit] =
     _.evalMap(producer.sendAndForget)
 
-  def sinkWithClose(implicit F: Applicative[F]): Pipe[F, ProducerRecord[K, V], Unit] =
-    _.evalMap(producer.sendAndForget).onFinalize(producer.close)
-
   def sinkSync: Pipe[F, ProducerRecord[K, V], Unit] =
     pipeSync.apply(_).void
 

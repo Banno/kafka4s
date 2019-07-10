@@ -18,6 +18,7 @@ package com.banno.kafka.consumer
 
 import cats.implicits._
 import cats.effect.{Async, ContextShift, Resource, Sync}
+import fs2.Stream
 import java.util.regex.Pattern
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -29,7 +30,25 @@ import com.sksamuel.avro4s.FromRecord
 import io.confluent.kafka.serializers.KafkaAvroDeserializer
 import com.banno.kafka._
 import java.util.concurrent.Executors
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
+
+/*
+- ConsumerApi impl that wraps Consumer should use a ContextShift
+  - KafkaConsumer is not thread-safe
+  - Multi-threaded access must be properly synchronized
+  - simple way to do this is shift calls onto a 1-thread pool
+    - except wakeup, which can be called concurrently from another thread
+  - users can customize creating that singleton thread pool, but it should only ever be a singleton thread pool
+  - calling close while poll is blocking should then not be a problem
+    - close will be queued in the pool
+    - poll will finish
+    - close will get called
+    - poll won't get called anymore (presumably)
+- Resource[F, ConsumerApi[F, K, V]] must call ConsumerApi.close, not Consumer.close
+  - ConsumerApi.close will be properly shifted onto singleton thread pool
+- delete ConsumerApiWrapper
+- delete ConsumerImpl
+ */
 
 trait ConsumerApi[F[_], K, V] {
   def assign(partitions: Iterable[TopicPartition]): F[Unit]
@@ -86,51 +105,50 @@ trait ConsumerApi[F[_], K, V] {
 
 object ConsumerApi {
 
-  def createConsumer[F[_]: Sync, K, V](configs: (String, AnyRef)*): F[KafkaConsumer[K, V]] =
+  def createKafkaConsumer[F[_]: Sync, K, V](configs: (String, AnyRef)*): F[KafkaConsumer[K, V]] =
     Sync[F].delay(new KafkaConsumer[K, V](configs.toMap.asJava))
 
-  def createConsumer[F[_]: Sync, K, V](
+  def createKafkaConsumer[F[_]: Sync, K, V](
       keyDeserializer: Deserializer[K],
       valueDeserializer: Deserializer[V],
       configs: (String, AnyRef)*
   ): F[KafkaConsumer[K, V]] =
     Sync[F].delay(new KafkaConsumer[K, V](configs.toMap.asJava, keyDeserializer, valueDeserializer))
 
-  def resourceKafkaConsumer[F[_]: Sync, K, V](
-      configs: (String, AnyRef)*
-  ): Resource[F, KafkaConsumer[K, V]] =
-    Resource.make(createConsumer[F, K, V](configs: _*))(a => Sync[F].delay(a.close()))
-
-  def resourceKafkaConsumer[F[_]: Sync, K, V](
-      keyDeserializer: Deserializer[K],
-      valueDeserializer: Deserializer[V],
-      configs: (String, AnyRef)*
-  ): Resource[F, KafkaConsumer[K, V]] =
-    Resource.make(createConsumer[F, K, V](keyDeserializer, valueDeserializer, configs: _*))(
-      a => Sync[F].delay(a.close())
-    )
-
   def apply[F[_]: Sync, K, V](configs: (String, AnyRef)*): F[ConsumerApi[F, K, V]] =
-    createConsumer[F, K, V](configs: _*).map(ConsumerImpl(_))
+    createKafkaConsumer[F, K, V](configs: _*).map(ConsumerImpl(_))
 
   def apply[F[_]: Sync, K, V](
       keyDeserializer: Deserializer[K],
       valueDeserializer: Deserializer[V],
       configs: (String, AnyRef)*
   ): F[ConsumerApi[F, K, V]] =
-    createConsumer[F, K, V](keyDeserializer, valueDeserializer, configs: _*).map(ConsumerImpl(_))
-
-  def resource[F[_]: Sync, K: Deserializer, V: Deserializer](
-      configs: (String, AnyRef)*
-  ): Resource[F, ConsumerApi[F, K, V]] =
-    resource[F, K, V](implicitly[Deserializer[K]], implicitly[Deserializer[V]], configs: _*)
+    createKafkaConsumer[F, K, V](keyDeserializer, valueDeserializer, configs: _*)
+      .map(ConsumerImpl(_))
 
   def resource[F[_]: Sync, K, V](
       keyDeserializer: Deserializer[K],
       valueDeserializer: Deserializer[V],
       configs: (String, AnyRef)*
   ): Resource[F, ConsumerApi[F, K, V]] =
-    resourceKafkaConsumer(keyDeserializer, valueDeserializer, configs: _*).map(ConsumerImpl(_))
+    Resource.make(apply[F, K, V](keyDeserializer, valueDeserializer, configs: _*))(_.close)
+
+  def resource[F[_]: Sync, K: Deserializer, V: Deserializer](
+      configs: (String, AnyRef)*
+  ): Resource[F, ConsumerApi[F, K, V]] =
+    resource[F, K, V](implicitly[Deserializer[K]], implicitly[Deserializer[V]], configs: _*)
+
+  def stream[F[_]: Sync, K, V](
+      keyDeserializer: Deserializer[K],
+      valueDeserializer: Deserializer[V],
+      configs: (String, AnyRef)*
+  ): Stream[F, ConsumerApi[F, K, V]] =
+    Stream.resource(resource[F, K, V](keyDeserializer, valueDeserializer, configs: _*))
+
+  def stream[F[_]: Sync, K: Deserializer, V: Deserializer](
+      configs: (String, AnyRef)*
+  ): Stream[F, ConsumerApi[F, K, V]] =
+    stream[F, K, V](implicitly[Deserializer[K]], implicitly[Deserializer[V]], configs: _*)
 
   def create[F[_]: Sync, K: Deserializer, V: Deserializer](
       configs: (String, AnyRef)*
@@ -161,10 +179,10 @@ object ConsumerApi {
   def avroSpecific[F[_]: Async, K, V](configs: (String, AnyRef)*): F[ConsumerApi[F, K, V]] =
     avro[F, K, V]((configs.toMap + SpecificAvroReader(true)).toSeq: _*)
 
-  def createGenericConsumer[F[_]: Sync](
+  def createGenericKafkaConsumer[F[_]: Sync](
       configs: (String, AnyRef)*
   ): F[KafkaConsumer[GenericRecord, GenericRecord]] =
-    createConsumer[F, GenericRecord, GenericRecord](
+    createKafkaConsumer[F, GenericRecord, GenericRecord](
       (
         configs.toMap +
           KeyDeserializerClass(classOf[KafkaAvroDeserializer]) +
@@ -175,18 +193,17 @@ object ConsumerApi {
   def generic[F[_]: Async](
       configs: (String, AnyRef)*
   ): F[ConsumerApi[F, GenericRecord, GenericRecord]] =
-    createGenericConsumer[F](configs: _*).map(ConsumerImpl(_))
+    createGenericKafkaConsumer[F](configs: _*).map(ConsumerImpl(_))
 
   def resourceGeneric[F[_]: Async](
       configs: (String, AnyRef)*
   ): Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] =
-    resourceKafkaConsumer[F, GenericRecord, GenericRecord](
-      (
-        configs.toMap +
-          KeyDeserializerClass(classOf[KafkaAvroDeserializer]) +
-          ValueDeserializerClass(classOf[KafkaAvroDeserializer])
-      ).toSeq: _*
-    ).map(ConsumerImpl(_))
+    Resource.make(generic[F](configs: _*))(_.close)
+
+  def streamGeneric[F[_]: Async](
+      configs: (String, AnyRef)*
+  ): Stream[F, ConsumerApi[F, GenericRecord, GenericRecord]] =
+    Stream.resource(resourceGeneric[F](configs: _*))
 
   def avro4s[F[_]: Async, K: FromRecord, V: FromRecord](
       configs: (String, AnyRef)*
@@ -197,6 +214,11 @@ object ConsumerApi {
       configs: (String, AnyRef)*
   ): Resource[F, ConsumerApi[F, K, V]] =
     resourceGeneric[F](configs: _*).map(Avro4sConsumerImpl(_))
+
+  def streamAvro4s[F[_]: Async, K: FromRecord, V: FromRecord](
+      configs: (String, AnyRef)*
+  ): Stream[F, ConsumerApi[F, K, V]] =
+    Stream.resource(resourceAvro4s[F, K, V](configs: _*))
 
   def avro4sShifting[F[_]: Async: ContextShift, K: FromRecord, V: FromRecord](
       blockingContext: ExecutionContext,
@@ -212,15 +234,27 @@ object ConsumerApi {
         resourceAvro4s[F, K, V](configs: _*).map(ShiftingConsumerImpl(_, blockingContext))
     )
 
+  def streamAvro4sShifting[F[_]: Async: ContextShift, K: FromRecord, V: FromRecord](
+      configs: (String, AnyRef)*
+  ): Stream[F, ConsumerApi[F, K, V]] =
+    Stream.resource(resourceAvro4sShifting[F, K, V](configs: _*))
+
   def resourceAvro4sShiftingWithContext[F[_]: Async: ContextShift, K: FromRecord, V: FromRecord](
       blockingContext: ExecutionContext,
       configs: (String, AnyRef)*
   ): Resource[F, ConsumerApi[F, K, V]] =
     resourceAvro4s[F, K, V](configs: _*).map(ShiftingConsumerImpl(_, blockingContext))
 
-  def defaultBlockingContext[F[_]: Sync] =
+  def streamAvro4sShiftingWithContext[F[_]: Async: ContextShift, K: FromRecord, V: FromRecord](
+      blockingContext: ExecutionContext,
+      configs: (String, AnyRef)*
+  ): Stream[F, ConsumerApi[F, K, V]] =
+    Stream.resource(resourceAvro4sShiftingWithContext[F, K, V](blockingContext, configs: _*))
+
+  def defaultBlockingContext[F[_]: Sync]: Resource[F, ExecutionContextExecutorService] =
     Resource.make(
-      Sync[F].delay(ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1)))
+      Sync[F]
+        .delay(ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor())) //TODO ThreadFactory to name thread properly
     )(a => Sync[F].delay(a.shutdown()))
 
 }
