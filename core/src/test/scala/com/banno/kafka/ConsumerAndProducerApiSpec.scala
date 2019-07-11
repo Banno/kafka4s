@@ -53,10 +53,11 @@ class ConsumerAndProducerApiSpec
       .emits(values)
       .covary[F]
       .map(producerRecord(topic))
-      .through(producer.sinkWithClose)
+      .through(producer.sink)
       .drain ++
+      Stream.eval(consumer.subscribe(topic)).drain ++
       consumer
-        .recordStream(consumer.subscribe(topic), 100 millis)
+        .recordStream(100 millis)
         .map(cr => (cr.key, cr.value))
         .take(values.size.toLong)
 
@@ -90,6 +91,7 @@ class ConsumerAndProducerApiSpec
 
     forAll { strings: Vector[(String, String)] =>
       val io = for {
+        //TODO use ProducerApi.resource
         producer <- ProducerApi.create[IO, String, String](BootstrapServers(bootstrapServer))
         rms <- producer.sendSyncBatch(
           strings.map { case (k, v) => new ProducerRecord(topic, k, v) }
@@ -106,6 +108,7 @@ class ConsumerAndProducerApiSpec
     }
   }
 
+  //TODO rewrite: test that 1-thread consumer closes properly, and 2-thread consumer wakeup works properly
   property("Consumer API can be interrupted by another thread") {
 
     val topic = createTopic()
@@ -130,8 +133,8 @@ class ConsumerAndProducerApiSpec
         producer: ProducerApi[F, String, String],
         consumer: ConsumerApi[F, String, String]
     ): Stream[F, String] = {
-      val s0 = Stream(new ProducerRecord(topic, "a", "a")).covary[F].through(producer.sinkWithClose) //halts after emitting "a" to Kafka
-      val s1 = consumer.recordStream(consumer.subscribe(topic), 1 second).map(_.value) //consumes from kafka, never halting
+      val s0 = Stream(new ProducerRecord(topic, "a", "a")).covary[F].through(producer.sinkSync) //halts after emitting "a" to Kafka
+      val s1 = Stream.eval(consumer.subscribe(topic)).drain ++ consumer.recordStream(1 second).map(_.value) //consumes from kafka, never halting
       val s2 = Stream("b").covary[F].delayBy(5 seconds) //after 5 seconds, 1 element will be emitted and this stream will halt
       for {
         x <- s2.mergeHaltL(s0.drain ++ s1) //s1 is running in the background with poll() called by thread 1, then s2 halts and close() called on thread 2
@@ -150,6 +153,7 @@ class ConsumerAndProducerApiSpec
     io.unsafeRunSync().toSet should ===(Set("a", "b"))
   }
 
+  //TODO rewrite using resource
   property("Producer and Consumer APIs should write and read records") {
     val groupId = genGroupId
     println(s"2 groupId=$groupId")
@@ -240,6 +244,7 @@ class ConsumerAndProducerApiSpec
     }).unsafeRunSync()
   }
 
+  //TODO refactor
   property("readProcessCommit only commits offsets for successfully processed records") {
     val groupId = genGroupId
     println(s"4 groupId=$groupId")
@@ -260,7 +265,7 @@ class ConsumerAndProducerApiSpec
         .emits(expected)
         .covary[IO]
         .map(s => new ProducerRecord(topic, s, s))
-        .through(p.sinkWithClose)
+        .through(p.sinkSync)
         .compile
         .drain
       consume: Stream[IO, String] = for {
@@ -272,7 +277,7 @@ class ConsumerAndProducerApiSpec
             EnableAutoCommit(false)
           )
         )
-        v <- c.readProcessCommit(c.subscribe(topic), 100 millis)(r => storeOrFail(values, r.value)) //only consumes until a failure
+        v <- Stream.eval(c.subscribe(topic)).drain ++ c.readProcessCommit(100 millis)(r => storeOrFail(values, r.value)) //only consumes until a failure
       } yield v
       _ <- consume.attempt.repeat
         .takeThrough(_ != Right(expected.last))
