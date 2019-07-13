@@ -85,7 +85,7 @@ lazy val commonSettings = Seq(
     "org.typelevel"                %% "discipline"                % "0.11.1"         % "test"
   ),
   sourceGenerators in Test += (avroScalaGenerate in Test).taskValue,
-  watchSources ++= ((avroSourceDirectory in Test).value ** "*.avdl").get,
+  watchSources ++= ((avroSourceDirectories in Test).value ** "*.avdl").get,
   testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oS"),
 )
 
