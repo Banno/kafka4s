@@ -18,7 +18,7 @@ lazy val examples = project
   .settings(commonSettings, skipOnPublishSettings)
   .dependsOn(core)
   .settings(
-     libraryDependencies += "dev.zio" %% "zio-interop-cats" % "1.3.1.0-RC2"
+     libraryDependencies += "dev.zio" %% "zio-interop-cats" % "1.3.1.0-RC3"
   )
 
 lazy val contributors = Seq(
