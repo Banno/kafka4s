@@ -25,13 +25,6 @@ import scala.concurrent.duration._
 import scala.collection.JavaConverters._
 
 case class AdminImpl[F[_]](a: AdminClient)(implicit F: Sync[F]) extends AdminApi[F] {
-  def alterConfigs(configs: Map[ConfigResource, Config]): F[AlterConfigsResult] =
-    F.delay(a.alterConfigs(configs.asJava))
-  def alterConfigs(
-      configs: Map[ConfigResource, Config],
-      options: AlterConfigsOptions
-  ): F[AlterConfigsResult] =
-    F.delay(a.alterConfigs(configs.asJava, options))
   def alterReplicaLogDirs(
       replicaAssignment: Map[TopicPartitionReplica, String]
   ): F[AlterReplicaLogDirsResult] =
@@ -110,6 +103,15 @@ case class AdminImpl[F[_]](a: AdminClient)(implicit F: Sync[F]) extends AdminApi
       options: DescribeTopicsOptions
   ): F[DescribeTopicsResult] =
     F.delay(a.describeTopics(topicNames.asJavaCollection, options))
+  def incrementalAlterConfigs(
+      configs: Map[ConfigResource, Iterable[AlterConfigOp]]
+  ): F[AlterConfigsResult] =
+    F.delay(a.incrementalAlterConfigs(configs.mapValues(_.asJavaCollection).asJava))
+  def incrementalAlterConfigs(
+      configs: Map[ConfigResource, Iterable[AlterConfigOp]],
+      options: AlterConfigsOptions
+  ): F[AlterConfigsResult] =
+    F.delay(a.incrementalAlterConfigs(configs.mapValues(_.asJavaCollection).asJava, options))
   def listTopics: F[ListTopicsResult] = F.delay(a.listTopics())
   def listTopics(options: ListTopicsOptions): F[ListTopicsResult] = F.delay(a.listTopics(options))
 }
