@@ -41,11 +41,6 @@ In the future maybe there's a nicer way to handle KafkaFuture, but for now this 
  */
 
 trait AdminApi[F[_]] {
-  def alterConfigs(configs: Map[ConfigResource, Config]): F[AlterConfigsResult]
-  def alterConfigs(
-      configs: Map[ConfigResource, Config],
-      options: AlterConfigsOptions
-  ): F[AlterConfigsResult]
   def alterReplicaLogDirs(
       replicaAssignment: Map[TopicPartitionReplica, String]
   ): F[AlterReplicaLogDirsResult]
@@ -100,6 +95,13 @@ trait AdminApi[F[_]] {
       topicNames: Iterable[String],
       options: DescribeTopicsOptions
   ): F[DescribeTopicsResult]
+  def incrementalAlterConfigs(
+      configs: Map[ConfigResource, Iterable[AlterConfigOp]]
+  ): F[AlterConfigsResult]
+  def incrementalAlterConfigs(
+      configs: Map[ConfigResource, Iterable[AlterConfigOp]],
+      options: AlterConfigsOptions
+  ): F[AlterConfigsResult]
   def listTopics: F[ListTopicsResult]
   def listTopics(options: ListTopicsOptions): F[ListTopicsResult]
 }
