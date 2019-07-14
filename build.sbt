@@ -1,6 +1,11 @@
 lazy val kafka4s = project.in(file("."))
-  .settings(commonSettings, releaseSettings, skipOnPublishSettings)
   .aggregate(core, docs, examples)
+  .settings(
+    commonSettings,
+    releaseSettings,
+    mimaSettings,
+    skipOnPublishSettings,
+  )
 
 lazy val core = project
   .settings(commonSettings, releaseSettings, mimaSettings)
@@ -9,14 +14,16 @@ lazy val core = project
   )
 
 lazy val docs = project
-  .settings(commonSettings, skipOnPublishSettings, micrositeSettings)
   .dependsOn(core)
   .enablePlugins(MicrositesPlugin)
   .enablePlugins(TutPlugin)
+  .disablePlugins(MimaPlugin)
+  .settings(commonSettings, skipOnPublishSettings, micrositeSettings)
 
 lazy val examples = project
-  .settings(commonSettings, skipOnPublishSettings)
   .dependsOn(core)
+  .disablePlugins(MimaPlugin)
+  .settings(commonSettings, skipOnPublishSettings)
   .settings(
      libraryDependencies += "dev.zio" %% "zio-interop-cats" % "1.3.1.0-RC3"
   )
@@ -192,7 +199,8 @@ lazy val mimaSettings = {
   lazy val extraVersions: Set[String] = Set()
 
   Seq(
-    mimaFailOnProblem := mimaVersions(version.value).toList.headOption.isDefined,
+    mimaFailOnNoPrevious := false, // TODO Set this to true (or remove altogether) once binary compatibility is desired.
+    mimaFailOnProblem := mimaVersions(version.value).nonEmpty,
     mimaPreviousArtifacts := (mimaVersions(version.value) ++ extraVersions)
       .filterNot(excludedVersions.contains(_))
       .map{v =>
