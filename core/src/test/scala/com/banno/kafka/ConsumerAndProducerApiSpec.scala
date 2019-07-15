@@ -53,7 +53,7 @@ class ConsumerAndProducerApiSpec
       .emits(values)
       .covary[F]
       .map(producerRecord(topic))
-      .through(producer.sink)
+      .evalMap(producer.sendAndForget)
       .drain ++
       Stream.eval(consumer.subscribe(topic)).drain ++
       consumer
@@ -65,40 +65,15 @@ class ConsumerAndProducerApiSpec
     val topic = createTopic()
 
     forAll { strings: Vector[String] =>
-      val s = for {
-        producer <- Stream.eval(
-          ProducerApi.create[IO, String, String](BootstrapServers(bootstrapServer))
-        )
-        rm <- Stream
-          .emits(strings)
-          .covary[IO]
-          .map(s => new ProducerRecord(topic, s, s))
-          .through(producer.pipeSync)
-          .onFinalize(producer.close)
-      } yield rm
-      val rms = s.compile.toVector.unsafeRunSync()
+      //TODO what does sendAsyncBatch actually do?
+      //  1. send one record and semantically block until metadata received, send next record and semantically block until metadata received, etc
+      //  2. or, send all records in batch, then semantically block until all metadatas received
+      //I suspect it's #1, which may be useful, but most of the time #2 is really what we want, for max throughput
 
-      rms.size should ===(strings.size)
-      rms.forall(_.topic == topic) should ===(true)
-      if (strings.size >= 2) {
-        rms.last.offset - rms.head.offset should ===(strings.size - 1)
-      }
-    }
-  }
-
-  property("Producer sendSyncBatch") {
-    val topic = createTopic()
-
-    forAll { strings: Vector[(String, String)] =>
-      val io = for {
-        //TODO use ProducerApi.resource
-        producer <- ProducerApi.create[IO, String, String](BootstrapServers(bootstrapServer))
-        rms <- producer.sendSyncBatch(
-          strings.map { case (k, v) => new ProducerRecord(topic, k, v) }
-        )
-        _ <- producer.close
-      } yield rms
-      val rms = io.unsafeRunSync()
+      val rms = ProducerApi
+        .resource[IO, String, String](BootstrapServers(bootstrapServer))
+        .use(_.sendAsyncBatch(strings.map(s => new ProducerRecord(topic, s, s))))
+        .unsafeRunSync()
 
       rms.size should ===(strings.size)
       rms.forall(_.topic == topic) should ===(true)
@@ -134,7 +109,9 @@ class ConsumerAndProducerApiSpec
         consumer: ConsumerApi[F, String, String]
     ): Stream[F, String] = {
       val s0 = Stream(new ProducerRecord(topic, "a", "a")).covary[F].through(producer.sinkSync) //halts after emitting "a" to Kafka
-      val s1 = Stream.eval(consumer.subscribe(topic)).drain ++ consumer.recordStream(1 second).map(_.value) //consumes from kafka, never halting
+      val s1 = Stream
+        .eval(consumer.subscribe(topic))
+        .drain ++ consumer.recordStream(1 second).map(_.value) //consumes from kafka, never halting
       val s2 = Stream("b").covary[F].delayBy(5 seconds) //after 5 seconds, 1 element will be emitted and this stream will halt
       for {
         x <- s2.mergeHaltL(s0.drain ++ s1) //s1 is running in the background with poll() called by thread 1, then s2 halts and close() called on thread 2
@@ -153,23 +130,21 @@ class ConsumerAndProducerApiSpec
     io.unsafeRunSync().toSet should ===(Set("a", "b"))
   }
 
-  //TODO rewrite using resource
   property("Producer and Consumer APIs should write and read records") {
     val groupId = genGroupId
     println(s"2 groupId=$groupId")
     val topic = createTopic()
 
     forAll { values: Vector[(String, String)] =>
-      val io = for {
-        p <- ProducerApi.create[IO, String, String](BootstrapServers(bootstrapServer))
-        c <- ConsumerApi.create[IO, String, String](
+      val actual = (for {
+        p <- ProducerApi.stream[IO, String, String](BootstrapServers(bootstrapServer))
+        c <- ConsumerApi.stream[IO, String, String](
           BootstrapServers(bootstrapServer),
           GroupId(groupId),
           AutoOffsetReset.earliest
         )
-        v <- writeAndRead(p, c, topic, values).compile.toVector
-      } yield v
-      val actual = io.unsafeRunSync()
+        x <- writeAndRead(p, c, topic, values)
+      } yield x).compile.toVector.unsafeRunSync()
       actual should ===(values)
     }
   }
@@ -180,20 +155,19 @@ class ConsumerAndProducerApiSpec
     val topic = createTopic()
 
     forAll { values: Vector[(Int, String)] =>
-      val io = for {
-        p <- ProducerApi.createShifting[IO, Int, String](
+      val actual = (for {
+        p <- ProducerApi.streamShifting[IO, Int, String](
           producerContext,
           BootstrapServers(bootstrapServer)
         )
-        c <- ConsumerApi.createShifting[IO, Int, String](
+        c <- ConsumerApi.streamShifting[IO, Int, String](
           consumerContext,
           BootstrapServers(bootstrapServer),
           GroupId(groupId),
           AutoOffsetReset.earliest
         )
-        v <- writeAndRead(p, c, topic, values).compile.toVector
-      } yield v
-      val actual = io.unsafeRunSync()
+        x <- writeAndRead(p, c, topic, values)
+      } yield x).compile.toVector.unsafeRunSync()
       actual should ===(values)
     }
   }
@@ -213,38 +187,43 @@ class ConsumerAndProducerApiSpec
     val tp1 = new TopicPartition(topic, 1)
     val tp2 = new TopicPartition(topic, 2)
 
-    (for {
-      p <- ProducerApi.create[IO, String, String](BootstrapServers(bootstrapServer))
-      _ <- p.sendSyncBatch(records)
+    ProducerApi
+      .resource[IO, String, String](BootstrapServers(bootstrapServer))
+      .use(
+        p =>
+          //max.poll.records=1 forces stream to repeat a few times, so we validate the takeThrough predicate
+          ConsumerApi
+            .resource[IO, String, String](BootstrapServers(bootstrapServer), MaxPollRecords(1))
+            .use(
+              c =>
+                for {
+                  _ <- p.sendSyncBatch(records)
 
-      //max.poll.records=1 forces stream to repeat a few times, so we validate the takeThrough predicate
-      c <- ConsumerApi.create[IO, String, String](
-        BootstrapServers(bootstrapServer),
-        MaxPollRecords(1)
+                  _ <- c.assign(List(tp0, tp1, tp2))
+                  _ <- c.seekToBeginning(List(tp0))
+                  _ <- c.seek(tp1, 1)
+                  _ <- c.seekToEnd(List(tp2))
+                  vs <- c
+                    .recordsThroughOffsets(Map(tp0 -> 1, tp1 -> 1, tp2 -> 1), 1 second)
+                    .map(_.asScala.map(_.value))
+                    .compile
+                    .toList
+
+                  //consumer must still be usable after stream halts, positioned immediately after all of the records it's already returned
+                  _ <- p.sendSync(new ProducerRecord(topic, null, "new"))
+                  rs <- c.poll(1 second)
+
+                  _ <- p.close
+                  _ <- c.close
+                } yield {
+                  (vs.flatten should contain).theSameElementsAs(List("0-0", "0-1", "1-1"))
+                  rs.asScala.map(_.value) should ===(List("new"))
+                }
+            )
       )
-      _ <- c.assign(List(tp0, tp1, tp2))
-      _ <- c.seekToBeginning(List(tp0))
-      _ <- c.seek(tp1, 1)
-      _ <- c.seekToEnd(List(tp2))
-      vs <- c
-        .recordsThroughOffsets(Map(tp0 -> 1, tp1 -> 1, tp2 -> 1), 1 second)
-        .map(_.asScala.map(_.value))
-        .compile
-        .toList
-
-      //consumer must still be usable after stream halts, positioned immediately after all of the records it's already returned
-      _ <- p.sendSync(new ProducerRecord(topic, null, "new"))
-      rs <- c.poll(1 second)
-
-      _ <- p.close
-      _ <- c.close
-    } yield {
-      (vs.flatten should contain).theSameElementsAs(List("0-0", "0-1", "1-1"))
-      rs.asScala.map(_.value) should ===(List("new"))
-    }).unsafeRunSync()
+      .unsafeRunSync()
   }
 
-  //TODO refactor
   property("readProcessCommit only commits offsets for successfully processed records") {
     val groupId = genGroupId
     println(s"4 groupId=$groupId")
@@ -260,25 +239,18 @@ class ConsumerAndProducerApiSpec
     val expected = Vector.range(0, 10).map(_.toString)
     val io = for {
       values <- Ref.of[IO, Vector[String]](Vector.empty)
-      p <- ProducerApi.create[IO, String, String](BootstrapServers(bootstrapServer))
-      _ <- Stream
-        .emits(expected)
-        .covary[IO]
-        .map(s => new ProducerRecord(topic, s, s))
-        .through(p.sinkSync)
-        .compile
-        .drain
-      consume: Stream[IO, String] = for {
-        c <- Stream.eval(
-          ConsumerApi.create[IO, String, String](
-            BootstrapServers(bootstrapServer),
-            GroupId(groupId),
-            AutoOffsetReset.earliest,
-            EnableAutoCommit(false)
-          )
+      _ <- ProducerApi
+        .resource[IO, String, String](BootstrapServers(bootstrapServer))
+        .use(_.sendSyncBatch(expected.map(s => new ProducerRecord(topic, s, s))))
+      consume: Stream[IO, String] = ConsumerApi
+        .stream[IO, String, String](
+          BootstrapServers(bootstrapServer),
+          GroupId(groupId),
+          AutoOffsetReset.earliest,
+          EnableAutoCommit(false)
         )
-        v <- Stream.eval(c.subscribe(topic)).drain ++ c.readProcessCommit(100 millis)(r => storeOrFail(values, r.value)) //only consumes until a failure
-      } yield v
+        .evalTap(_.subscribe(topic))
+        .flatMap(_.readProcessCommit(100 millis)(r => storeOrFail(values, r.value))) //only consumes until a failure)
       _ <- consume.attempt.repeat
         .takeThrough(_ != Right(expected.last))
         .compile
@@ -299,20 +271,19 @@ class ConsumerAndProducerApiSpec
     val topic = createTopic()
 
     forAll { values: Vector[(String, Person)] =>
-      val io = for {
-        p <- ProducerApi.avro[IO, String, Person](
+      val actual = (for {
+        p <- ProducerApi.streamAvro[IO, String, Person](
           BootstrapServers(bootstrapServer),
           SchemaRegistryUrl(schemaRegistryUrl)
         )
-        c <- ConsumerApi.avroSpecific[IO, String, Person](
+        c <- ConsumerApi.streamAvroSpecific[IO, String, Person](
           BootstrapServers(bootstrapServer),
           GroupId(groupId),
           AutoOffsetReset.earliest,
           SchemaRegistryUrl(schemaRegistryUrl)
         )
-        v <- writeAndRead(p, c, topic, values).compile.toVector
-      } yield v
-      val actual = io.unsafeRunSync()
+        v <- writeAndRead(p, c, topic, values)
+      } yield v).compile.toVector.unsafeRunSync()
       actual should ===(values)
     }
   }
@@ -327,20 +298,19 @@ class ConsumerAndProducerApiSpec
     val topic = createTopic()
 
     forAll { values: Vector[(PersonId, Person2)] =>
-      val io = for {
-        p <- ProducerApi.avro4s[IO, PersonId, Person2](
+      val actual = (for {
+        p <- ProducerApi.streamAvro4s[IO, PersonId, Person2](
           BootstrapServers(bootstrapServer),
           SchemaRegistryUrl(schemaRegistryUrl)
         )
-        c <- ConsumerApi.avro4s[IO, PersonId, Person2](
+        c <- ConsumerApi.streamAvro4s[IO, PersonId, Person2](
           BootstrapServers(bootstrapServer),
           GroupId(groupId),
           AutoOffsetReset.earliest,
           SchemaRegistryUrl(schemaRegistryUrl)
         )
-        v <- writeAndRead(p, c, topic, values).compile.toVector
-      } yield v
-      val actual = io.unsafeRunSync()
+        v <- writeAndRead(p, c, topic, values)
+      } yield v).compile.toVector.unsafeRunSync()
       actual should ===(values)
     }
   }

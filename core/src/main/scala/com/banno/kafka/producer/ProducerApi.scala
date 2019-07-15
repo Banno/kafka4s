@@ -135,6 +135,47 @@ object ProducerApi {
   ): F[ProducerApi[F, K, V]] =
     create[F, K, V](configs: _*).map(ShiftingProducerImpl[F, K, V](_, producerContext))
 
+  def resourceShifting[F[_]: Async: ContextShift, K, V](
+      producerContext: ExecutionContext,
+      keySerializer: Serializer[K],
+      valueSerializer: Serializer[V],
+      configs: (String, AnyRef)*
+  ): Resource[F, ProducerApi[F, K, V]] =
+    resource[F, K, V](keySerializer, valueSerializer, configs: _*)
+      .map(ShiftingProducerImpl[F, K, V](_, producerContext))
+
+  def resourceShifting[F[_]: Async: ContextShift, K: Serializer, V: Serializer](
+      producerContext: ExecutionContext,
+      configs: (String, AnyRef)*
+  ): Resource[F, ProducerApi[F, K, V]] =
+    resourceShifting[F, K, V](
+      producerContext,
+      implicitly[Serializer[K]],
+      implicitly[Serializer[V]],
+      configs: _*
+    )
+
+  def streamShifting[F[_]: Async: ContextShift, K, V](
+      producerContext: ExecutionContext,
+      keySerializer: Serializer[K],
+      valueSerializer: Serializer[V],
+      configs: (String, AnyRef)*
+  ): Stream[F, ProducerApi[F, K, V]] =
+    Stream.resource(
+      resourceShifting[F, K, V](producerContext, keySerializer, valueSerializer, configs: _*)
+    )
+
+  def streamShifting[F[_]: Async: ContextShift, K: Serializer, V: Serializer](
+      producerContext: ExecutionContext,
+      configs: (String, AnyRef)*
+  ): Stream[F, ProducerApi[F, K, V]] =
+    streamShifting[F, K, V](
+      producerContext,
+      implicitly[Serializer[K]],
+      implicitly[Serializer[V]],
+      configs: _*
+    )
+
   //TODO createSpecificProducer
 
   def avro[F[_]: Async, K, V](configs: (String, AnyRef)*): F[ProducerApi[F, K, V]] =
@@ -145,6 +186,14 @@ object ProducerApi {
           ValueSerializerClass(classOf[KafkaAvroSerializer])
       ).toSeq: _*
     )
+
+  def resourceAvro[F[_]: Async, K, V](
+      configs: (String, AnyRef)*
+  ): Resource[F, ProducerApi[F, K, V]] =
+    Resource.make(avro[F, K, V](configs: _*))(_.close)
+
+  def streamAvro[F[_]: Async, K, V](configs: (String, AnyRef)*): Stream[F, ProducerApi[F, K, V]] =
+    Stream.resource(resourceAvro[F, K, V](configs: _*))
 
   def createGenericKafkaProducer[F[_]: Sync](
       configs: (String, AnyRef)*

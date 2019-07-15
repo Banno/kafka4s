@@ -167,6 +167,47 @@ object ConsumerApi {
   ): F[ConsumerApi[F, K, V]] =
     create[F, K, V](configs: _*).map(ShiftingConsumerImpl(_, blockingContext))
 
+  def resourceShifting[F[_]: Async: ContextShift, K, V](
+      blockingContext: ExecutionContext,
+      keyDeserializer: Deserializer[K],
+      valueDeserializer: Deserializer[V],
+      configs: (String, AnyRef)*
+  ): Resource[F, ConsumerApi[F, K, V]] =
+    resource[F, K, V](keyDeserializer, valueDeserializer, configs: _*)
+      .map(ShiftingConsumerImpl[F, K, V](_, blockingContext))
+
+  def resourceShifting[F[_]: Async: ContextShift, K: Deserializer, V: Deserializer](
+      blockingContext: ExecutionContext,
+      configs: (String, AnyRef)*
+  ): Resource[F, ConsumerApi[F, K, V]] =
+    resourceShifting[F, K, V](
+      blockingContext,
+      implicitly[Deserializer[K]],
+      implicitly[Deserializer[V]],
+      configs: _*
+    )
+
+  def streamShifting[F[_]: Async: ContextShift, K, V](
+      blockingContext: ExecutionContext,
+      keyDeserializer: Deserializer[K],
+      valueDeserializer: Deserializer[V],
+      configs: (String, AnyRef)*
+  ): Stream[F, ConsumerApi[F, K, V]] =
+    Stream.resource(
+      resourceShifting[F, K, V](blockingContext, keyDeserializer, valueDeserializer, configs: _*)
+    )
+
+  def streamShifting[F[_]: Async: ContextShift, K: Deserializer, V: Deserializer](
+      blockingContext: ExecutionContext,
+      configs: (String, AnyRef)*
+  ): Stream[F, ConsumerApi[F, K, V]] =
+    streamShifting[F, K, V](
+      blockingContext,
+      implicitly[Deserializer[K]],
+      implicitly[Deserializer[V]],
+      configs: _*
+    )
+
   def avro[F[_]: Async, K, V](configs: (String, AnyRef)*): F[ConsumerApi[F, K, V]] =
     apply[F, K, V](
       (
@@ -178,6 +219,24 @@ object ConsumerApi {
 
   def avroSpecific[F[_]: Async, K, V](configs: (String, AnyRef)*): F[ConsumerApi[F, K, V]] =
     avro[F, K, V]((configs.toMap + SpecificAvroReader(true)).toSeq: _*)
+
+  def resourceAvro[F[_]: Async, K, V](
+      configs: (String, AnyRef)*
+  ): Resource[F, ConsumerApi[F, K, V]] =
+    Resource.make(avro[F, K, V](configs: _*))(_.close)
+
+  def streamAvro[F[_]: Async, K, V](configs: (String, AnyRef)*): Stream[F, ConsumerApi[F, K, V]] =
+    Stream.resource(resourceAvro[F, K, V](configs: _*))
+
+  def resourceAvroSpecific[F[_]: Async, K, V](
+      configs: (String, AnyRef)*
+  ): Resource[F, ConsumerApi[F, K, V]] =
+    Resource.make(avroSpecific[F, K, V](configs: _*))(_.close)
+
+  def streamAvroSpecific[F[_]: Async, K, V](
+      configs: (String, AnyRef)*
+  ): Stream[F, ConsumerApi[F, K, V]] =
+    Stream.resource(resourceAvroSpecific[F, K, V](configs: _*))
 
   def createGenericKafkaConsumer[F[_]: Sync](
       configs: (String, AnyRef)*
