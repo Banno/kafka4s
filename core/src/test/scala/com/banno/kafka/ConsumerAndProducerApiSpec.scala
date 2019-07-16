@@ -95,7 +95,7 @@ class ConsumerAndProducerApiSpec
       _ <- Concurrent[IO].start(c.poll(1 second) *> c.close)
       e <- Timer[IO].sleep(100 millis) *> c.close.attempt
     } yield {
-      e.left.value shouldBe a [ConcurrentModificationException]
+      e.left.value shouldBe a[ConcurrentModificationException]
     }).unsafeRunSync()
   }
 
@@ -109,7 +109,7 @@ class ConsumerAndProducerApiSpec
       e <- c.poll(1 second).attempt
       _ <- c.close
     } yield {
-      e.left.value shouldBe a [WakeupException]
+      e.left.value shouldBe a[WakeupException]
     }).unsafeRunSync()
   }
 
@@ -154,7 +154,7 @@ class ConsumerAndProducerApiSpec
       e <- c.poll(1 second).attempt
       _ <- c.close
     } yield {
-      e.left.value shouldBe a [WakeupException]
+      e.left.value shouldBe a[WakeupException]
     }).unsafeRunSync()
     ctx.shutdown()
   }
