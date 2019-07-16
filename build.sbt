@@ -25,7 +25,7 @@ lazy val examples = project
   .disablePlugins(MimaPlugin)
   .settings(commonSettings, skipOnPublishSettings)
   .settings(
-     libraryDependencies += "dev.zio" %% "zio-interop-cats" % "1.3.1.0-RC3"
+     libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.0.0.0-RC1"
   )
 
 lazy val contributors = Seq(
