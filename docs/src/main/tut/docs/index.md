@@ -177,7 +177,7 @@ consumer.assign(topicName, initialOffsets).unsafeRunSync
 And we can now read a stream of records from our Kafka topic:
 
 ```tut
-val messages = consumer.rawRecordStream(1.second).take(5).compile.toVector.unsafeRunSync
+val messages = consumer.recordStream(1.second).take(5).compile.toVector.unsafeRunSync
 ```
 
 To clean up after ourselves, we'll close and shut down our resources:
