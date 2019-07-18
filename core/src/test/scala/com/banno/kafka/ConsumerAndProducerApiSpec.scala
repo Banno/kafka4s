@@ -14,7 +14,6 @@ import com.banno.kafka.consumer._
 import fs2._
 
 import scala.concurrent.ExecutionContext
-import java.util.concurrent.Executors
 
 import cats.effect.concurrent.Ref
 
@@ -33,8 +32,7 @@ class ConsumerAndProducerApiSpec
     with Matchers
     with EitherValues
     with InMemoryKafka {
-  val producerContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(2))
-  val consumerContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(2))
+
   implicit val defaultContextShift = IO.contextShift(ExecutionContext.global)
   implicit val defaultConcurrent = IO.ioConcurrentEffect(defaultContextShift)
   implicit val defaultTimer = IO.timer(ExecutionContext.global)
@@ -274,7 +272,7 @@ class ConsumerAndProducerApiSpec
 
     forAll { values: Vector[(String, Person)] =>
       val actual = (for {
-        p <- ProducerApi.streamAvro[IO, String, Person](
+        p <- ProducerApi.Avro.stream[IO, String, Person](
           BootstrapServers(bootstrapServer),
           SchemaRegistryUrl(schemaRegistryUrl)
         )
@@ -301,7 +299,7 @@ class ConsumerAndProducerApiSpec
 
     forAll { values: Vector[(PersonId, Person2)] =>
       val actual = (for {
-        p <- ProducerApi.streamAvro4s[IO, PersonId, Person2](
+        p <- ProducerApi.Avro4s.stream[IO, PersonId, Person2](
           BootstrapServers(bootstrapServer),
           SchemaRegistryUrl(schemaRegistryUrl)
         )

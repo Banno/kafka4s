@@ -55,7 +55,7 @@ final class ExampleApp[F[_]: Async: ContextShift] {
     .toVector
 
   val producer =
-    ProducerApi.resourceAvro4sShifting[F, CustomerId, Customer](
+    ProducerApi.Avro4s.resource[F, CustomerId, Customer](
       BootstrapServers(kafkaBootstrapServers),
       SchemaRegistryUrl(schemaRegistryUri),
       ClientId("producer-example")

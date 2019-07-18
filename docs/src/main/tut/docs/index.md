@@ -95,7 +95,7 @@ import com.banno.kafka.producer._
 Now we can create our producer instance:
 
 ```tut
-val producer = ProducerApi.generic[IO](
+val producer = ProducerApi.Avro.Generic.create[IO](
   BootstrapServers(kafkaBootstrapServers),
   SchemaRegistryUrl(schemaRegistryUri),
   ClientId("producer-example")

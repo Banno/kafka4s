@@ -26,9 +26,7 @@ import com.banno.kafka.producer._
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.producer.ProducerRecord
 import scala.concurrent.duration._
-import java.util.concurrent.Executors
 import org.apache.kafka.common.TopicPartition
-import scala.concurrent.ExecutionContext
 
 final class ExampleApp[F[_]: Async: ContextShift] {
   import ExampleApp._
@@ -49,22 +47,14 @@ final class ExampleApp[F[_]: Async: ContextShift] {
     )
     .toVector
 
-  val producerThreadPoolResource = Resource.make(
-    Sync[F].delay(ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1)))
-  )(a => Sync[F].delay(a.shutdown()))
-
   val producerResource: Resource[F, ProducerApi[F, CustomerId, Customer]] =
-    producerThreadPoolResource.flatMap(
-      producerPool =>
-        Resource.make(
-          ProducerApi.avro4sShifting[F, CustomerId, Customer](
-            producerPool,
-            BootstrapServers(kafkaBootstrapServers),
-            SchemaRegistryUrl(schemaRegistryUri),
-            ClientId("producer-example")
-          )
-        )(_.close)
-    )
+    Resource.make(
+      ProducerApi.Avro4s.create[F, CustomerId, Customer](
+        BootstrapServers(kafkaBootstrapServers),
+        SchemaRegistryUrl(schemaRegistryUri),
+        ClientId("producer-example")
+      )
+    )(_.close)
 
   val consumerResource =
     Resource.make(
