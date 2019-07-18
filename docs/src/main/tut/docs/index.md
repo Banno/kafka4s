@@ -157,7 +157,7 @@ implicit val CS = IO.contextShift(ExecutionContext.global)
 And here's our consumer, which is using Avro4s to deserialize the records:
 
 ```tut
-val consumer = ConsumerApi.Avro4s.create[IO, CustomerId, Customer](
+val (consumer, ctx) = ConsumerApi.Avro4s.create[IO, CustomerId, Customer](
   BootstrapServers(kafkaBootstrapServers), 
   SchemaRegistryUrl(schemaRegistryUri),
   ClientId("consumer-example"),
@@ -182,6 +182,7 @@ To clean up after ourselves, we'll close and shut down our resources:
 ```tut
 consumer.close.unsafeRunSync
 producer.close.unsafeRunSync
+ctx.shutdown()
 ```
 
 Note that kafka4s provides constructors that return `cats.effect.Resource`s for the above resources, so that their shutdown steps are guaranteed to run after use. We're manually shutting down resources simply for the sake of example.

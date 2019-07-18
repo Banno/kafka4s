@@ -130,10 +130,10 @@ class ConsumerAndProducerApiSpec
   property("Singleton shifting consumer close while polling") {
     val topic = createTopic()
     (for {
-      c <- ConsumerApi.create[IO, String, String](BootstrapServers(bootstrapServer))
+      (c, x) <- ConsumerApi.create[IO, String, String](BootstrapServers(bootstrapServer))
       _ <- c.assign(topic, Map.empty[TopicPartition, Long])
       _ <- Concurrent[IO].start(c.poll(1 second))
-      e <- Timer[IO].sleep(100 millis) *> c.close.attempt
+      e <- Timer[IO].sleep(100 millis) *> c.close.attempt <* IO(x.shutdown())
     } yield {
       e.right.value should ===(())
     }).unsafeRunSync()
@@ -143,11 +143,12 @@ class ConsumerAndProducerApiSpec
   property("Singleton shifting consumer poll fails with WakeupException on wakeup") {
     val topic = createTopic()
     (for {
-      c <- ConsumerApi.create[IO, String, String](BootstrapServers(bootstrapServer))
+      (c, x) <- ConsumerApi.create[IO, String, String](BootstrapServers(bootstrapServer))
       _ <- c.assign(topic, Map.empty[TopicPartition, Long])
       _ <- Concurrent[IO].start(Timer[IO].sleep(100 millis) *> c.wakeup)
       e <- c.poll(1 second).attempt
       _ <- c.close
+      _ <- IO(x.shutdown())
     } yield {
       e.left.value shouldBe a[WakeupException]
     }).unsafeRunSync()

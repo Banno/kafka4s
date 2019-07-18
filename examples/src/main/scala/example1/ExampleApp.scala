@@ -48,24 +48,20 @@ final class ExampleApp[F[_]: Async: ContextShift] {
     .toVector
 
   val producerResource: Resource[F, ProducerApi[F, CustomerId, Customer]] =
-    Resource.make(
-      ProducerApi.Avro4s.create[F, CustomerId, Customer](
-        BootstrapServers(kafkaBootstrapServers),
-        SchemaRegistryUrl(schemaRegistryUri),
-        ClientId("producer-example")
-      )
-    )(_.close)
+    ProducerApi.Avro4s.resource[F, CustomerId, Customer](
+      BootstrapServers(kafkaBootstrapServers),
+      SchemaRegistryUrl(schemaRegistryUri),
+      ClientId("producer-example")
+    )
 
   val consumerResource =
-    Resource.make(
-      ConsumerApi.Avro4s.create[F, CustomerId, Customer](
-        BootstrapServers(kafkaBootstrapServers),
-        SchemaRegistryUrl(schemaRegistryUri),
-        ClientId("consumer-example"),
-        GroupId("consumer-example-group"),
-        EnableAutoCommit(false)
-      )
-    )(_.close)
+    ConsumerApi.Avro4s.resource[F, CustomerId, Customer](
+      BootstrapServers(kafkaBootstrapServers),
+      SchemaRegistryUrl(schemaRegistryUri),
+      ClientId("consumer-example"),
+      GroupId("consumer-example-group"),
+      EnableAutoCommit(false)
+    )
 
   val example: F[Unit] =
     for {
