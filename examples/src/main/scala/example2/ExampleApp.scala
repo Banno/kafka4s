@@ -62,7 +62,7 @@ final class ExampleApp[F[_]: Async: ContextShift] {
     )
 
   val consumer =
-    ConsumerApi.resourceAvro4sShifting[F, CustomerId, Customer](
+    ConsumerApi.Avro4s.resource[F, CustomerId, Customer](
       BootstrapServers(kafkaBootstrapServers),
       SchemaRegistryUrl(schemaRegistryUri),
       ClientId("consumer-example"),

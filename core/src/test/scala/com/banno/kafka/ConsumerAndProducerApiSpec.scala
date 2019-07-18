@@ -90,7 +90,7 @@ class ConsumerAndProducerApiSpec
   property("Simple consumer close fails with ConcurrentModificationException while polling") {
     val topic = createTopic()
     (for {
-      c <- ConsumerApi.create[IO, String, String](BootstrapServers(bootstrapServer))
+      c <- ConsumerApi.NonShifting.create[IO, String, String](BootstrapServers(bootstrapServer))
       _ <- c.assign(topic, Map.empty[TopicPartition, Long])
       _ <- Concurrent[IO].start(c.poll(1 second) *> c.close)
       e <- Timer[IO].sleep(100 millis) *> c.close.attempt
@@ -103,7 +103,7 @@ class ConsumerAndProducerApiSpec
   property("Simple consumer poll fails with WakeupException on wakeup") {
     val topic = createTopic()
     (for {
-      c <- ConsumerApi.create[IO, String, String](BootstrapServers(bootstrapServer))
+      c <- ConsumerApi.NonShifting.create[IO, String, String](BootstrapServers(bootstrapServer))
       _ <- c.assign(topic, Map.empty[TopicPartition, Long])
       _ <- Concurrent[IO].start(Timer[IO].sleep(100 millis) *> c.wakeup)
       e <- c.poll(1 second).attempt
@@ -117,7 +117,7 @@ class ConsumerAndProducerApiSpec
   property("Simple consumer close while polling") {
     val topic = createTopic()
     (for {
-      c <- ConsumerApi.create[IO, String, String](BootstrapServers(bootstrapServer))
+      c <- ConsumerApi.NonShifting.create[IO, String, String](BootstrapServers(bootstrapServer))
       _ <- c.assign(topic, Map.empty[TopicPartition, Long])
       f <- Concurrent[IO].start(c.pollAndRecoverWakeupWithClose(1 second))
       e1 <- Timer[IO].sleep(100 millis) *> c.closeAndRecoverConcurrentModificationWithWakeup.attempt
@@ -131,24 +131,21 @@ class ConsumerAndProducerApiSpec
   //If we shift all operations onto a singleton thread pool then they become sequential, so we can safely call poll and close concurrently without requiring recovery & wakeup
   property("Singleton shifting consumer close while polling") {
     val topic = createTopic()
-    val ctx = ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor())
     (for {
-      c <- ConsumerApi.createShifting[IO, String, String](ctx, BootstrapServers(bootstrapServer))
+      c <- ConsumerApi.create[IO, String, String](BootstrapServers(bootstrapServer))
       _ <- c.assign(topic, Map.empty[TopicPartition, Long])
       _ <- Concurrent[IO].start(c.poll(1 second))
       e <- Timer[IO].sleep(100 millis) *> c.close.attempt
     } yield {
       e.right.value should ===(())
     }).unsafeRunSync()
-    ctx.shutdown()
   }
 
   //wakeup is the one thread-safe operation, so we don't need to shift it
   property("Singleton shifting consumer poll fails with WakeupException on wakeup") {
     val topic = createTopic()
-    val ctx = ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor())
     (for {
-      c <- ConsumerApi.createShifting[IO, String, String](ctx, BootstrapServers(bootstrapServer))
+      c <- ConsumerApi.create[IO, String, String](BootstrapServers(bootstrapServer))
       _ <- c.assign(topic, Map.empty[TopicPartition, Long])
       _ <- Concurrent[IO].start(Timer[IO].sleep(100 millis) *> c.wakeup)
       e <- c.poll(1 second).attempt
@@ -156,7 +153,6 @@ class ConsumerAndProducerApiSpec
     } yield {
       e.left.value shouldBe a[WakeupException]
     }).unsafeRunSync()
-    ctx.shutdown()
   }
 
   property("Producer and Consumer APIs should write and read records") {
@@ -168,29 +164,6 @@ class ConsumerAndProducerApiSpec
       val actual = (for {
         p <- ProducerApi.stream[IO, String, String](BootstrapServers(bootstrapServer))
         c <- ConsumerApi.stream[IO, String, String](
-          BootstrapServers(bootstrapServer),
-          GroupId(groupId),
-          AutoOffsetReset.earliest
-        )
-        x <- writeAndRead(p, c, topic, values)
-      } yield x).compile.toVector.unsafeRunSync()
-      actual should ===(values)
-    }
-  }
-
-  property("Write and read in blocking context") {
-    val groupId = genGroupId
-    println(s"3 groupId=$groupId")
-    val topic = createTopic()
-
-    forAll { values: Vector[(Int, String)] =>
-      val actual = (for {
-        p <- ProducerApi.streamShifting[IO, Int, String](
-          producerContext,
-          BootstrapServers(bootstrapServer)
-        )
-        c <- ConsumerApi.streamShifting[IO, Int, String](
-          consumerContext,
           BootstrapServers(bootstrapServer),
           GroupId(groupId),
           AutoOffsetReset.earliest
@@ -305,7 +278,7 @@ class ConsumerAndProducerApiSpec
           BootstrapServers(bootstrapServer),
           SchemaRegistryUrl(schemaRegistryUrl)
         )
-        c <- ConsumerApi.streamAvroSpecific[IO, String, Person](
+        c <- ConsumerApi.Avro.Specific.stream[IO, String, Person](
           BootstrapServers(bootstrapServer),
           GroupId(groupId),
           AutoOffsetReset.earliest,
@@ -332,7 +305,7 @@ class ConsumerAndProducerApiSpec
           BootstrapServers(bootstrapServer),
           SchemaRegistryUrl(schemaRegistryUrl)
         )
-        c <- ConsumerApi.streamAvro4s[IO, PersonId, Person2](
+        c <- ConsumerApi.Avro4s.stream[IO, PersonId, Person2](
           BootstrapServers(bootstrapServer),
           GroupId(groupId),
           AutoOffsetReset.earliest,

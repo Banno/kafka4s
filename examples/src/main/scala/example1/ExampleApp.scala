@@ -66,24 +66,16 @@ final class ExampleApp[F[_]: Async: ContextShift] {
         )(_.close)
     )
 
-  val consumerThreadPoolResource = Resource.make(
-    Sync[F].delay(ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1)))
-  )(a => Sync[F].delay(a.shutdown()))
-
   val consumerResource =
-    producerThreadPoolResource.flatMap(
-      consumerPool =>
-        Resource.make(
-          ConsumerApi.avro4sShifting[F, CustomerId, Customer](
-            consumerPool,
-            BootstrapServers(kafkaBootstrapServers),
-            SchemaRegistryUrl(schemaRegistryUri),
-            ClientId("consumer-example"),
-            GroupId("consumer-example-group"),
-            EnableAutoCommit(false)
-          )
-        )(_.close)
-    )
+    Resource.make(
+      ConsumerApi.Avro4s.create[F, CustomerId, Customer](
+        BootstrapServers(kafkaBootstrapServers),
+        SchemaRegistryUrl(schemaRegistryUri),
+        ClientId("consumer-example"),
+        GroupId("consumer-example-group"),
+        EnableAutoCommit(false)
+      )
+    )(_.close)
 
   val example: F[Unit] =
     for {
