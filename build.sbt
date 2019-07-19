@@ -66,7 +66,7 @@ lazy val commonSettings = Seq(
   resolvers += "confluent" at "http://packages.confluent.io/maven/",
 
   addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3"),
-  addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0"),
+  addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
   libraryDependencies ++= Seq(
     "co.fs2"                       %% "fs2-core"                  % V.fs2,
     //TODO may no longer need logging excludes for kafka-clients, need to verify
