@@ -29,7 +29,7 @@ import org.apache.avro.generic.GenericRecord
 import com.sksamuel.avro4s.FromRecord
 import io.confluent.kafka.serializers.KafkaAvroDeserializer
 import com.banno.kafka._
-import java.util.concurrent.Executors
+import java.util.concurrent.{Executors, ThreadFactory}
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
 
 trait ConsumerApi[F[_], K, V] {
@@ -99,9 +99,19 @@ object ConsumerApi {
 
   object BlockingContext {
 
-    //TODO ThreadFactory to name thread properly
+    def threadFactory: ThreadFactory = new ThreadFactory {
+      val factory = Executors.defaultThreadFactory()
+      def newThread(r: Runnable): Thread = {
+        val t = factory.newThread(r)
+        t.setName("kafka4s-consumer")
+        t
+      }
+    }
+
     def default[F[_]: Sync]: F[ExecutionContextExecutorService] =
-      Sync[F].delay(ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor()))
+      Sync[F].delay(
+        ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor(threadFactory))
+      )
 
     def resource[F[_]: Sync]: Resource[F, ExecutionContextExecutorService] =
       Resource.make(default[F])(a => Sync[F].delay(a.shutdown()))
