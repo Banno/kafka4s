@@ -337,6 +337,7 @@ object PrometheusMetricsReporterApi {
           case MetricId("kafka-metrics-count", "count", _) => ignore
           case MetricId("app-info", "version", _) => ignore
           case MetricId("app-info", "commit-id", _) => ignore
+          case MetricId("app-info", "start-time-ms", _) => ignore
           case MetricId("producer-metrics", "batch-split-rate", _) => ignore
           case MetricId("producer-metrics", "buffer-exhausted-rate", _) => ignore
           case MetricId("producer-topic-metrics", "byte-rate", _) => ignore
@@ -391,7 +392,9 @@ object PrometheusMetricsReporterApi {
             ignore
 
           case id =>
-            log.error(s"Could not create Prometheus collector for unknown Kafka metric: $id")
+            log.error(
+              s"Could not create Prometheus collector for unknown Kafka producer metric: $id"
+            )
         }
       }
     }
@@ -647,6 +650,7 @@ object PrometheusMetricsReporterApi {
           case MetricId("kafka-metrics-count", "count", _) => ignore
           case MetricId("app-info", "version", _) => ignore
           case MetricId("app-info", "commit-id", _) => ignore
+          case MetricId("app-info", "start-time-ms", _) => ignore
           case MetricId("consumer-fetch-manager-metrics", "bytes-consumed-rate", _) => ignore
           case MetricId("consumer-coordinator-metrics", "commit-rate", _) => ignore
           case MetricId("consumer-metrics", "connection-close-rate", _) => ignore
@@ -725,7 +729,9 @@ object PrometheusMetricsReporterApi {
             ignore
 
           case id =>
-            log.error(s"Could not create Prometheus collector for unknown Kafka metric: $id")
+            log.error(
+              s"Could not create Prometheus collector for unknown Kafka consumer metric: $id"
+            )
         }
       }
     }
