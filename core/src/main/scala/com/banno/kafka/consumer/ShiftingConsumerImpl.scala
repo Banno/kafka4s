@@ -102,5 +102,14 @@ case class ShiftingConsumerImpl[F[_]: Async, K, V](
     CS.evalOn(blockingContext)(c.subscribe(pattern, callback))
   def subscription: F[Set[String]] = CS.evalOn(blockingContext)(c.subscription)
   def unsubscribe: F[Unit] = CS.evalOn(blockingContext)(c.unsubscribe)
-  def wakeup: F[Unit] = CS.evalOn(blockingContext)(c.wakeup)
+  def wakeup: F[Unit] = c.wakeup //TODO wakeup is the one method that is thread-safe, right?
+}
+
+object ShiftingConsumerImpl {
+  //returns the type expected when creating a Resource
+  def create[F[_]: Async: ContextShift, K, V](
+      c: ConsumerApi[F, K, V],
+      e: ExecutionContext
+  ): ConsumerApi[F, K, V] =
+    ShiftingConsumerImpl(c, e)
 }

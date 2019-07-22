@@ -170,34 +170,35 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
           F.pure(new ConsumerRecords(Map.empty.asJava))
     }
 
-  /** Calls poll repeatedly, each stream element is the entire collection of received records. This is a raw stream, no attempt is made to close any resources. */
-  def rawRecordsStream(
+  def pollAndRecoverWakeupWithNone(
       timeout: FiniteDuration
-  )(implicit F: ApplicativeError[F, Throwable]): Stream[F, ConsumerRecords[K, V]] =
-    Stream.repeatEval(consumer.pollAndRecoverWakeupWithClose(timeout))
+  )(implicit F: ApplicativeError[F, Throwable]): F[Option[ConsumerRecords[K, V]]] =
+    consumer.poll(timeout).map(_.some).recoverWith {
+      case _: WakeupException =>
+        consumer.close *>
+          none.pure[F]
+    }
 
-  /** Calls poll repeatedly, producing a chunk for each received collection of records. This is a raw stream, no attempt is made to close any resources. */
-  def rawRecordStream(
-      timeout: FiniteDuration
-  )(implicit F: ApplicativeError[F, Throwable]): Stream[F, ConsumerRecord[K, V]] =
-    rawRecordsStream(timeout).flatMap(
+  /*
+  - provide streams that repeatedly call poll()
+  - any call to poll can throw WakeupException (among others)
+    - will throw if wakeup is called before or during poll
+  - poll will return failed F
+  - ^^ will lead to stream failing
+  - commonly, poll throwing WakeupException means close consumer
+  - provide another function that halts the record stream on WakeupException
+  - if properly resourced, consumer will then be closed on stream halt
+   */
+
+  /** Calls poll repeatedly, each stream element is the entire collection of received records. */
+  def recordsStream(pollTimeout: FiniteDuration): Stream[F, ConsumerRecords[K, V]] =
+    Stream.repeatEval(consumer.poll(pollTimeout))
+
+  /** Calls poll repeatedly, producing a chunk for each received collection of records. */
+  def recordStream(pollTimeout: FiniteDuration): Stream[F, ConsumerRecord[K, V]] =
+    recordsStream(pollTimeout).flatMap(
       crs => Stream.chunk(Chunk.indexedSeq(crs.asScala.toIndexedSeq))
     )
-
-  def recordsStream(initialize: F[Unit], pollTimeout: FiniteDuration)(
-      implicit F: ApplicativeError[F, Throwable]
-  ): Stream[F, ConsumerRecords[K, V]] =
-    Stream
-      .bracket(initialize)(_ => consumer.closeAndRecoverConcurrentModificationWithWakeup)
-      .flatMap(_ => rawRecordsStream(pollTimeout))
-
-  /** Returns a stream of records initialized using the specified operations, and that closes the consumer when it halts. */
-  def recordStream(initialize: F[Unit], pollTimeout: FiniteDuration)(
-      implicit F: ApplicativeError[F, Throwable]
-  ): Stream[F, ConsumerRecord[K, V]] =
-    Stream
-      .bracket(initialize)(_ => consumer.closeAndRecoverConcurrentModificationWithWakeup)
-      .flatMap(_ => rawRecordStream(pollTimeout))
 
   /** Polls for and returns records until reading at least up to the specified final offsets. After the returned stream halts, records will have been returned at least up to,
     * and possibly after, the specified final offsets. The stream will not halt until reaching (at least) the specified offsets. The consumer is not modified,
@@ -208,7 +209,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       implicit F: MonadError[F, Throwable]
   ): Stream[F, ConsumerRecords[K, V]] =
     Stream.eval(consumer.assignmentPositions.map(_.mapValues(_ - 1))).flatMap { initialOffsets => //position is next offset consumer will read, assume already read up to offset before position
-      rawRecordsStream(timeout)
+      recordsStream(timeout)
         .mapAccumulate(initialOffsets)(
           (currentOffsets, records) => (currentOffsets ++ records.lastOffsets, records)
         )
@@ -237,13 +238,12 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
     * the stream will halt with that failure, and the record's offset will not be committed. This is still at-least-once processing, but records for which the function returns
     * success (and offset commit succeeds) will not be reprocessed after a subsequent failure; only records for which the function returns failure, or offset commits fail, will be reprocessed.
     * In some use cases this pattern is more appropriate than just using auto-offset-commits, since it will not commit offsets for failed records when the consumer is closed, and will likely result
-    * in less reprocessing after a failure.
-    * The consumer is initialized using the specified operation, and closed when the stream halts. The consumer must be configured to disable offset auto-commits. */
-  def readProcessCommit[A](initialize: F[Unit], pollTimeout: FiniteDuration)(
+    * in less reprocessing after a failure. The consumer must be configured to disable offset auto-commits. */
+  def readProcessCommit[A](pollTimeout: FiniteDuration)(
       process: ConsumerRecord[K, V] => F[A]
   )(implicit F: ApplicativeError[F, Throwable]): Stream[F, A] =
     consumer
-      .recordStream(initialize, pollTimeout)
+      .recordStream(pollTimeout)
       .evalMap(r => process(r) <* consumer.commitSync(r.nextOffset))
 
 }

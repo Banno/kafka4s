@@ -18,6 +18,7 @@ package com.banno.kafka.consumer
 
 import cats.implicits._
 import cats.effect.{Async, ContextShift, Resource, Sync}
+import fs2.Stream
 import java.util.regex.Pattern
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -28,8 +29,8 @@ import org.apache.avro.generic.GenericRecord
 import com.sksamuel.avro4s.FromRecord
 import io.confluent.kafka.serializers.KafkaAvroDeserializer
 import com.banno.kafka._
-import java.util.concurrent.Executors
-import scala.concurrent.ExecutionContext
+import java.util.concurrent.{Executors, ThreadFactory}
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
 
 trait ConsumerApi[F[_], K, V] {
   def assign(partitions: Iterable[TopicPartition]): F[Unit]
@@ -86,141 +87,223 @@ trait ConsumerApi[F[_], K, V] {
 
 object ConsumerApi {
 
-  def createConsumer[F[_]: Sync, K, V](configs: (String, AnyRef)*): F[KafkaConsumer[K, V]] =
+  def createKafkaConsumer[F[_]: Sync, K, V](configs: (String, AnyRef)*): F[KafkaConsumer[K, V]] =
     Sync[F].delay(new KafkaConsumer[K, V](configs.toMap.asJava))
 
-  def createConsumer[F[_]: Sync, K, V](
+  def createKafkaConsumer[F[_]: Sync, K, V](
       keyDeserializer: Deserializer[K],
       valueDeserializer: Deserializer[V],
       configs: (String, AnyRef)*
   ): F[KafkaConsumer[K, V]] =
     Sync[F].delay(new KafkaConsumer[K, V](configs.toMap.asJava, keyDeserializer, valueDeserializer))
 
-  def resourceKafkaConsumer[F[_]: Sync, K, V](
-      configs: (String, AnyRef)*
-  ): Resource[F, KafkaConsumer[K, V]] =
-    Resource.make(createConsumer[F, K, V](configs: _*))(a => Sync[F].delay(a.close()))
+  object BlockingContext {
 
-  def resourceKafkaConsumer[F[_]: Sync, K, V](
+    def threadFactory: ThreadFactory = new ThreadFactory {
+      val factory = Executors.defaultThreadFactory()
+      def newThread(r: Runnable): Thread = {
+        val t = factory.newThread(r)
+        t.setName("kafka4s-consumer")
+        t
+      }
+    }
+
+    def default[F[_]: Sync]: F[ExecutionContextExecutorService] =
+      Sync[F].delay(
+        ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor(threadFactory))
+      )
+
+    def resource[F[_]: Sync]: Resource[F, ExecutionContextExecutorService] =
+      Resource.make(default[F])(a => Sync[F].delay(a.shutdown()))
+  }
+
+  def apply[F[_]: Async: ContextShift, K, V](
+      configs: (String, AnyRef)*
+  ): F[(ConsumerApi[F, K, V], ExecutionContextExecutorService)] =
+    for {
+      c <- createKafkaConsumer[F, K, V](configs: _*).map(ConsumerImpl(_))
+      e <- BlockingContext.default
+    } yield (ShiftingConsumerImpl(c, e), e)
+
+  def apply[F[_]: Async: ContextShift, K, V](
       keyDeserializer: Deserializer[K],
       valueDeserializer: Deserializer[V],
       configs: (String, AnyRef)*
-  ): Resource[F, KafkaConsumer[K, V]] =
-    Resource.make(createConsumer[F, K, V](keyDeserializer, valueDeserializer, configs: _*))(
-      a => Sync[F].delay(a.close())
+  ): F[(ConsumerApi[F, K, V], ExecutionContextExecutorService)] =
+    for {
+      c <- createKafkaConsumer[F, K, V](keyDeserializer, valueDeserializer, configs: _*)
+        .map(ConsumerImpl(_))
+      e <- BlockingContext.default
+    } yield (ShiftingConsumerImpl(c, e), e)
+
+  def create[F[_]: Async: ContextShift, K: Deserializer, V: Deserializer](
+      configs: (String, AnyRef)*
+  ): F[(ConsumerApi[F, K, V], ExecutionContextExecutorService)] =
+    apply[F, K, V](implicitly[Deserializer[K]], implicitly[Deserializer[V]], configs: _*)
+
+  def resource[F[_]: Async: ContextShift, K, V](
+      keyDeserializer: Deserializer[K],
+      valueDeserializer: Deserializer[V],
+      configs: (String, AnyRef)*
+  ): Resource[F, ConsumerApi[F, K, V]] =
+    BlockingContext.resource.flatMap(
+      e =>
+        Resource.make(
+          createKafkaConsumer[F, K, V](keyDeserializer, valueDeserializer, configs: _*)
+            .map(c => ShiftingConsumerImpl.create(ConsumerImpl(c), e))
+        )(_.close)
     )
 
-  def apply[F[_]: Sync, K, V](configs: (String, AnyRef)*): F[ConsumerApi[F, K, V]] =
-    createConsumer[F, K, V](configs: _*).map(ConsumerImpl(_))
-
-  def apply[F[_]: Sync, K, V](
-      keyDeserializer: Deserializer[K],
-      valueDeserializer: Deserializer[V],
-      configs: (String, AnyRef)*
-  ): F[ConsumerApi[F, K, V]] =
-    createConsumer[F, K, V](keyDeserializer, valueDeserializer, configs: _*).map(ConsumerImpl(_))
-
-  def resource[F[_]: Sync, K: Deserializer, V: Deserializer](
+  def resource[F[_]: Async: ContextShift, K: Deserializer, V: Deserializer](
       configs: (String, AnyRef)*
   ): Resource[F, ConsumerApi[F, K, V]] =
     resource[F, K, V](implicitly[Deserializer[K]], implicitly[Deserializer[V]], configs: _*)
 
-  def resource[F[_]: Sync, K, V](
+  def stream[F[_]: Async: ContextShift, K, V](
       keyDeserializer: Deserializer[K],
       valueDeserializer: Deserializer[V],
       configs: (String, AnyRef)*
-  ): Resource[F, ConsumerApi[F, K, V]] =
-    resourceKafkaConsumer(keyDeserializer, valueDeserializer, configs: _*).map(ConsumerImpl(_))
+  ): Stream[F, ConsumerApi[F, K, V]] =
+    Stream.resource(resource[F, K, V](keyDeserializer, valueDeserializer, configs: _*))
 
-  def create[F[_]: Sync, K: Deserializer, V: Deserializer](
+  def stream[F[_]: Async: ContextShift, K: Deserializer, V: Deserializer](
       configs: (String, AnyRef)*
-  ): F[ConsumerApi[F, K, V]] =
-    apply[F, K, V](implicitly[Deserializer[K]], implicitly[Deserializer[V]], configs: _*)
+  ): Stream[F, ConsumerApi[F, K, V]] =
+    stream[F, K, V](implicitly[Deserializer[K]], implicitly[Deserializer[V]], configs: _*)
 
-  def shifting[F[_]: Async: ContextShift, K, V](
-      blockingContext: ExecutionContext,
-      configs: (String, AnyRef)*
-  ): F[ConsumerApi[F, K, V]] =
-    apply[F, K, V](configs: _*).map(ShiftingConsumerImpl(_, blockingContext))
+  object Avro {
 
-  def createShifting[F[_]: Async: ContextShift, K: Deserializer, V: Deserializer](
-      blockingContext: ExecutionContext,
-      configs: (String, AnyRef)*
-  ): F[ConsumerApi[F, K, V]] =
-    create[F, K, V](configs: _*).map(ShiftingConsumerImpl(_, blockingContext))
+    def create[F[_]: Async: ContextShift, K, V](
+        configs: (String, AnyRef)*
+    ): F[(ConsumerApi[F, K, V], ExecutionContextExecutorService)] =
+      ConsumerApi[F, K, V](
+        (
+          configs.toMap +
+            KeyDeserializerClass(classOf[KafkaAvroDeserializer]) +
+            ValueDeserializerClass(classOf[KafkaAvroDeserializer])
+        ).toSeq: _*
+      )
 
-  def avro[F[_]: Async, K, V](configs: (String, AnyRef)*): F[ConsumerApi[F, K, V]] =
-    apply[F, K, V](
-      (
-        configs.toMap +
-          KeyDeserializerClass(classOf[KafkaAvroDeserializer]) +
-          ValueDeserializerClass(classOf[KafkaAvroDeserializer])
-      ).toSeq: _*
-    )
+    def resource[F[_]: Async: ContextShift, K, V](
+        configs: (String, AnyRef)*
+    ): Resource[F, ConsumerApi[F, K, V]] =
+      BlockingContext.resource.flatMap(
+        e =>
+          Resource.make(
+            createKafkaConsumer[F, K, V](
+              (
+                configs.toMap +
+                  KeyDeserializerClass(classOf[KafkaAvroDeserializer]) +
+                  ValueDeserializerClass(classOf[KafkaAvroDeserializer])
+              ).toSeq: _*
+            ).map(c => ShiftingConsumerImpl.create(ConsumerImpl(c), e))
+          )(_.close)
+      )
 
-  def avroSpecific[F[_]: Async, K, V](configs: (String, AnyRef)*): F[ConsumerApi[F, K, V]] =
-    avro[F, K, V]((configs.toMap + SpecificAvroReader(true)).toSeq: _*)
+    def stream[F[_]: Async: ContextShift, K, V](
+        configs: (String, AnyRef)*
+    ): Stream[F, ConsumerApi[F, K, V]] =
+      Stream.resource(resource[F, K, V](configs: _*))
 
-  def createGenericConsumer[F[_]: Sync](
-      configs: (String, AnyRef)*
-  ): F[KafkaConsumer[GenericRecord, GenericRecord]] =
-    createConsumer[F, GenericRecord, GenericRecord](
-      (
-        configs.toMap +
-          KeyDeserializerClass(classOf[KafkaAvroDeserializer]) +
-          ValueDeserializerClass(classOf[KafkaAvroDeserializer])
-      ).toSeq: _*
-    )
+    object Generic {
 
-  def generic[F[_]: Async](
-      configs: (String, AnyRef)*
-  ): F[ConsumerApi[F, GenericRecord, GenericRecord]] =
-    createGenericConsumer[F](configs: _*).map(ConsumerImpl(_))
+      def create[F[_]: Async: ContextShift](
+          configs: (String, AnyRef)*
+      ): F[(ConsumerApi[F, GenericRecord, GenericRecord], ExecutionContextExecutorService)] =
+        ConsumerApi.Avro.create[F, GenericRecord, GenericRecord](configs: _*)
 
-  def resourceGeneric[F[_]: Async](
-      configs: (String, AnyRef)*
-  ): Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] =
-    resourceKafkaConsumer[F, GenericRecord, GenericRecord](
-      (
-        configs.toMap +
-          KeyDeserializerClass(classOf[KafkaAvroDeserializer]) +
-          ValueDeserializerClass(classOf[KafkaAvroDeserializer])
-      ).toSeq: _*
-    ).map(ConsumerImpl(_))
+      def resource[F[_]: Async: ContextShift](
+          configs: (String, AnyRef)*
+      ): Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] =
+        ConsumerApi.Avro.resource[F, GenericRecord, GenericRecord](configs: _*)
 
-  def avro4s[F[_]: Async, K: FromRecord, V: FromRecord](
-      configs: (String, AnyRef)*
-  ): F[ConsumerApi[F, K, V]] =
-    generic[F](configs: _*).map(Avro4sConsumerImpl(_))
+      def stream[F[_]: Async: ContextShift](
+          configs: (String, AnyRef)*
+      ): Stream[F, ConsumerApi[F, GenericRecord, GenericRecord]] =
+        Stream.resource(resource[F](configs: _*))
+    }
 
-  def resourceAvro4s[F[_]: Async, K: FromRecord, V: FromRecord](
-      configs: (String, AnyRef)*
-  ): Resource[F, ConsumerApi[F, K, V]] =
-    resourceGeneric[F](configs: _*).map(Avro4sConsumerImpl(_))
+    object Specific {
 
-  def avro4sShifting[F[_]: Async: ContextShift, K: FromRecord, V: FromRecord](
-      blockingContext: ExecutionContext,
-      configs: (String, AnyRef)*
-  ): F[ConsumerApi[F, K, V]] =
-    avro4s[F, K, V](configs: _*).map(ShiftingConsumerImpl(_, blockingContext))
+      def create[F[_]: Async: ContextShift, K, V](
+          configs: (String, AnyRef)*
+      ): F[(ConsumerApi[F, K, V], ExecutionContextExecutorService)] =
+        ConsumerApi.Avro.create[F, K, V]((configs.toMap + SpecificAvroReader(true)).toSeq: _*)
 
-  def resourceAvro4sShifting[F[_]: Async: ContextShift, K: FromRecord, V: FromRecord](
-      configs: (String, AnyRef)*
-  ): Resource[F, ConsumerApi[F, K, V]] =
-    defaultBlockingContext.flatMap(
-      blockingContext =>
-        resourceAvro4s[F, K, V](configs: _*).map(ShiftingConsumerImpl(_, blockingContext))
-    )
+      def resource[F[_]: Async: ContextShift, K, V](
+          configs: (String, AnyRef)*
+      ): Resource[F, ConsumerApi[F, K, V]] =
+        ConsumerApi.Avro.resource[F, K, V]((configs.toMap + SpecificAvroReader(true)).toSeq: _*)
 
-  def resourceAvro4sShiftingWithContext[F[_]: Async: ContextShift, K: FromRecord, V: FromRecord](
-      blockingContext: ExecutionContext,
-      configs: (String, AnyRef)*
-  ): Resource[F, ConsumerApi[F, K, V]] =
-    resourceAvro4s[F, K, V](configs: _*).map(ShiftingConsumerImpl(_, blockingContext))
+      def stream[F[_]: Async: ContextShift, K, V](
+          configs: (String, AnyRef)*
+      ): Stream[F, ConsumerApi[F, K, V]] =
+        Stream.resource(resource[F, K, V](configs: _*))
+    }
+  }
 
-  def defaultBlockingContext[F[_]: Sync] =
-    Resource.make(
-      Sync[F].delay(ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1)))
-    )(a => Sync[F].delay(a.shutdown()))
+  object Avro4s {
 
+    def create[F[_]: Async: ContextShift, K: FromRecord, V: FromRecord](
+        configs: (String, AnyRef)*
+    ): F[(ConsumerApi[F, K, V], ExecutionContextExecutorService)] =
+      ConsumerApi.Avro.Generic.create[F](configs: _*).map {
+        case (c, e) => (Avro4sConsumerImpl(c), e)
+      }
+
+    def resource[F[_]: Async: ContextShift, K: FromRecord, V: FromRecord](
+        configs: (String, AnyRef)*
+    ): Resource[F, ConsumerApi[F, K, V]] =
+      ConsumerApi.Avro.Generic.resource[F](configs: _*).map(Avro4sConsumerImpl(_))
+
+    def stream[F[_]: Async: ContextShift, K: FromRecord, V: FromRecord](
+        configs: (String, AnyRef)*
+    ): Stream[F, ConsumerApi[F, K, V]] =
+      Stream.resource(resource[F, K, V](configs: _*))
+  }
+
+  object NonShifting {
+
+    def apply[F[_]: Sync, K, V](
+        configs: (String, AnyRef)*
+    ): F[ConsumerApi[F, K, V]] =
+      createKafkaConsumer[F, K, V](configs: _*).map(ConsumerImpl(_))
+
+    def apply[F[_]: Sync, K, V](
+        keyDeserializer: Deserializer[K],
+        valueDeserializer: Deserializer[V],
+        configs: (String, AnyRef)*
+    ): F[ConsumerApi[F, K, V]] =
+      createKafkaConsumer[F, K, V](keyDeserializer, valueDeserializer, configs: _*)
+        .map(ConsumerImpl(_))
+
+    def create[F[_]: Sync, K: Deserializer, V: Deserializer](
+        configs: (String, AnyRef)*
+    ): F[ConsumerApi[F, K, V]] =
+      apply[F, K, V](implicitly[Deserializer[K]], implicitly[Deserializer[V]], configs: _*)
+
+    def resource[F[_]: Sync, K, V](
+        keyDeserializer: Deserializer[K],
+        valueDeserializer: Deserializer[V],
+        configs: (String, AnyRef)*
+    ): Resource[F, ConsumerApi[F, K, V]] =
+      Resource.make(apply[F, K, V](keyDeserializer, valueDeserializer, configs: _*))(_.close)
+
+    def resource[F[_]: Sync, K: Deserializer, V: Deserializer](
+        configs: (String, AnyRef)*
+    ): Resource[F, ConsumerApi[F, K, V]] =
+      resource[F, K, V](implicitly[Deserializer[K]], implicitly[Deserializer[V]], configs: _*)
+
+    def stream[F[_]: Sync, K, V](
+        keyDeserializer: Deserializer[K],
+        valueDeserializer: Deserializer[V],
+        configs: (String, AnyRef)*
+    ): Stream[F, ConsumerApi[F, K, V]] =
+      Stream.resource(resource[F, K, V](keyDeserializer, valueDeserializer, configs: _*))
+
+    def stream[F[_]: Sync, K: Deserializer, V: Deserializer](
+        configs: (String, AnyRef)*
+    ): Stream[F, ConsumerApi[F, K, V]] =
+      stream[F, K, V](implicitly[Deserializer[K]], implicitly[Deserializer[V]], configs: _*)
+  }
 }

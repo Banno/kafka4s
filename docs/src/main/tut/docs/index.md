@@ -95,7 +95,7 @@ import com.banno.kafka.producer._
 Now we can create our producer instance:
 
 ```tut
-val producer = ProducerApi.generic[IO](
+val producer = ProducerApi.Avro.Generic.create[IO](
   BootstrapServers(kafkaBootstrapServers),
   SchemaRegistryUrl(schemaRegistryUri),
   ClientId("producer-example")
@@ -145,7 +145,7 @@ import com.banno.kafka.consumer._
 
 Now we can create our consumer instance.
 
-We'll create a "shifting" Avro4s consumer, which will shift its blocking calls to a dedicated `ExecutionContext`, to avoid blocking the main work pool's (typically `ExecutionContext.global`) threads. After receiving records, work is then shifted back to the work pool. We'll want an implicit `ContextShift` instance in scope to manage this thread shifting for us.
+By default, kafka4s consumers shift blocking calls to a dedicated `ExecutionContext` backed by a singleton thread pool, to avoid blocking the main work pool's (typically `ExecutionContext.global`) threads, and as a simple synchronization mechanism because the underlying Java client `KafkaConsumer` is not thread-safe. After receiving records, work is then shifted back to the work pool. We'll want an implicit `ContextShift` instance in scope to manage this thread shifting for us.
 
 Here's our `ContextShift`:
 
@@ -154,12 +154,10 @@ import scala.concurrent.ExecutionContext
 implicit val CS = IO.contextShift(ExecutionContext.global)
 ```
 
-And here's our consumer, along with the `ExecutionContext` we'll want our consumer to use:
+And here's our consumer, which is using Avro4s to deserialize the records:
 
 ```tut
-val blockingContext = ExecutionContext.fromExecutorService(java.util.concurrent.Executors.newFixedThreadPool(1)) 
-val consumer = ConsumerApi.avro4sShifting[IO, CustomerId, Customer](
-  blockingContext,
+val (consumer, ctx) = ConsumerApi.Avro4s.create[IO, CustomerId, Customer](
   BootstrapServers(kafkaBootstrapServers), 
   SchemaRegistryUrl(schemaRegistryUri),
   ClientId("consumer-example"),
@@ -167,7 +165,7 @@ val consumer = ConsumerApi.avro4sShifting[IO, CustomerId, Customer](
 ).unsafeRunSync
 ```
 
-With our Kafka consumer in hand, we'll assign to our consumer to our topic partition, with no offsets, so that it starts reading from the first record.
+With our Kafka consumer in hand, we'll assign to our consumer our topic partition, with no offsets, so that it starts reading from the first record.
 ```tut
 import org.apache.kafka.common.TopicPartition
 val initialOffsets = Map.empty[TopicPartition, Long] // Start from beginning
@@ -177,14 +175,14 @@ consumer.assign(topicName, initialOffsets).unsafeRunSync
 And we can now read a stream of records from our Kafka topic:
 
 ```tut
-val messages = consumer.rawRecordStream(1.second).take(5).compile.toVector.unsafeRunSync
+val messages = consumer.recordStream(1.second).take(5).compile.toVector.unsafeRunSync
 ```
 
 To clean up after ourselves, we'll close and shut down our resources:
 ```tut
 consumer.close.unsafeRunSync
 producer.close.unsafeRunSync
-blockingContext.shutdown
+ctx.shutdown()
 ```
 
 Note that kafka4s provides constructors that return `cats.effect.Resource`s for the above resources, so that their shutdown steps are guaranteed to run after use. We're manually shutting down resources simply for the sake of example.

@@ -26,9 +26,7 @@ import com.banno.kafka.producer._
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.producer.ProducerRecord
 import scala.concurrent.duration._
-import java.util.concurrent.Executors
 import org.apache.kafka.common.TopicPartition
-import scala.concurrent.ExecutionContext
 
 final class ExampleApp[F[_]: Async: ContextShift] {
   import ExampleApp._
@@ -49,40 +47,20 @@ final class ExampleApp[F[_]: Async: ContextShift] {
     )
     .toVector
 
-  val producerThreadPoolResource = Resource.make(
-    Sync[F].delay(ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1)))
-  )(a => Sync[F].delay(a.shutdown()))
-
   val producerResource: Resource[F, ProducerApi[F, CustomerId, Customer]] =
-    producerThreadPoolResource.flatMap(
-      producerPool =>
-        Resource.make(
-          ProducerApi.avro4sShifting[F, CustomerId, Customer](
-            producerPool,
-            BootstrapServers(kafkaBootstrapServers),
-            SchemaRegistryUrl(schemaRegistryUri),
-            ClientId("producer-example")
-          )
-        )(_.close)
+    ProducerApi.Avro4s.resource[F, CustomerId, Customer](
+      BootstrapServers(kafkaBootstrapServers),
+      SchemaRegistryUrl(schemaRegistryUri),
+      ClientId("producer-example")
     )
 
-  val consumerThreadPoolResource = Resource.make(
-    Sync[F].delay(ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1)))
-  )(a => Sync[F].delay(a.shutdown()))
-
   val consumerResource =
-    producerThreadPoolResource.flatMap(
-      consumerPool =>
-        Resource.make(
-          ConsumerApi.avro4sShifting[F, CustomerId, Customer](
-            consumerPool,
-            BootstrapServers(kafkaBootstrapServers),
-            SchemaRegistryUrl(schemaRegistryUri),
-            ClientId("consumer-example"),
-            GroupId("consumer-example-group"),
-            EnableAutoCommit(false)
-          )
-        )(_.close)
+    ConsumerApi.Avro4s.resource[F, CustomerId, Customer](
+      BootstrapServers(kafkaBootstrapServers),
+      SchemaRegistryUrl(schemaRegistryUri),
+      ClientId("consumer-example"),
+      GroupId("consumer-example-group"),
+      EnableAutoCommit(false)
     )
 
   val example: F[Unit] =
@@ -110,18 +88,17 @@ final class ExampleApp[F[_]: Async: ContextShift] {
 
       _ <- consumerResource.use(
         consumer =>
-          consumer
-            .recordStream(
-              initialize = consumer.assign(topic.name, Map.empty[TopicPartition, Long]),
-              pollTimeout = 1.second
-            )
-            .take(producerRecords.size.toLong)
-            .evalMap(
-              cr =>
-                Sync[F].delay(println(s"Read consumer record: key ${cr.key} and value ${cr.value}"))
-            )
-            .compile
-            .drain
+          consumer.assign(topic.name, Map.empty[TopicPartition, Long]) *>
+            consumer
+              .recordStream(1.second)
+              .take(producerRecords.size.toLong)
+              .evalMap(
+                cr =>
+                  Sync[F]
+                    .delay(println(s"Read consumer record: key ${cr.key} and value ${cr.value}"))
+              )
+              .compile
+              .drain
       )
 
       _ <- Sync[F].delay(println("Finished kafka4s example"))

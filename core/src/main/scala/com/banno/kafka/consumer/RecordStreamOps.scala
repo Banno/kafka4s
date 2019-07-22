@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-package com.banno.kafka
+package com.banno.kafka.consumer
 
 import fs2.Stream
+import org.apache.kafka.common.errors.WakeupException
 
-package object consumer {
+case class RecordStreamOps[F[_], A](s: Stream[F, A]) {
 
-  implicit def consumerOps[F[_], K, V](c: ConsumerApi[F, K, V]): ConsumerOps[F, K, V] =
-    ConsumerOps[F, K, V](c)
-
-  implicit def recordStreamOps[F[_], A](s: Stream[F, A]): RecordStreamOps[F, A] =
-    RecordStreamOps[F, A](s)
-
+  def haltOnWakeup: Stream[F, A] =
+    s.handleErrorWith {
+      case _: WakeupException => Stream.empty
+    }
 }
