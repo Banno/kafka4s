@@ -15,26 +15,38 @@
 
 <p>Sending records to Kafka is an effect. If we wanted to periodically write random integers to a Kafka topic, we could do:</p>
 
-<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="nc">Stream</span>
-  <span class="o">.</span><span class="n">awakeDelay</span><span class="o">[</span><span class="kt">F</span><span class="o">](</span><span class="mi">1</span> <span class="n">second</span><span class="o">)</span>
-  <span class="o">.</span><span class="n">evalMap</span><span class="o">(</span>
-    <span class="k">_</span> <span class="k">=&gt;</span>
-      <span class="nc">Sync</span><span class="o">[</span><span class="kt">F</span><span class="o">]</span>
-        <span class="o">.</span><span class="n">delay</span><span class="o">(</span><span class="nc">Random</span><span class="o">.</span><span class="n">nextInt</span><span class="o">())</span>
-        <span class="o">.</span><span class="n">flatMap</span><span class="o">(</span><span class="n">i</span> <span class="k">=&gt;</span> <span class="n">producer</span><span class="o">.</span><span class="n">sendAndForget</span><span class="o">(</span><span class="k">new</span> <span class="nc">ProducerRecord</span><span class="o">(</span><span class="n">topic</span><span class="o">,</span> <span class="n">i</span><span class="o">,</span> <span class="n">i</span><span class="o">)))</span>
+<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="nc">ProducerApi</span>
+  <span class="o">.</span><span class="n">stream</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Int</span>, <span class="kt">Int</span><span class="o">](</span><span class="nc">BootstrapServers</span><span class="o">(</span><span class="n">kafkaBootstrapServers</span><span class="o">))</span>
+  <span class="o">.</span><span class="n">flatMap</span><span class="o">(</span>
+    <span class="n">p</span> <span class="k">=&gt;</span>
+      <span class="nc">Stream</span>
+        <span class="o">.</span><span class="n">awakeDelay</span><span class="o">[</span><span class="kt">F</span><span class="o">](</span><span class="mi">1</span> <span class="n">second</span><span class="o">)</span>
+        <span class="o">.</span><span class="n">evalMap</span><span class="o">(</span>
+          <span class="k">_</span> <span class="k">=&gt;</span>
+            <span class="nc">Sync</span><span class="o">[</span><span class="kt">F</span><span class="o">]</span>
+              <span class="o">.</span><span class="n">delay</span><span class="o">(</span><span class="nc">Random</span><span class="o">.</span><span class="n">nextInt</span><span class="o">())</span>
+              <span class="o">.</span><span class="n">flatMap</span><span class="o">(</span><span class="n">i</span> <span class="k">=&gt;</span> <span class="n">p</span><span class="o">.</span><span class="n">sendAndForget</span><span class="o">(</span><span class="k">new</span> <span class="nc">ProducerRecord</span><span class="o">(</span><span class="n">topic</span><span class="o">.</span><span class="n">name</span><span class="o">,</span> <span class="n">i</span><span class="o">,</span> <span class="n">i</span><span class="o">)))</span>
+        <span class="o">)</span>
   <span class="o">)</span>
 </code></pre>
 </div>
 
 <p>Polling Kafka for records is also an effect, and we can obtain a stream of records from a topic. We can print the even random integers from the above topic using:</p>
 
-<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">consumer</span><span class="o">.</span><span class="n">recordStream</span><span class="o">(</span>
-    <span class="n">initialize</span> <span class="k">=</span> <span class="n">consumer</span><span class="o">.</span><span class="n">subscribe</span><span class="o">(</span><span class="n">topic</span><span class="o">),</span>
-    <span class="n">pollTimeout</span> <span class="k">=</span> <span class="mf">1.</span><span class="n">second</span>
+<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="nc">ConsumerApi</span>
+  <span class="o">.</span><span class="n">stream</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Int</span>, <span class="kt">Int</span><span class="o">](</span>
+    <span class="nc">BootstrapServers</span><span class="o">(</span><span class="n">kafkaBootstrapServers</span><span class="o">),</span>
+    <span class="nc">GroupId</span><span class="o">(</span><span class="s">"example3"</span><span class="o">),</span>
+    <span class="nc">AutoOffsetReset</span><span class="o">.</span><span class="n">earliest</span><span class="o">,</span>
+    <span class="nc">EnableAutoCommit</span><span class="o">(</span><span class="kc">true</span><span class="o">)</span>
   <span class="o">)</span>
-  <span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="k">_</span><span class="o">.</span><span class="n">value</span><span class="o">)</span>
-  <span class="o">.</span><span class="n">filter</span><span class="o">(</span><span class="k">_</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span>
-  <span class="o">.</span><span class="n">evalMap</span><span class="o">(</span><span class="n">i</span> <span class="k">=&gt;</span> <span class="nc">Sync</span><span class="o">[</span><span class="kt">F</span><span class="o">].</span><span class="n">delay</span><span class="o">(</span><span class="n">println</span><span class="o">(</span><span class="n">i</span><span class="o">)))</span>
+  <span class="o">.</span><span class="n">evalTap</span><span class="o">(</span><span class="k">_</span><span class="o">.</span><span class="n">subscribe</span><span class="o">(</span><span class="n">topic</span><span class="o">.</span><span class="n">name</span><span class="o">))</span>
+  <span class="o">.</span><span class="n">flatMap</span><span class="o">(</span>
+    <span class="k">_</span><span class="o">.</span><span class="n">recordStream</span><span class="o">(</span><span class="mf">1.</span><span class="n">second</span><span class="o">)</span>
+      <span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="k">_</span><span class="o">.</span><span class="n">value</span><span class="o">)</span>
+      <span class="o">.</span><span class="n">filter</span><span class="o">(</span><span class="k">_</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span>
+      <span class="o">.</span><span class="n">evalMap</span><span class="o">(</span><span class="n">i</span> <span class="k">=&gt;</span> <span class="nc">Sync</span><span class="o">[</span><span class="kt">F</span><span class="o">].</span><span class="n">delay</span><span class="o">(</span><span class="n">println</span><span class="o">(</span><span class="n">i</span><span class="o">)))</span>
+  <span class="o">)</span>
 </code></pre>
 </div>
 
