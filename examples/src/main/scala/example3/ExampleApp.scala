@@ -34,34 +34,33 @@ final class ExampleApp[F[_]: Concurrent: ContextShift: Timer] {
   val topic = new NewTopic(s"example3", 1, 3)
   val kafkaBootstrapServers = "kafka.local:9092,kafka.local:9093"
 
-  val producer = ProducerApi.stream[F, Int, Int](BootstrapServers(kafkaBootstrapServers))
-
-  val consumer = ConsumerApi.stream[F, Int, Int](
-    BootstrapServers(kafkaBootstrapServers),
-    GroupId("example3"),
-    AutoOffsetReset.earliest,
-    EnableAutoCommit(true)
-  )
-
   val example: F[Unit] =
     for {
       _ <- Sync[F].delay(println("Starting kafka4s example"))
 
       _ <- AdminApi.createTopicsIdempotent[F](kafkaBootstrapServers, topic)
 
-      writeStream = producer.flatMap(
-        p =>
-          Stream
-            .awakeDelay[F](1 second)
-            .evalMap(
-              _ =>
-                Sync[F]
-                  .delay(Random.nextInt())
-                  .flatMap(i => p.sendAndForget(new ProducerRecord(topic.name, i, i)))
-            )
-      )
+      writeStream = ProducerApi
+        .stream[F, Int, Int](BootstrapServers(kafkaBootstrapServers))
+        .flatMap(
+          p =>
+            Stream
+              .awakeDelay[F](1 second)
+              .evalMap(
+                _ =>
+                  Sync[F]
+                    .delay(Random.nextInt())
+                    .flatMap(i => p.sendAndForget(new ProducerRecord(topic.name, i, i)))
+              )
+        )
 
-      readStream = consumer
+      readStream = ConsumerApi
+        .stream[F, Int, Int](
+          BootstrapServers(kafkaBootstrapServers),
+          GroupId("example3"),
+          AutoOffsetReset.earliest,
+          EnableAutoCommit(true)
+        )
         .evalTap(_.subscribe(topic.name))
         .flatMap(
           _.recordStream(1.second)
