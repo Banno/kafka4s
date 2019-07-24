@@ -17,7 +17,8 @@
 package com.banno.kafka.admin
 
 import cats.implicits._
-import cats.effect.{Bracket, Sync}
+import cats.effect.{Sync, Resource}
+import fs2.Stream
 import org.apache.kafka.common.TopicPartitionReplica
 import org.apache.kafka.common.config.ConfigResource
 import org.apache.kafka.common.acl.{AclBinding, AclBindingFilter}
@@ -108,32 +109,34 @@ trait AdminApi[F[_]] {
 
 object AdminApi {
 
-  def createClient[F[_]: Sync](configs: Map[String, AnyRef]): F[AdminClient] =
+  private[this] def createClient[F[_]: Sync](configs: Map[String, AnyRef]): F[AdminClient] =
     Sync[F].delay(AdminClient.create(configs.asJava))
-  def createClient[F[_]: Sync](configs: Properties): F[AdminClient] =
+  private[this] def createClient[F[_]: Sync](configs: Properties): F[AdminClient] =
     Sync[F].delay(AdminClient.create(configs))
-  def createClient[F[_]: Sync](configs: (String, AnyRef)*): F[AdminClient] =
-    createClient(configs.toMap)
 
-  def apply[F[_]: Sync](configs: Map[String, AnyRef]): F[AdminApi[F]] =
-    createClient[F](configs).map(AdminImpl[F](_))
-  def apply[F[_]: Sync](configs: Properties): F[AdminApi[F]] =
-    createClient[F](configs).map(AdminImpl[F](_))
-  def apply[F[_]: Sync](configs: (String, AnyRef)*): F[AdminApi[F]] = apply[F](configs.toMap)
+  def resource[F[_]: Sync](configs: Map[String, AnyRef]): Resource[F, AdminApi[F]] =
+    Resource.make(createClient[F](configs).map(AdminImpl.create[F](_)))(_.close)
+  def resource[F[_]: Sync](configs: Properties): Resource[F, AdminApi[F]] =
+    Resource.make(createClient[F](configs).map(AdminImpl.create[F](_)))(_.close)
+  def resource[F[_]: Sync](configs: (String, AnyRef)*): Resource[F, AdminApi[F]] = 
+    resource[F](configs.toMap)
 
-  def createTopicsIdempotent[F[_]: Sync: Bracket[?[_], Throwable]](
+  def stream[F[_]: Sync](configs: Map[String, AnyRef]): Stream[F, AdminApi[F]] =
+    Stream.resource(resource[F](configs))
+  def stream[F[_]: Sync](configs: Properties): Stream[F, AdminApi[F]] =
+    Stream.resource(resource[F](configs))
+  def stream[F[_]: Sync](configs: (String, AnyRef)*): Stream[F, AdminApi[F]] = 
+    stream[F](configs.toMap)
+
+  def createTopicsIdempotent[F[_]: Sync](
       bootstrapServers: String,
       topics: Iterable[NewTopic]
   ): F[CreateTopicsResult] =
-    Bracket[F, Throwable].bracket(AdminApi[F](BootstrapServers(bootstrapServers)))(
-      a => a.createTopicsIdempotent(topics)
-    )(_.close)
+    AdminApi.resource[F](BootstrapServers(bootstrapServers)).use(_.createTopicsIdempotent(topics))
 
-  def createTopicsIdempotent[F[_]: Sync: Bracket[?[_], Throwable]](
+  def createTopicsIdempotent[F[_]: Sync](
       bootstrapServers: String,
       topics: NewTopic*
   ): F[CreateTopicsResult] =
-    Bracket[F, Throwable].bracket(AdminApi[F](BootstrapServers(bootstrapServers)))(
-      a => a.createTopicsIdempotent(topics)
-    )(_.close)
+    createTopicsIdempotent[F](bootstrapServers, topics.toIterable)
 }

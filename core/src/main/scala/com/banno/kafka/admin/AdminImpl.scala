@@ -115,3 +115,7 @@ case class AdminImpl[F[_]](a: AdminClient)(implicit F: Sync[F]) extends AdminApi
   def listTopics: F[ListTopicsResult] = F.delay(a.listTopics())
   def listTopics(options: ListTopicsOptions): F[ListTopicsResult] = F.delay(a.listTopics(options))
 }
+
+object AdminImpl {
+  def create[F[_]: Sync](a: AdminClient): AdminApi[F] = AdminImpl[F](a)
+}
