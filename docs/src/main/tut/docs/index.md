@@ -99,7 +99,7 @@ val producer = ProducerApi.Avro.Generic.resource[IO](
   BootstrapServers(kafkaBootstrapServers),
   SchemaRegistryUrl(schemaRegistryUri),
   ClientId("producer-example")
-).unsafeRunSync
+)
 ```
 
 And we'll define some customer records to be written:
