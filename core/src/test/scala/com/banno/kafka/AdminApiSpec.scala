@@ -21,7 +21,8 @@ class AdminApiSpec extends FlatSpec with Matchers with InMemoryKafka {
         ns2 <- F.delay(ltr2.names.get())
       } yield (ns1, ns2)
 
-    val (before, after) = AdminApi.resource[IO](BootstrapServers(bootstrapServer)).use(program[IO]).unsafeRunSync()
+    val (before, after) =
+      AdminApi.resource[IO](BootstrapServers(bootstrapServer)).use(program[IO]).unsafeRunSync()
     before should not contain ("test1")
     after should contain("test1")
   }

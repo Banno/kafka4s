@@ -17,7 +17,7 @@
 package com.banno.kafka.admin
 
 import cats.implicits._
-import cats.effect.{Sync, Resource}
+import cats.effect.{Resource, Sync}
 import fs2.Stream
 import org.apache.kafka.common.TopicPartitionReplica
 import org.apache.kafka.common.config.ConfigResource
@@ -118,14 +118,14 @@ object AdminApi {
     Resource.make(createClient[F](configs).map(AdminImpl.create[F](_)))(_.close)
   def resource[F[_]: Sync](configs: Properties): Resource[F, AdminApi[F]] =
     Resource.make(createClient[F](configs).map(AdminImpl.create[F](_)))(_.close)
-  def resource[F[_]: Sync](configs: (String, AnyRef)*): Resource[F, AdminApi[F]] = 
+  def resource[F[_]: Sync](configs: (String, AnyRef)*): Resource[F, AdminApi[F]] =
     resource[F](configs.toMap)
 
   def stream[F[_]: Sync](configs: Map[String, AnyRef]): Stream[F, AdminApi[F]] =
     Stream.resource(resource[F](configs))
   def stream[F[_]: Sync](configs: Properties): Stream[F, AdminApi[F]] =
     Stream.resource(resource[F](configs))
-  def stream[F[_]: Sync](configs: (String, AnyRef)*): Stream[F, AdminApi[F]] = 
+  def stream[F[_]: Sync](configs: (String, AnyRef)*): Stream[F, AdminApi[F]] =
     stream[F](configs.toMap)
 
   def createTopicsIdempotent[F[_]: Sync](
