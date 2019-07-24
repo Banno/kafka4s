@@ -87,10 +87,12 @@ trait ConsumerApi[F[_], K, V] {
 
 object ConsumerApi {
 
-  def createKafkaConsumer[F[_]: Sync, K, V](configs: (String, AnyRef)*): F[KafkaConsumer[K, V]] =
+  private[this] def createKafkaConsumer[F[_]: Sync, K, V](
+      configs: (String, AnyRef)*
+  ): F[KafkaConsumer[K, V]] =
     Sync[F].delay(new KafkaConsumer[K, V](configs.toMap.asJava))
 
-  def createKafkaConsumer[F[_]: Sync, K, V](
+  private[this] def createKafkaConsumer[F[_]: Sync, K, V](
       keyDeserializer: Deserializer[K],
       valueDeserializer: Deserializer[V],
       configs: (String, AnyRef)*
@@ -99,47 +101,20 @@ object ConsumerApi {
 
   object BlockingContext {
 
-    def threadFactory: ThreadFactory = new ThreadFactory {
-      val factory = Executors.defaultThreadFactory()
-      def newThread(r: Runnable): Thread = {
-        val t = factory.newThread(r)
-        t.setName("kafka4s-consumer")
-        t
-      }
-    }
-
-    def default[F[_]: Sync]: F[ExecutionContextExecutorService] =
-      Sync[F].delay(
-        ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor(threadFactory))
-      )
-
     def resource[F[_]: Sync]: Resource[F, ExecutionContextExecutorService] =
-      Resource.make(default[F])(a => Sync[F].delay(a.shutdown()))
+      Resource.make(
+        Sync[F].delay(
+          ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor(new ThreadFactory {
+            val factory = Executors.defaultThreadFactory()
+            def newThread(r: Runnable): Thread = {
+              val t = factory.newThread(r)
+              t.setName("kafka4s-consumer")
+              t
+            }
+          }))
+        )
+      )(a => Sync[F].delay(a.shutdown()))
   }
-
-  def apply[F[_]: Async: ContextShift, K, V](
-      configs: (String, AnyRef)*
-  ): F[(ConsumerApi[F, K, V], ExecutionContextExecutorService)] =
-    for {
-      c <- createKafkaConsumer[F, K, V](configs: _*).map(ConsumerImpl(_))
-      e <- BlockingContext.default
-    } yield (ShiftingConsumerImpl(c, e), e)
-
-  def apply[F[_]: Async: ContextShift, K, V](
-      keyDeserializer: Deserializer[K],
-      valueDeserializer: Deserializer[V],
-      configs: (String, AnyRef)*
-  ): F[(ConsumerApi[F, K, V], ExecutionContextExecutorService)] =
-    for {
-      c <- createKafkaConsumer[F, K, V](keyDeserializer, valueDeserializer, configs: _*)
-        .map(ConsumerImpl(_))
-      e <- BlockingContext.default
-    } yield (ShiftingConsumerImpl(c, e), e)
-
-  def create[F[_]: Async: ContextShift, K: Deserializer, V: Deserializer](
-      configs: (String, AnyRef)*
-  ): F[(ConsumerApi[F, K, V], ExecutionContextExecutorService)] =
-    apply[F, K, V](implicitly[Deserializer[K]], implicitly[Deserializer[V]], configs: _*)
 
   def resource[F[_]: Async: ContextShift, K, V](
       keyDeserializer: Deserializer[K],
@@ -173,17 +148,6 @@ object ConsumerApi {
 
   object Avro {
 
-    def create[F[_]: Async: ContextShift, K, V](
-        configs: (String, AnyRef)*
-    ): F[(ConsumerApi[F, K, V], ExecutionContextExecutorService)] =
-      ConsumerApi[F, K, V](
-        (
-          configs.toMap +
-            KeyDeserializerClass(classOf[KafkaAvroDeserializer]) +
-            ValueDeserializerClass(classOf[KafkaAvroDeserializer])
-        ).toSeq: _*
-      )
-
     def resource[F[_]: Async: ContextShift, K, V](
         configs: (String, AnyRef)*
     ): Resource[F, ConsumerApi[F, K, V]] =
@@ -207,11 +171,6 @@ object ConsumerApi {
 
     object Generic {
 
-      def create[F[_]: Async: ContextShift](
-          configs: (String, AnyRef)*
-      ): F[(ConsumerApi[F, GenericRecord, GenericRecord], ExecutionContextExecutorService)] =
-        ConsumerApi.Avro.create[F, GenericRecord, GenericRecord](configs: _*)
-
       def resource[F[_]: Async: ContextShift](
           configs: (String, AnyRef)*
       ): Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] =
@@ -224,11 +183,6 @@ object ConsumerApi {
     }
 
     object Specific {
-
-      def create[F[_]: Async: ContextShift, K, V](
-          configs: (String, AnyRef)*
-      ): F[(ConsumerApi[F, K, V], ExecutionContextExecutorService)] =
-        ConsumerApi.Avro.create[F, K, V]((configs.toMap + SpecificAvroReader(true)).toSeq: _*)
 
       def resource[F[_]: Async: ContextShift, K, V](
           configs: (String, AnyRef)*
@@ -244,13 +198,6 @@ object ConsumerApi {
 
   object Avro4s {
 
-    def create[F[_]: Async: ContextShift, K: FromRecord, V: FromRecord](
-        configs: (String, AnyRef)*
-    ): F[(ConsumerApi[F, K, V], ExecutionContextExecutorService)] =
-      ConsumerApi.Avro.Generic.create[F](configs: _*).map {
-        case (c, e) => (Avro4sConsumerImpl(c), e)
-      }
-
     def resource[F[_]: Async: ContextShift, K: FromRecord, V: FromRecord](
         configs: (String, AnyRef)*
     ): Resource[F, ConsumerApi[F, K, V]] =
@@ -264,30 +211,15 @@ object ConsumerApi {
 
   object NonShifting {
 
-    def apply[F[_]: Sync, K, V](
-        configs: (String, AnyRef)*
-    ): F[ConsumerApi[F, K, V]] =
-      createKafkaConsumer[F, K, V](configs: _*).map(ConsumerImpl(_))
-
-    def apply[F[_]: Sync, K, V](
-        keyDeserializer: Deserializer[K],
-        valueDeserializer: Deserializer[V],
-        configs: (String, AnyRef)*
-    ): F[ConsumerApi[F, K, V]] =
-      createKafkaConsumer[F, K, V](keyDeserializer, valueDeserializer, configs: _*)
-        .map(ConsumerImpl(_))
-
-    def create[F[_]: Sync, K: Deserializer, V: Deserializer](
-        configs: (String, AnyRef)*
-    ): F[ConsumerApi[F, K, V]] =
-      apply[F, K, V](implicitly[Deserializer[K]], implicitly[Deserializer[V]], configs: _*)
-
     def resource[F[_]: Sync, K, V](
         keyDeserializer: Deserializer[K],
         valueDeserializer: Deserializer[V],
         configs: (String, AnyRef)*
     ): Resource[F, ConsumerApi[F, K, V]] =
-      Resource.make(apply[F, K, V](keyDeserializer, valueDeserializer, configs: _*))(_.close)
+      Resource.make(
+        createKafkaConsumer[F, K, V](keyDeserializer, valueDeserializer, configs: _*)
+          .map(ConsumerImpl.create(_))
+      )(_.close)
 
     def resource[F[_]: Sync, K: Deserializer, V: Deserializer](
         configs: (String, AnyRef)*

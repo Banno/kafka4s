@@ -134,3 +134,11 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
   def unsubscribe: F[Unit] = F.delay(c.unsubscribe())
   def wakeup: F[Unit] = F.delay(c.wakeup())
 }
+
+object ConsumerImpl {
+  //returns the type expected when creating a Resource
+  def create[F[_]: Sync, K, V](
+      c: Consumer[K, V]
+  ): ConsumerApi[F, K, V] =
+    ConsumerImpl(c)
+}

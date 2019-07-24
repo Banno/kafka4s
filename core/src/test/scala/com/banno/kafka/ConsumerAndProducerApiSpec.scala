@@ -87,71 +87,96 @@ class ConsumerAndProducerApiSpec
   //KafkaConsumer is not thread-safe; if one thread is calling poll while another concurrently calls close, close will throw ConcurrentModificationException
   property("Simple consumer close fails with ConcurrentModificationException while polling") {
     val topic = createTopic()
-    (for {
-      c <- ConsumerApi.NonShifting.create[IO, String, String](BootstrapServers(bootstrapServer))
-      _ <- c.assign(topic, Map.empty[TopicPartition, Long])
-      _ <- Concurrent[IO].start(c.poll(1 second) *> c.close)
-      e <- Timer[IO].sleep(100 millis) *> c.close.attempt
-    } yield {
-      e.left.value shouldBe a[ConcurrentModificationException]
-    }).unsafeRunSync()
+    ConsumerApi.NonShifting
+      .resource[IO, String, String](BootstrapServers(bootstrapServer))
+      .use(
+        c =>
+          for {
+            _ <- c.assign(topic, Map.empty[TopicPartition, Long])
+            f <- Concurrent[IO].start(c.poll(1 second))
+            e <- Timer[IO].sleep(100 millis) *> c.close.attempt
+            _ <- f.join
+          } yield {
+            e.left.value shouldBe a[ConcurrentModificationException]
+          }
+      )
+      .unsafeRunSync()
   }
 
   //Calling KafkaConsumer.wakeup will cause any other concurrent operation to throw WakeupException
   property("Simple consumer poll fails with WakeupException on wakeup") {
     val topic = createTopic()
-    (for {
-      c <- ConsumerApi.NonShifting.create[IO, String, String](BootstrapServers(bootstrapServer))
-      _ <- c.assign(topic, Map.empty[TopicPartition, Long])
-      _ <- Concurrent[IO].start(Timer[IO].sleep(100 millis) *> c.wakeup)
-      e <- c.poll(1 second).attempt
-      _ <- c.close
-    } yield {
-      e.left.value shouldBe a[WakeupException]
-    }).unsafeRunSync()
+    ConsumerApi.NonShifting
+      .resource[IO, String, String](BootstrapServers(bootstrapServer))
+      .use(
+        c =>
+          for {
+            _ <- c.assign(topic, Map.empty[TopicPartition, Long])
+            _ <- Concurrent[IO].start(Timer[IO].sleep(100 millis) *> c.wakeup)
+            e <- c.poll(1 second).attempt
+          } yield {
+            e.left.value shouldBe a[WakeupException]
+          }
+      )
+      .unsafeRunSync()
   }
 
   //If we recover from close failing with CME by calling wakeup, and recover from poll failing with WE by calling close, we can call poll and close concurrently
   property("Simple consumer close while polling") {
     val topic = createTopic()
-    (for {
-      c <- ConsumerApi.NonShifting.create[IO, String, String](BootstrapServers(bootstrapServer))
-      _ <- c.assign(topic, Map.empty[TopicPartition, Long])
-      f <- Concurrent[IO].start(c.pollAndRecoverWakeupWithClose(1 second))
-      e1 <- Timer[IO].sleep(100 millis) *> c.closeAndRecoverConcurrentModificationWithWakeup.attempt
-      e2 <- f.join.attempt
-    } yield {
-      e1.right.value should ===(())
-      e2.right.value.count should ===(0)
-    }).unsafeRunSync()
+    ConsumerApi.NonShifting
+      .resource[IO, String, String](BootstrapServers(bootstrapServer))
+      .allocated
+      .map {
+        case (c, _) =>
+          for {
+            _ <- c.assign(topic, Map.empty[TopicPartition, Long])
+            f <- Concurrent[IO].start(c.pollAndRecoverWakeupWithClose(1 second))
+            e1 <- Timer[IO].sleep(100 millis) *> c.closeAndRecoverConcurrentModificationWithWakeup.attempt
+            e2 <- f.join.attempt
+          } yield {
+            e1.right.value should ===(())
+            e2.right.value.count should ===(0)
+          }
+      }
+      .unsafeRunSync()
   }
 
   //If we shift all operations onto a singleton thread pool then they become sequential, so we can safely call poll and close concurrently without requiring recovery & wakeup
   property("Singleton shifting consumer close while polling") {
     val topic = createTopic()
-    (for {
-      (c, x) <- ConsumerApi.create[IO, String, String](BootstrapServers(bootstrapServer))
-      _ <- c.assign(topic, Map.empty[TopicPartition, Long])
-      _ <- Concurrent[IO].start(c.poll(1 second))
-      e <- Timer[IO].sleep(100 millis) *> c.close.attempt <* IO(x.shutdown())
-    } yield {
-      e.right.value should ===(())
-    }).unsafeRunSync()
+    ConsumerApi
+      .resource[IO, String, String](BootstrapServers(bootstrapServer))
+      .allocated
+      .map {
+        case (c, close) =>
+          for {
+            _ <- c.assign(topic, Map.empty[TopicPartition, Long])
+            _ <- Concurrent[IO].start(c.poll(1 second))
+            e <- Timer[IO].sleep(100 millis) *> close.attempt
+          } yield {
+            e.right.value should ===(())
+          }
+      }
+      .unsafeRunSync()
   }
 
   //wakeup is the one thread-safe operation, so we don't need to shift it
   property("Singleton shifting consumer poll fails with WakeupException on wakeup") {
     val topic = createTopic()
-    (for {
-      (c, x) <- ConsumerApi.create[IO, String, String](BootstrapServers(bootstrapServer))
-      _ <- c.assign(topic, Map.empty[TopicPartition, Long])
-      _ <- Concurrent[IO].start(Timer[IO].sleep(100 millis) *> c.wakeup)
-      e <- c.poll(1 second).attempt
-      _ <- c.close
-      _ <- IO(x.shutdown())
-    } yield {
-      e.left.value shouldBe a[WakeupException]
-    }).unsafeRunSync()
+    ConsumerApi
+      .resource[IO, String, String](BootstrapServers(bootstrapServer))
+      .use(
+        c =>
+          for {
+            _ <- c.assign(topic, Map.empty[TopicPartition, Long])
+            _ <- Concurrent[IO].start(Timer[IO].sleep(100 millis) *> c.wakeup)
+            e <- c.poll(1 second).attempt
+          } yield {
+            e.left.value shouldBe a[WakeupException]
+          }
+      )
+      .unsafeRunSync()
   }
 
   property("Producer and Consumer APIs should write and read records") {
