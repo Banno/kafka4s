@@ -88,3 +88,11 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
   def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata] =
     F.async(sendRaw(record, _))
 }
+
+object ProducerImpl {
+  //returns the type expected when creating a Resource
+  def create[F[_]: Async, K, V](
+      p: Producer[K, V]
+  ): ProducerApi[F, K, V] =
+    ProducerImpl(p)
+}
