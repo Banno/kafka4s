@@ -95,11 +95,11 @@ import com.banno.kafka.producer._
 Now we can create our producer instance:
 
 ```tut
-val producer = ProducerApi.Avro.Generic.create[IO](
+val producer = ProducerApi.Avro.Generic.resource[IO](
   BootstrapServers(kafkaBootstrapServers),
   SchemaRegistryUrl(schemaRegistryUri),
   ClientId("producer-example")
-).unsafeRunSync
+)
 ```
 
 And we'll define some customer records to be written:
@@ -112,7 +112,7 @@ val recordsToBeWritten = (1 to 10).map(a => new ProducerRecord(topicName, Custom
 And now we can (attempt to) write our records to Kafka:
 
 ```tut:fail
-recordsToBeWritten.traverse_(producer.sendSync)
+producer.use(p => recordsToBeWritten.traverse_(p.sendSync))
 ```
 
 The above fails to compile, however! Our producer writes generic
@@ -125,13 +125,13 @@ topic. For this, we can use Kafka4s' `avro4s` integration!
 Turning a generic producer into a typed producer is as simple as the following:
 
 ```tut
-val avro4sProducer = producer.toAvro4s[CustomerId, Customer]
+val avro4sProducer = producer.map(_.toAvro4s[CustomerId, Customer])
 ```
 
 We can now write our typed customer records successfully!
 
 ```tut
-recordsToBeWritten.traverse_(r => avro4sProducer.sendSync(r).flatMap(rmd => IO(println(s"Wrote record to ${rmd}")))).unsafeRunSync
+avro4sProducer.use(p => recordsToBeWritten.traverse_(r => p.sendSync(r).flatMap(rmd => IO(println(s"Wrote record to ${rmd}"))))).unsafeRunSync
 ```
 
 ### Read our records from Kafka
@@ -157,34 +157,21 @@ implicit val CS = IO.contextShift(ExecutionContext.global)
 And here's our consumer, which is using Avro4s to deserialize the records:
 
 ```tut
-val (consumer, ctx) = ConsumerApi.Avro4s.create[IO, CustomerId, Customer](
+val consumer = ConsumerApi.Avro4s.resource[IO, CustomerId, Customer](
   BootstrapServers(kafkaBootstrapServers), 
   SchemaRegistryUrl(schemaRegistryUri),
   ClientId("consumer-example"),
   GroupId("consumer-example-group")
-).unsafeRunSync
+)
 ```
 
-With our Kafka consumer in hand, we'll assign to our consumer our topic partition, with no offsets, so that it starts reading from the first record.
+With our Kafka consumer in hand, we'll assign to our consumer our topic partition, with no offsets, so that it starts reading from the first record, and read a stream of records from our Kafka topic:
 ```tut
 import org.apache.kafka.common.TopicPartition
 val initialOffsets = Map.empty[TopicPartition, Long] // Start from beginning
-consumer.assign(topicName, initialOffsets).unsafeRunSync
+val messages = consumer.use(c => c.assign(topicName, initialOffsets) *> c.recordStream(1.second).take(5).compile.toVector).unsafeRunSync
 ```
 
-And we can now read a stream of records from our Kafka topic:
-
-```tut
-val messages = consumer.recordStream(1.second).take(5).compile.toVector.unsafeRunSync
-```
-
-To clean up after ourselves, we'll close and shut down our resources:
-```tut
-consumer.close.unsafeRunSync
-producer.close.unsafeRunSync
-ctx.shutdown()
-```
-
-Note that kafka4s provides constructors that return `cats.effect.Resource`s for the above resources, so that their shutdown steps are guaranteed to run after use. We're manually shutting down resources simply for the sake of example.
+Because the producer and consumer above were created within a `Resource` context, everything was closed and shut down properly.
 
 Now that we've seen a quick overview, we can take a look at more in-depth documentation of Kafka4s utilities.

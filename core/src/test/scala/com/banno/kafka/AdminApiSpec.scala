@@ -19,14 +19,10 @@ class AdminApiSpec extends FlatSpec with Matchers with InMemoryKafka {
         _ <- admin.createTopicsIdempotent(List(new NewTopic("test1", 1, 1)))
         ltr2 <- admin.listTopics
         ns2 <- F.delay(ltr2.names.get())
-        _ <- admin.close
       } yield (ns1, ns2)
 
-    val io = for {
-      admin <- AdminApi[IO](BootstrapServers(bootstrapServer))
-      results <- program(admin)
-    } yield results
-    val (before, after) = io.unsafeRunSync()
+    val (before, after) =
+      AdminApi.resource[IO](BootstrapServers(bootstrapServer)).use(program[IO]).unsafeRunSync()
     before should not contain ("test1")
     after should contain("test1")
   }
