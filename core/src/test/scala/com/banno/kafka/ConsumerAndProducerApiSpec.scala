@@ -186,11 +186,15 @@ class ConsumerAndProducerApiSpec
 
     forAll { values: Vector[(String, String)] =>
       val actual = (for {
-        p <- ProducerApi.stream[IO, String, String](BootstrapServers(bootstrapServer))
-        c <- ConsumerApi.stream[IO, String, String](
-          BootstrapServers(bootstrapServer),
-          GroupId(groupId),
-          AutoOffsetReset.earliest
+        p <- Stream.resource(
+          ProducerApi.resource[IO, String, String](BootstrapServers(bootstrapServer))
+        )
+        c <- Stream.resource(
+          ConsumerApi.resource[IO, String, String](
+            BootstrapServers(bootstrapServer),
+            GroupId(groupId),
+            AutoOffsetReset.earliest
+          )
         )
         x <- writeAndRead(p, c, topic, values)
       } yield x).compile.toVector.unsafeRunSync()
@@ -268,12 +272,15 @@ class ConsumerAndProducerApiSpec
       _ <- ProducerApi
         .resource[IO, String, String](BootstrapServers(bootstrapServer))
         .use(_.sendSyncBatch(expected.map(s => new ProducerRecord(topic, s, s))))
-      consume: Stream[IO, String] = ConsumerApi
-        .stream[IO, String, String](
-          BootstrapServers(bootstrapServer),
-          GroupId(groupId),
-          AutoOffsetReset.earliest,
-          EnableAutoCommit(false)
+      consume: Stream[IO, String] = Stream
+        .resource(
+          ConsumerApi
+            .resource[IO, String, String](
+              BootstrapServers(bootstrapServer),
+              GroupId(groupId),
+              AutoOffsetReset.earliest,
+              EnableAutoCommit(false)
+            )
         )
         .evalTap(_.subscribe(topic))
         .flatMap(_.readProcessCommit(100 millis)(r => storeOrFail(values, r.value))) //only consumes until a failure)
@@ -298,15 +305,19 @@ class ConsumerAndProducerApiSpec
 
     forAll { values: Vector[(String, Person)] =>
       val actual = (for {
-        p <- ProducerApi.Avro.stream[IO, String, Person](
-          BootstrapServers(bootstrapServer),
-          SchemaRegistryUrl(schemaRegistryUrl)
+        p <- Stream.resource(
+          ProducerApi.Avro.resource[IO, String, Person](
+            BootstrapServers(bootstrapServer),
+            SchemaRegistryUrl(schemaRegistryUrl)
+          )
         )
-        c <- ConsumerApi.Avro.Specific.stream[IO, String, Person](
-          BootstrapServers(bootstrapServer),
-          GroupId(groupId),
-          AutoOffsetReset.earliest,
-          SchemaRegistryUrl(schemaRegistryUrl)
+        c <- Stream.resource(
+          ConsumerApi.Avro.Specific.resource[IO, String, Person](
+            BootstrapServers(bootstrapServer),
+            GroupId(groupId),
+            AutoOffsetReset.earliest,
+            SchemaRegistryUrl(schemaRegistryUrl)
+          )
         )
         v <- writeAndRead(p, c, topic, values)
       } yield v).compile.toVector.unsafeRunSync()
@@ -325,15 +336,19 @@ class ConsumerAndProducerApiSpec
 
     forAll { values: Vector[(PersonId, Person2)] =>
       val actual = (for {
-        p <- ProducerApi.Avro4s.stream[IO, PersonId, Person2](
-          BootstrapServers(bootstrapServer),
-          SchemaRegistryUrl(schemaRegistryUrl)
+        p <- Stream.resource(
+          ProducerApi.Avro4s.resource[IO, PersonId, Person2](
+            BootstrapServers(bootstrapServer),
+            SchemaRegistryUrl(schemaRegistryUrl)
+          )
         )
-        c <- ConsumerApi.Avro4s.stream[IO, PersonId, Person2](
-          BootstrapServers(bootstrapServer),
-          GroupId(groupId),
-          AutoOffsetReset.earliest,
-          SchemaRegistryUrl(schemaRegistryUrl)
+        c <- Stream.resource(
+          ConsumerApi.Avro4s.resource[IO, PersonId, Person2](
+            BootstrapServers(bootstrapServer),
+            GroupId(groupId),
+            AutoOffsetReset.earliest,
+            SchemaRegistryUrl(schemaRegistryUrl)
+          )
         )
         v <- writeAndRead(p, c, topic, values)
       } yield v).compile.toVector.unsafeRunSync()
