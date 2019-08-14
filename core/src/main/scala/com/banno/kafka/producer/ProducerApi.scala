@@ -18,7 +18,6 @@ package com.banno.kafka.producer
 
 import cats.implicits._
 import cats.effect.{Async, Resource, Sync}
-import fs2.Stream
 import java.util.concurrent.{Future => JFuture}
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -90,18 +89,6 @@ object ProducerApi {
   ): Resource[F, ProducerApi[F, K, V]] =
     resource[F, K, V](implicitly[Serializer[K]], implicitly[Serializer[V]], configs: _*)
 
-  def stream[F[_]: Async, K, V](
-      keySerializer: Serializer[K],
-      valueSerializer: Serializer[V],
-      configs: (String, AnyRef)*
-  ): Stream[F, ProducerApi[F, K, V]] =
-    Stream.resource(resource[F, K, V](keySerializer, valueSerializer, configs: _*))
-
-  def stream[F[_]: Async, K: Serializer, V: Serializer](
-      configs: (String, AnyRef)*
-  ): Stream[F, ProducerApi[F, K, V]] =
-    stream[F, K, V](implicitly[Serializer[K]], implicitly[Serializer[V]], configs: _*)
-
   object Avro {
 
     def resource[F[_]: Async, K, V](
@@ -117,9 +104,6 @@ object ProducerApi {
         ).map(ProducerImpl.create[F, K, V](_))
       )(_.close)
 
-    def stream[F[_]: Async, K, V](configs: (String, AnyRef)*): Stream[F, ProducerApi[F, K, V]] =
-      Stream.resource(resource[F, K, V](configs: _*))
-
     object Generic {
 
       def resource[F[_]: Async](
@@ -127,10 +111,6 @@ object ProducerApi {
       ): Resource[F, ProducerApi[F, GenericRecord, GenericRecord]] =
         ProducerApi.Avro.resource[F, GenericRecord, GenericRecord](configs: _*)
 
-      def stream[F[_]: Async](
-          configs: (String, AnyRef)*
-      ): Stream[F, ProducerApi[F, GenericRecord, GenericRecord]] =
-        Stream.resource(resource[F](configs: _*))
     }
 
     object Specific {
@@ -145,9 +125,5 @@ object ProducerApi {
     ): Resource[F, ProducerApi[F, K, V]] =
       ProducerApi.Avro.Generic.resource[F](configs: _*).map(Avro4sProducerImpl(_))
 
-    def stream[F[_]: Async, K: ToRecord, V: ToRecord](
-        configs: (String, AnyRef)*
-    ): Stream[F, ProducerApi[F, K, V]] =
-      Stream.resource(resource[F, K, V](configs: _*))
   }
 }
