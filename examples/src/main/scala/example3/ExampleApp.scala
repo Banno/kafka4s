@@ -40,7 +40,8 @@ final class ExampleApp[F[_]: Concurrent: ContextShift: Timer] {
 
       _ <- AdminApi.createTopicsIdempotent[F](kafkaBootstrapServers, topic)
 
-      writeStream = Stream.resource(ProducerApi.resource[F, Int, Int](BootstrapServers(kafkaBootstrapServers))
+      writeStream = Stream.resource(
+        ProducerApi.resource[F, Int, Int](BootstrapServers(kafkaBootstrapServers))
           .map(p =>
             Timer[F].sleep(1 second).flatMap(_ =>
               Sync[F].delay(Random.nextInt()).flatMap(i => p.sendAndForget(new ProducerRecord(topic.name, i, i)))

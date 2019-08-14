@@ -18,30 +18,26 @@ libraryDependencies ++= Seq(
 Sending records to Kafka is an effect. If we wanted to periodically write random integers to a Kafka topic, we could do:
 
 ```scala
-ProducerApi
-  .stream[F, Int, Int](BootstrapServers(kafkaBootstrapServers))
-  .flatMap(
-    p =>
-      Stream
-        .awakeDelay[F](1 second)
-        .evalMap(
-          _ =>
-            Sync[F]
-              .delay(Random.nextInt())
-              .flatMap(i => p.sendAndForget(new ProducerRecord(topic.name, i, i)))
-        )
-  )
+ProducerApi.resource[F, Int, Int](BootstrapServers(kafkaBootstrapServers))
+  .map(p =>
+    Timer[F].sleep(1 second).flatMap(_ =>
+      Sync[F].delay(Random.nextInt()).flatMap(
+        i => p.sendAndForget(new ProducerRecord(topic.name, i, i)))
+    )
+  ))
 ```
 
 Polling Kafka for records is also an effect, and we can obtain a stream of records from a topic. We can print the even random integers from the above topic using:
 
 ```scala
-ConsumerApi
-  .stream[F, Int, Int](
-    BootstrapServers(kafkaBootstrapServers),
-    GroupId("example3"),
-    AutoOffsetReset.earliest,
-    EnableAutoCommit(true)
+Stream.resource(
+   ConsumerApi
+      .resource[F, Int, Int](
+        BootstrapServers(kafkaBootstrapServers),
+        GroupId("example3"),
+        AutoOffsetReset.earliest,
+        EnableAutoCommit(true)
+      )
   )
   .evalTap(_.subscribe(topic.name))
   .flatMap(
