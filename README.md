@@ -19,13 +19,19 @@ Sending records to Kafka is an effect. If we wanted to periodically write random
 
 ```scala
 Stream.resource(
-   ProducerApi.resource[F, Int, Int](BootstrapServers(kafkaBootstrapServers))
-  .map(p =>
-    Timer[F].sleep(1 second).flatMap(_ =>
-      Sync[F].delay(Random.nextInt()).flatMap(
-        i => p.sendAndForget(new ProducerRecord(topic.name, i, i)))
-    )
-  ))
+ProducerApi
+  .resource[F, Int, Int](BootstrapServers(kafkaBootstrapServers))
+  .map(
+    p =>
+      Timer[F]
+        .sleep(1 second)
+        .flatMap(
+          _ =>
+            Sync[F]
+              .delay(Random.nextInt())
+              .flatMap(i => p.sendAndForget(new ProducerRecord(topic.name, i, i)))
+        )
+  )
 )
 ```
 

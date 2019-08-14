@@ -41,20 +41,31 @@ final class ExampleApp[F[_]: Concurrent: ContextShift: Timer] {
       _ <- AdminApi.createTopicsIdempotent[F](kafkaBootstrapServers, topic)
 
       writeStream = Stream.resource(
-        ProducerApi.resource[F, Int, Int](BootstrapServers(kafkaBootstrapServers))
-          .map(p =>
-            Timer[F].sleep(1 second).flatMap(_ =>
-              Sync[F].delay(Random.nextInt()).flatMap(i => p.sendAndForget(new ProducerRecord(topic.name, i, i)))
-            )
-          ))
+        ProducerApi
+          .resource[F, Int, Int](BootstrapServers(kafkaBootstrapServers))
+          .map(
+            p =>
+              Timer[F]
+                .sleep(1 second)
+                .flatMap(
+                  _ =>
+                    Sync[F]
+                      .delay(Random.nextInt())
+                      .flatMap(i => p.sendAndForget(new ProducerRecord(topic.name, i, i)))
+                )
+          )
+      )
 
-      readStream = Stream.resource(ConsumerApi
-        .resource[F, Int, Int](
-          BootstrapServers(kafkaBootstrapServers),
-          GroupId("example3"),
-          AutoOffsetReset.earliest,
-          EnableAutoCommit(true)
-        ))
+      readStream = Stream
+        .resource(
+          ConsumerApi
+            .resource[F, Int, Int](
+              BootstrapServers(kafkaBootstrapServers),
+              GroupId("example3"),
+              AutoOffsetReset.earliest,
+              EnableAutoCommit(true)
+            )
+        )
         .evalTap(_.subscribe(topic.name))
         .flatMap(
           _.recordStream(1.second)

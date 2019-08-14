@@ -152,7 +152,6 @@ object ConsumerApi {
           )(_.close)
       )
 
-
     object Generic {
 
       def resource[F[_]: Async: ContextShift](
