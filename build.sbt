@@ -84,7 +84,7 @@ lazy val commonSettings = Seq(
     "io.confluent"                  % "kafka-schema-registry"     % V.confluent      % "test" classifier "tests" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
     "junit"                         % "junit"                     % "4.12"           % "test",
     "ch.qos.logback"                % "logback-classic"           % "1.2.3"          % "test",
-    "org.slf4j"                     % "log4j-over-slf4j"          % "1.7.27"         % "test",
+    "org.slf4j"                     % "log4j-over-slf4j"          % "1.7.28"         % "test",
     "org.scalacheck"               %% "scalacheck"                % "1.14.0"         % "test",
     "org.scalatest"                %% "scalatest"                 % "3.0.8"          % "test",
     "com.mrdziuban"                %% "scalacheck-magnolia"       % V.scalacheckMagnolia % "test",
