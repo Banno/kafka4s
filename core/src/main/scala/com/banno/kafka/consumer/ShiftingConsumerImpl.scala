@@ -53,7 +53,7 @@ case class ShiftingConsumerImpl[F[_]: Async, K, V](
   def commitSync: F[Unit] = CS.evalOn(blockingContext)(c.commitSync)
   def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] =
     CS.evalOn(blockingContext)(c.commitSync(offsets))
-  def committed(partition: TopicPartition): F[OffsetAndMetadata] =
+  def committed(partition: TopicPartition): F[Option[OffsetAndMetadata]] =
     CS.evalOn(blockingContext)(c.committed(partition))
   def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
     CS.evalOn(blockingContext)(c.endOffsets(partitions))
@@ -68,12 +68,12 @@ case class ShiftingConsumerImpl[F[_]: Async, K, V](
   def metrics: F[Map[MetricName, Metric]] = CS.evalOn(blockingContext)(c.metrics)
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long]
-  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
+  ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]] =
     CS.evalOn(blockingContext)(c.offsetsForTimes(timestampsToSearch))
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long],
       timeout: FiniteDuration
-  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
+  ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]] =
     CS.evalOn(blockingContext)(c.offsetsForTimes(timestampsToSearch, timeout))
   def partitionsFor(topic: String): F[Seq[PartitionInfo]] =
     CS.evalOn(blockingContext)(c.partitionsFor(topic))

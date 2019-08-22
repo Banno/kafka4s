@@ -37,14 +37,14 @@ trait ConsumerApiWrapper[F[_], K, V] extends ConsumerApi[F, K, V] {
   def commitAsync(callback: OffsetCommitCallback): F[Unit] = api.commitAsync(callback)
   def commitSync: F[Unit] = api.commitSync
   def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] = api.commitSync(offsets)
-  def committed(partition: TopicPartition): F[OffsetAndMetadata] = api.committed(partition)
+  def committed(partition: TopicPartition): F[Option[OffsetAndMetadata]] = api.committed(partition)
   def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
     api.endOffsets(partitions)
   def listTopics: F[Map[String, Seq[PartitionInfo]]] = api.listTopics
   def metrics: F[Map[MetricName, Metric]] = api.metrics
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long]
-  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
+  ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]] =
     api.offsetsForTimes(timestampsToSearch)
   def partitionsFor(topic: String): F[Seq[PartitionInfo]] = api.partitionsFor(topic)
   def pause(partitions: Iterable[TopicPartition]): F[Unit] = api.pause(partitions)

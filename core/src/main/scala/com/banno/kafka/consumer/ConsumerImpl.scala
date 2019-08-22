@@ -64,7 +64,7 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
   def commitSync: F[Unit] = F.delay(c.commitSync())
   def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] =
     F.delay(c.commitSync(offsets.asJava))
-  def committed(partition: TopicPartition): F[OffsetAndMetadata] = F.delay(c.committed(partition))
+  def committed(partition: TopicPartition): F[Option[OffsetAndMetadata]] = F.delay(Option(c.committed(partition)))
   def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
     F.delay(c.endOffsets(partitions.asJavaCollection).asScala.toMap.mapValues(Long.unbox))
   def endOffsets(
@@ -89,12 +89,12 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
   def metrics: F[Map[MetricName, Metric]] = F.delay(c.metrics().asScala.toMap)
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long]
-  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
-    F.delay(c.offsetsForTimes(timestampsToSearch.mapValues(Long.box).asJava).asScala.toMap)
+  ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]] =
+    F.delay(c.offsetsForTimes(timestampsToSearch.mapValues(Long.box).asJava).asScala.toMap.mapValues(Option(_)))
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long],
       timeout: FiniteDuration
-  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
+  ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]] =
     F.delay(
       c.offsetsForTimes(
           timestampsToSearch.mapValues(Long.box).asJava,
@@ -102,6 +102,7 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
         )
         .asScala
         .toMap
+        .mapValues(Option(_))
     )
   def partitionsFor(topic: String): F[Seq[PartitionInfo]] = F.delay(c.partitionsFor(topic).asScala)
   def partitionsFor(topic: String, timeout: FiniteDuration): F[Seq[PartitionInfo]] =

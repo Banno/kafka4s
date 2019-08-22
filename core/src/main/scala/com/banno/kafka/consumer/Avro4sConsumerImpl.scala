@@ -50,7 +50,7 @@ case class Avro4sConsumerImpl[F[_]: Functor, K: FromRecord, V: FromRecord](
   def commitAsync(callback: OffsetCommitCallback): F[Unit] = c.commitAsync(callback)
   def commitSync: F[Unit] = c.commitSync
   def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] = c.commitSync(offsets)
-  def committed(partition: TopicPartition): F[OffsetAndMetadata] = c.committed(partition)
+  def committed(partition: TopicPartition): F[Option[OffsetAndMetadata]] = c.committed(partition)
   def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
     c.endOffsets(partitions)
   def endOffsets(
@@ -63,12 +63,12 @@ case class Avro4sConsumerImpl[F[_]: Functor, K: FromRecord, V: FromRecord](
   def metrics: F[Map[MetricName, Metric]] = c.metrics
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long]
-  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
+  ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]] =
     c.offsetsForTimes(timestampsToSearch)
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long],
       timeout: FiniteDuration
-  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
+  ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]] =
     c.offsetsForTimes(timestampsToSearch, timeout)
   def partitionsFor(topic: String): F[Seq[PartitionInfo]] = c.partitionsFor(topic)
   def partitionsFor(topic: String, timeout: FiniteDuration): F[Seq[PartitionInfo]] =

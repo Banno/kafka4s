@@ -50,7 +50,7 @@ trait ConsumerApi[F[_], K, V] {
   def commitAsync(callback: OffsetCommitCallback): F[Unit]
   def commitSync: F[Unit]
   def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit]
-  def committed(partition: TopicPartition): F[OffsetAndMetadata]
+  def committed(partition: TopicPartition): F[Option[OffsetAndMetadata]]
   def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]]
   def endOffsets(
       partitions: Iterable[TopicPartition],
@@ -61,11 +61,11 @@ trait ConsumerApi[F[_], K, V] {
   def metrics: F[Map[MetricName, Metric]]
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long]
-  ): F[Map[TopicPartition, OffsetAndTimestamp]]
+  ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]]
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long],
       timeout: FiniteDuration
-  ): F[Map[TopicPartition, OffsetAndTimestamp]]
+  ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]]
   def partitionsFor(topic: String): F[Seq[PartitionInfo]]
   def partitionsFor(topic: String, timeout: FiniteDuration): F[Seq[PartitionInfo]]
   def pause(partitions: Iterable[TopicPartition]): F[Unit]
