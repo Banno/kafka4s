@@ -58,13 +58,6 @@ First, we bring types and implicits into scope:
 ```tut
 import com.banno.kafka.schemaregistry._
 ```
-Now we initialize a schema registry client:
-
-```tut
-val schemaRegistryUri = "http://localhost:8081" // Change as needed
-val cachedSchemasPerSubject = 1000
-val schemaRegistry = SchemaRegistryApi[IO](schemaRegistryUri, cachedSchemasPerSubject).unsafeRunSync
-```
 
 We'll use the name of the topic we created above:
 
@@ -74,12 +67,12 @@ val topicName = topic.name
 
 Now we can register our topic key and topic value schemas:
 
-
 ```tut
-(for {
-  _ <- schemaRegistry.registerKey[CustomerId](topicName)
-  _ <- schemaRegistry.registerValue[Customer](topicName)
-} yield ()).unsafeRunSync
+val schemaRegistryUri = "http://localhost:8081" // Change as needed
+
+SchemaRegistryApi.register[IO, CustomerId, Customer](
+  schemaRegistryUri, topicName
+).unsafeRunSync()
 ```
 
 ### Write our records to Kafka
