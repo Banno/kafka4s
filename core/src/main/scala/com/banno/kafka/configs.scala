@@ -32,11 +32,13 @@ object Config {
 }
 
 //helpers to make it simpler to specify configs, is this the best way to do this?
-case class BootstrapServers(bs: String) extends Config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bs)
+case class BootstrapServers(bs: String)
+    extends Config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bs)
 
 case class ClientId(id: String) extends Config(CommonClientConfigs.CLIENT_ID_CONFIG, id)
 
-case class EnableIdempotence(e: Boolean) extends Config(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, e.toString)
+case class EnableIdempotence(e: Boolean)
+    extends Config(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, e.toString)
 
 case class CompressionType(c: String) extends Config(ProducerConfig.COMPRESSION_TYPE_CONFIG, c)
 object CompressionType {
@@ -55,9 +57,11 @@ object AutoOffsetReset {
   val none = AutoOffsetReset("none")
 }
 
-case class EnableAutoCommit(b: Boolean) extends Config(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, b.toString)
+case class EnableAutoCommit(b: Boolean)
+    extends Config(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, b.toString)
 
-case class KeySerializerClass(c: Class[_]) extends Config(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, c.getName)
+case class KeySerializerClass(c: Class[_])
+    extends Config(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, c.getName)
 
 case class ValueSerializerClass(c: Class[_])
 object ValueSerializerClass {
@@ -65,17 +69,23 @@ object ValueSerializerClass {
     ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG -> vsc.c.getName
 }
 
-case class KeyDeserializerClass(c: Class[_]) extends Config(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, c.getName)
+case class KeyDeserializerClass(c: Class[_])
+    extends Config(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, c.getName)
 
-case class ValueDeserializerClass(c: Class[_]) extends Config(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, c.getName)
+case class ValueDeserializerClass(c: Class[_])
+    extends Config(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, c.getName)
 
-case class SchemaRegistryUrl(url: String) extends Config(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, url)
+case class SchemaRegistryUrl(url: String)
+    extends Config(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, url)
 
-case class MaxSchemasPerSubject(m: Int) extends Config(AbstractKafkaAvroSerDeConfig.MAX_SCHEMAS_PER_SUBJECT_CONFIG, m.toString)
+case class MaxSchemasPerSubject(m: Int)
+    extends Config(AbstractKafkaAvroSerDeConfig.MAX_SCHEMAS_PER_SUBJECT_CONFIG, m.toString)
 
-case class AutoRegisterSchemas(r: Boolean) extends Config(AbstractKafkaAvroSerDeConfig.AUTO_REGISTER_SCHEMAS, r.toString)
+case class AutoRegisterSchemas(r: Boolean)
+    extends Config(AbstractKafkaAvroSerDeConfig.AUTO_REGISTER_SCHEMAS, r.toString)
 
-case class SpecificAvroReader(s: Boolean) extends Config(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, s.toString)
+case class SpecificAvroReader(s: Boolean)
+    extends Config(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, s.toString)
 
 object MetricReporters {
   //TODO need to support multiple reporter types
