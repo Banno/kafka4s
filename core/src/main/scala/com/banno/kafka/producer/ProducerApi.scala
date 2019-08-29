@@ -61,23 +61,26 @@ trait ProducerApi[F[_], K, V] {
 }
 
 object ProducerApi {
+  import Config.toTuple
 
   private[this] def createKafkaProducer[F[_]: Sync, K, V](
-      configs: (String, AnyRef)*
+      configs: Config*
   ): F[KafkaProducer[K, V]] =
-    Sync[F].delay(new KafkaProducer[K, V](configs.toMap.asJava))
+    Sync[F].delay(new KafkaProducer[K, V](configs.map(toTuple).toMap.asJava))
 
   private[this] def createKafkaProducer[F[_]: Sync, K, V](
       keySerializer: Serializer[K],
       valueSerializer: Serializer[V],
-      configs: (String, AnyRef)*
+      configs: Config*
   ): F[KafkaProducer[K, V]] =
-    Sync[F].delay(new KafkaProducer[K, V](configs.toMap.asJava, keySerializer, valueSerializer))
+    Sync[F].delay(
+      new KafkaProducer[K, V](configs.map(toTuple).toMap.asJava, keySerializer, valueSerializer)
+    )
 
   def resource[F[_]: Async, K, V](
       keySerializer: Serializer[K],
       valueSerializer: Serializer[V],
-      configs: (String, AnyRef)*
+      configs: Config*
   ): Resource[F, ProducerApi[F, K, V]] =
     Resource.make(
       createKafkaProducer[F, K, V](keySerializer, valueSerializer, configs: _*)
@@ -85,29 +88,29 @@ object ProducerApi {
     )(_.close)
 
   def resource[F[_]: Async, K: Serializer, V: Serializer](
-      configs: (String, AnyRef)*
+      configs: Config*
   ): Resource[F, ProducerApi[F, K, V]] =
     resource[F, K, V](implicitly[Serializer[K]], implicitly[Serializer[V]], configs: _*)
 
   object Avro {
 
     def resource[F[_]: Async, K, V](
-        configs: (String, AnyRef)*
+        configs: Config*
     ): Resource[F, ProducerApi[F, K, V]] =
       Resource.make(
         createKafkaProducer[F, K, V](
           (
-            configs.toMap +
-              KeySerializerClass(classOf[KafkaAvroSerializer]) +
+            configs :+
+              KeySerializerClass(classOf[KafkaAvroSerializer]) :+
               ValueSerializerClass(classOf[KafkaAvroSerializer])
-          ).toSeq: _*
+          ): _*
         ).map(ProducerImpl.create[F, K, V](_))
       )(_.close)
 
     object Generic {
 
       def resource[F[_]: Async](
-          configs: (String, AnyRef)*
+          configs: Config*
       ): Resource[F, ProducerApi[F, GenericRecord, GenericRecord]] =
         ProducerApi.Avro.resource[F, GenericRecord, GenericRecord](configs: _*)
     }
@@ -120,7 +123,7 @@ object ProducerApi {
   object Avro4s {
 
     def resource[F[_]: Async, K: ToRecord, V: ToRecord](
-        configs: (String, AnyRef)*
+        configs: Config*
     ): Resource[F, ProducerApi[F, K, V]] =
       ProducerApi.Avro.Generic.resource[F](configs: _*).map(Avro4sProducerImpl(_))
   }

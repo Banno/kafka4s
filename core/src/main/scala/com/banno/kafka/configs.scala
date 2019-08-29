@@ -25,10 +25,22 @@ import scala.reflect.ClassTag
 
 //TODO other configs... maybe we could auto generate these somehow?
 
-sealed abstract class Config(val _1: String, val _2: AnyRef) extends Product2[String, AnyRef]
+class Config(val _1: String, val _2: AnyRef) extends Product2[String, AnyRef] {
+  override def canEqual(that: Any): Boolean =
+    that != null && that.isInstanceOf[Config] && {
+      val y = that.asInstanceOf[Config]
+      _1 == y._1 && _2 == y._2
+    }
+}
+
+/**
+  * Most Producer/Consumer Configs are covered below and by the generated case classes.
+  * Use the Miscellaneous just in case any configuration is not covered
+  */
+case class Miscellaneous(name: String, value: AnyRef) extends Config(name, value)
 
 object Config {
-  implicit def toTuple(c: Config): (String, AnyRef) = c._1 -> c._2
+  private[kafka] def toTuple(c: Config): (String, AnyRef) = c._1 -> c._2
 }
 
 //helpers to make it simpler to specify configs, is this the best way to do this?
@@ -64,10 +76,7 @@ case class KeySerializerClass(c: Class[_])
     extends Config(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, c.getName)
 
 case class ValueSerializerClass(c: Class[_])
-object ValueSerializerClass {
-  implicit def toConfig(vsc: ValueSerializerClass): (String, AnyRef) =
-    ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG -> vsc.c.getName
-}
+    extends Config(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, c.getName)
 
 case class KeyDeserializerClass(c: Class[_])
     extends Config(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, c.getName)
@@ -87,23 +96,22 @@ case class AutoRegisterSchemas(r: Boolean)
 case class SpecificAvroReader(s: Boolean)
     extends Config(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, s.toString)
 
+private[kafka] class MetricReporters[T <: MetricsReporter](ct: ClassTag[T])
+    extends Config(CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG, ct.runtimeClass.getName)
+
 object MetricReporters {
   //TODO need to support multiple reporter types
-  def apply[T <: MetricsReporter](implicit ct: ClassTag[T]): (String, String) =
-    CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG -> ct.runtimeClass.getName
+  def apply[T <: MetricsReporter](implicit ct: ClassTag[T]) = new MetricReporters(ct)
 }
 
-object TransactionalId {
-  def apply(id: String): (String, AnyRef) = ProducerConfig.TRANSACTIONAL_ID_CONFIG -> id
-}
+case class TransactionalId(id: String) extends Config(ProducerConfig.TRANSACTIONAL_ID_CONFIG, id)
 
+private[kafka] case class IsolationLevel(s: String)
+    extends Config(org.apache.kafka.clients.consumer.ConsumerConfig.ISOLATION_LEVEL_CONFIG, s)
 object IsolationLevel {
-  val ReadCommitted
-      : (String, String) = (org.apache.kafka.clients.consumer.ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
-  val ReadUncommitted
-      : (String, String) = (org.apache.kafka.clients.consumer.ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_uncommitted")
+  val ReadCommitted = IsolationLevel("read_committed")
+  val ReadUncommitted = IsolationLevel("read_uncommitted")
 }
 
-object MaxPollRecords {
-  def apply(count: Int): (String, AnyRef) = ConsumerConfig.MAX_POLL_RECORDS_CONFIG -> count.toString
-}
+case class MaxPollRecords(count: Int)
+    extends Config(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, count.toString)

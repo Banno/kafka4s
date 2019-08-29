@@ -22,7 +22,7 @@ import fs2.Stream
 import org.apache.kafka.common.TopicPartitionReplica
 import org.apache.kafka.common.config.ConfigResource
 import org.apache.kafka.common.acl.{AclBinding, AclBindingFilter}
-import org.apache.kafka.clients.admin._
+import org.apache.kafka.clients.admin.{Config => _, _}
 import java.util.Properties
 
 import scala.concurrent.duration._
@@ -118,8 +118,8 @@ object AdminApi {
     Resource.make(createClient[F](configs).map(AdminImpl.create[F](_)))(_.close)
   def resource[F[_]: Sync](configs: Properties): Resource[F, AdminApi[F]] =
     Resource.make(createClient[F](configs).map(AdminImpl.create[F](_)))(_.close)
-  def resource[F[_]: Sync](configs: (String, AnyRef)*): Resource[F, AdminApi[F]] =
-    resource[F](configs.toMap)
+  def resource[F[_]: Sync](configs: Config*): Resource[F, AdminApi[F]] =
+    resource[F](configs.map(Config.toTuple).toMap)
 
   def stream[F[_]: Sync](configs: Map[String, AnyRef]): Stream[F, AdminApi[F]] =
     Stream.resource(resource[F](configs))
