@@ -68,12 +68,12 @@ case class ShiftingConsumerImpl[F[_]: Async, K, V](
   def metrics: F[Map[MetricName, Metric]] = CS.evalOn(blockingContext)(c.metrics)
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long]
-  ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]] =
+  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
     CS.evalOn(blockingContext)(c.offsetsForTimes(timestampsToSearch))
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long],
       timeout: FiniteDuration
-  ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]] =
+  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
     CS.evalOn(blockingContext)(c.offsetsForTimes(timestampsToSearch, timeout))
   def partitionsFor(topic: String): F[Seq[PartitionInfo]] =
     CS.evalOn(blockingContext)(c.partitionsFor(topic))

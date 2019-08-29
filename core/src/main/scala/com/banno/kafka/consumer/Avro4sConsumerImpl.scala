@@ -63,12 +63,12 @@ case class Avro4sConsumerImpl[F[_]: Functor, K: FromRecord, V: FromRecord](
   def metrics: F[Map[MetricName, Metric]] = c.metrics
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long]
-  ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]] =
+  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
     c.offsetsForTimes(timestampsToSearch)
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long],
       timeout: FiniteDuration
-  ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]] =
+  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
     c.offsetsForTimes(timestampsToSearch, timeout)
   def partitionsFor(topic: String): F[Seq[PartitionInfo]] = c.partitionsFor(topic)
   def partitionsFor(topic: String, timeout: FiniteDuration): F[Seq[PartitionInfo]] =

@@ -29,6 +29,8 @@ import org.apache.kafka.clients.consumer._
 
 case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
     extends ConsumerApi[F, K, V] {
+  import ConsumerImpl.valueIsNotNull
+
   private[this] val log = Slf4jLogger.getLoggerFromClass(this.getClass)
   def assign(partitions: Iterable[TopicPartition]): F[Unit] =
     F.delay(c.assign(partitions.asJavaCollection)) *> log.debug(s"Assigned $partitions")
@@ -90,25 +92,25 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
   def metrics: F[Map[MetricName, Metric]] = F.delay(c.metrics().asScala.toMap)
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long]
-  ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]] =
+  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
     F.delay(
       c.offsetsForTimes(timestampsToSearch.mapValues(Long.box).asJava)
         .asScala
+        .filter(valueIsNotNull)
         .toMap
-        .mapValues(Option(_))
     )
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long],
       timeout: FiniteDuration
-  ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]] =
+  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
     F.delay(
       c.offsetsForTimes(
           timestampsToSearch.mapValues(Long.box).asJava,
           java.time.Duration.ofMillis(timeout.toMillis)
         )
         .asScala
+        .filter(valueIsNotNull)
         .toMap
-        .mapValues(Option(_))
     )
   def partitionsFor(topic: String): F[Seq[PartitionInfo]] = F.delay(c.partitionsFor(topic).asScala)
   def partitionsFor(topic: String, timeout: FiniteDuration): F[Seq[PartitionInfo]] =
@@ -148,4 +150,7 @@ object ConsumerImpl {
       c: Consumer[K, V]
   ): ConsumerApi[F, K, V] =
     ConsumerImpl(c)
+
+  def valueIsNotNull(keyValPair: (TopicPartition, OffsetAndTimestamp)): Boolean =
+    keyValPair._2 != null
 }

@@ -44,7 +44,7 @@ trait ConsumerApiWrapper[F[_], K, V] extends ConsumerApi[F, K, V] {
   def metrics: F[Map[MetricName, Metric]] = api.metrics
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long]
-  ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]] =
+  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
     api.offsetsForTimes(timestampsToSearch)
   def partitionsFor(topic: String): F[Seq[PartitionInfo]] = api.partitionsFor(topic)
   def pause(partitions: Iterable[TopicPartition]): F[Unit] = api.pause(partitions)
