@@ -97,9 +97,6 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
   )(implicit F: Monad[F]): F[Map[TopicPartition, Long]] =
     consumer.assignment.flatMap(ps => lastOffsets(ps, commitMarkerAdjustment))
 
-  def committed(partition: TopicPartition): F[Option[OffsetAndMetadata]] =
-    consumer.committed(partition)
-
   def createCaughtUpSignal(lastOffsets: Map[TopicPartition, Long])(
       implicit F: cats.effect.Concurrent[F]
   ): F[(Signal[F, Boolean], ConsumerRecord[K, V] => F[Unit])] =
