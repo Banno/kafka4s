@@ -25,7 +25,7 @@ import scala.reflect.ClassTag
 
 //TODO other configs... maybe we could auto generate these somehow?
 
-class Config(val _1: String, val _2: AnyRef) extends Product2[String, AnyRef] {
+sealed abstract class Config(val _1: String, val _2: AnyRef) extends Product2[String, AnyRef] {
   override def canEqual(that: Any): Boolean =
     that != null && that.isInstanceOf[Config] && {
       val y = that.asInstanceOf[Config]
