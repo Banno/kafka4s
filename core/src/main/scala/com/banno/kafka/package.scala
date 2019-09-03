@@ -53,7 +53,7 @@ package object kafka {
         implicit ktr: ToRecord[K],
         vtr: ToRecord[V]
     ): ProducerRecord[GenericRecord, GenericRecord] =
-      bimap(ktr.apply, vtr.apply)
+      bimap(ktr.to, vtr.to)
   }
 
   implicit class ScalaConsumerRecords[K, V](crs: ConsumerRecords[K, V]) {
@@ -98,19 +98,19 @@ package object kafka {
   }
 
   implicit class GenericConsumerRecord(cr: ConsumerRecord[GenericRecord, GenericRecord]) {
-    def maybeKeyAs[K](implicit kfr: FromRecord[K]): Option[K] = cr.maybeKey.map(kfr.apply)
-    def maybeValueAs[V](implicit vfr: FromRecord[V]): Option[V] = cr.maybeValue.map(vfr.apply)
+    def maybeKeyAs[K](implicit kfr: FromRecord[K]): Option[K] = cr.maybeKey.map(kfr.from)
+    def maybeValueAs[V](implicit vfr: FromRecord[V]): Option[V] = cr.maybeValue.map(vfr.from)
 
     //note that these will probably throw NPE if key/value is null
-    def keyAs[K](implicit kfr: FromRecord[K]): K = kfr(cr.key)
-    def valueAs[V](implicit vfr: FromRecord[V]): V = vfr(cr.value)
+    def keyAs[K](implicit kfr: FromRecord[K]): K = kfr.from(cr.key)
+    def valueAs[V](implicit vfr: FromRecord[V]): V = vfr.from(cr.value)
 
     /** This only works when both key and value are non-null. */
     def fromGenericRecord[K, V](
         implicit kfr: FromRecord[K],
         vfr: FromRecord[V]
     ): ConsumerRecord[K, V] =
-      cr.bimap(kfr.apply, vfr.apply)
+      cr.bimap(kfr.from, vfr.from)
   }
 
   implicit class GenericConsumerRecords(crs: ConsumerRecords[GenericRecord, GenericRecord]) {

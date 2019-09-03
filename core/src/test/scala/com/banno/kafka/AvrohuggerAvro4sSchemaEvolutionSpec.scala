@@ -2,7 +2,6 @@ package com.banno.kafka
 
 import org.scalatest._
 import org.scalatestplus.scalacheck._
-
 import io.confluent.kafka.serializers.{
   AbstractKafkaAvroSerDeConfig,
   KafkaAvroDeserializer,
@@ -11,7 +10,7 @@ import io.confluent.kafka.serializers.{
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
 import org.apache.avro._
 import org.apache.avro.generic.GenericRecord
-import com.sksamuel.avro4s.{RecordFormat, SchemaFor}
+import com.sksamuel.avro4s.{DefaultFieldMapper, RecordFormat, SchemaFor}
 import com.banno._
 import scala.collection.JavaConverters._
 import shapeless._
@@ -89,8 +88,8 @@ class AvrohuggerAvro4sSchemaEvolutionSpec
   type ABC = A :+: B :+: C :+: CNil
 
   property("Reordering fields is backward and forward compatible") {
-    val s1 = SchemaFor[ReorderFields1]()
-    val s2 = SchemaFor[ReorderFields2]()
+    val s1 = SchemaFor[ReorderFields1].schema(DefaultFieldMapper)
+    val s2 = SchemaFor[ReorderFields2].schema(DefaultFieldMapper)
     Compatibility.backwardCompatible(s2, s1) should ===(true)
     Compatibility.forwardCompatible(s2, s1) should ===(true)
 
@@ -110,8 +109,8 @@ class AvrohuggerAvro4sSchemaEvolutionSpec
   }
 
   property("Renaming a field is neither backward nor forward compatible") {
-    val s1 = SchemaFor[RenameField1]()
-    val s2 = SchemaFor[RenameField2]()
+    val s1 = SchemaFor[RenameField1].schema(DefaultFieldMapper)
+    val s2 = SchemaFor[RenameField2].schema(DefaultFieldMapper)
     Compatibility.backwardCompatible(s2, s1) should ===(false)
     Compatibility.forwardCompatible(s2, s1) should ===(false)
 
@@ -123,16 +122,21 @@ class AvrohuggerAvro4sSchemaEvolutionSpec
 
     val b1 = serializer.serialize(topic, rf1.to(r1))
     rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]) should ===(r1)
-    (rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]) should not).equal(r2)
+    a[RuntimeException] should be thrownBy rf2.from(
+      deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]
+    )
 
+    serializer.serialize(topic, rf2.to(r2))
     val b2 = serializer.serialize(topic, rf2.to(r2))
-    (rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]) should not).equal(r1)
+    a[RuntimeException] should be thrownBy rf1.from(
+      deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]
+    )
     rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]) should ===(r2)
   }
 
   property("Renaming the outer record is backward and forward compatible") {
-    val s1 = SchemaFor[RenameOuterRecord1]()
-    val s2 = SchemaFor[RenameOuterRecord2]()
+    val s1 = SchemaFor[RenameOuterRecord1].schema(DefaultFieldMapper)
+    val s2 = SchemaFor[RenameOuterRecord2].schema(DefaultFieldMapper)
     Compatibility.backwardCompatible(s2, s1) should ===(true)
     Compatibility.forwardCompatible(s2, s1) should ===(true)
 
@@ -152,8 +156,8 @@ class AvrohuggerAvro4sSchemaEvolutionSpec
   }
 
   property("Renaming an inner record is backward and forward compatible") {
-    val s1 = SchemaFor[RenameInnerRecord1]()
-    val s2 = SchemaFor[RenameInnerRecord2]()
+    val s1 = SchemaFor[RenameInnerRecord1].schema(DefaultFieldMapper)
+    val s2 = SchemaFor[RenameInnerRecord2].schema(DefaultFieldMapper)
     Compatibility.backwardCompatible(s2, s1) should ===(true)
     Compatibility.forwardCompatible(s2, s1) should ===(true)
 
@@ -173,8 +177,8 @@ class AvrohuggerAvro4sSchemaEvolutionSpec
   }
 
   property("Adding a field without a default is forward, but not backward, compatible") {
-    val s1 = SchemaFor[AddFieldWithoutDefault1]()
-    val s2 = SchemaFor[AddFieldWithoutDefault2]()
+    val s1 = SchemaFor[AddFieldWithoutDefault1].schema(DefaultFieldMapper)
+    val s2 = SchemaFor[AddFieldWithoutDefault2].schema(DefaultFieldMapper)
     Compatibility.backwardCompatible(s2, s1) should ===(false)
     Compatibility.forwardCompatible(s2, s1) should ===(true)
 
@@ -186,7 +190,7 @@ class AvrohuggerAvro4sSchemaEvolutionSpec
 
     val b1 = serializer.serialize(topic, rf1.to(r1))
     rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]) should ===(r1)
-    a[NullPointerException] should be thrownBy rf2.from(
+    a[RuntimeException] should be thrownBy rf2.from(
       deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]
     )
 
@@ -196,8 +200,8 @@ class AvrohuggerAvro4sSchemaEvolutionSpec
   }
 
   property("Adding a field with a default is backward and forward compatible") {
-    val s1 = SchemaFor[AddFieldWithDefault1]()
-    val s2 = SchemaFor[AddFieldWithDefault2]()
+    val s1 = SchemaFor[AddFieldWithDefault1].schema(DefaultFieldMapper)
+    val s2 = SchemaFor[AddFieldWithDefault2].schema(DefaultFieldMapper)
     Compatibility.backwardCompatible(s2, s1) should ===(true)
     Compatibility.forwardCompatible(s2, s1) should ===(true)
 
@@ -209,7 +213,7 @@ class AvrohuggerAvro4sSchemaEvolutionSpec
 
     val b1 = serializer.serialize(topic, rf1.to(r1))
     rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]) should ===(r1)
-    // rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]) should === (r2) //this should work, but looks like an avro4s bug: https://github.com/sksamuel/avro4s/issues/110
+    rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]) should ===(r2)
 
     val b2 = serializer.serialize(topic, rf2.to(r2))
     rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]) should ===(r1)
@@ -217,8 +221,8 @@ class AvrohuggerAvro4sSchemaEvolutionSpec
   }
 
   property("Removing a field without a default is backward, but not forward, compatible") {
-    val s1 = SchemaFor[RemoveFieldWithoutDefault1]()
-    val s2 = SchemaFor[RemoveFieldWithoutDefault2]()
+    val s1 = SchemaFor[RemoveFieldWithoutDefault1].schema(DefaultFieldMapper)
+    val s2 = SchemaFor[RemoveFieldWithoutDefault2].schema(DefaultFieldMapper)
     Compatibility.backwardCompatible(s2, s1) should ===(true)
     Compatibility.forwardCompatible(s2, s1) should ===(false)
 
@@ -233,15 +237,15 @@ class AvrohuggerAvro4sSchemaEvolutionSpec
     rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]) should ===(r2)
 
     val b2 = serializer.serialize(topic, rf2.to(r2))
-    a[NullPointerException] should be thrownBy rf1.from(
+    a[RuntimeException] should be thrownBy rf1.from(
       deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]
     )
     rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]) should ===(r2)
   }
 
   property("Removing a field with a default is backward and forward compatible") {
-    val s1 = SchemaFor[RemoveFieldWithDefault1]()
-    val s2 = SchemaFor[RemoveFieldWithDefault2]()
+    val s1 = SchemaFor[RemoveFieldWithDefault1].schema(DefaultFieldMapper)
+    val s2 = SchemaFor[RemoveFieldWithDefault2].schema(DefaultFieldMapper)
     Compatibility.backwardCompatible(s2, s1) should ===(true)
     Compatibility.forwardCompatible(s2, s1) should ===(true)
 
@@ -256,13 +260,13 @@ class AvrohuggerAvro4sSchemaEvolutionSpec
     rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]) should ===(r2)
 
     val b2 = serializer.serialize(topic, rf2.to(r2))
-    // rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]) should === (r1) //this should work, but looks like an avro4s bug: https://github.com/sksamuel/avro4s/issues/110
+    rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]) should ===(r1)
     rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]) should ===(r2)
   }
 
   property("Reordering union types is backward and forward compatible") {
-    val s1 = SchemaFor[ReorderUnionTypes1]()
-    val s2 = SchemaFor[ReorderUnionTypes2]()
+    val s1 = SchemaFor[ReorderUnionTypes1].schema(DefaultFieldMapper)
+    val s2 = SchemaFor[ReorderUnionTypes2].schema(DefaultFieldMapper)
     Compatibility.backwardCompatible(s2, s1) should ===(true)
     Compatibility.forwardCompatible(s2, s1) should ===(true)
 
@@ -282,8 +286,8 @@ class AvrohuggerAvro4sSchemaEvolutionSpec
   }
 
   property("Adding a union type is backward, but not forward compatible") {
-    val s1 = SchemaFor[AddUnionType1]()
-    val s2 = SchemaFor[AddUnionType2]()
+    val s1 = SchemaFor[AddUnionType1].schema(DefaultFieldMapper)
+    val s2 = SchemaFor[AddUnionType2].schema(DefaultFieldMapper)
     Compatibility.backwardCompatible(s2, s1) should ===(true)
     Compatibility.forwardCompatible(s2, s1) should ===(false)
 
@@ -311,8 +315,8 @@ class AvrohuggerAvro4sSchemaEvolutionSpec
   }
 
   property("Removing a union type is forward, but not backward compatible") {
-    val s1 = SchemaFor[RemoveUnionType1]()
-    val s2 = SchemaFor[RemoveUnionType2]()
+    val s1 = SchemaFor[RemoveUnionType1].schema(DefaultFieldMapper)
+    val s2 = SchemaFor[RemoveUnionType2].schema(DefaultFieldMapper)
     Compatibility.backwardCompatible(s2, s1) should ===(false)
     Compatibility.forwardCompatible(s2, s1) should ===(true)
 
