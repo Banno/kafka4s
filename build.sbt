@@ -40,7 +40,7 @@ lazy val V = new {
   val kafka = "2.3.0"
   val confluent = "5.3.0"
   val avro4s = "1.8.4"
-  val log4cats = "0.3.0"
+  val log4cats = "1.0.0"
   val scalacheckMagnolia = "0.0.2"
 }
 
