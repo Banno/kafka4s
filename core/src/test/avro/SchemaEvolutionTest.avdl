@@ -67,7 +67,7 @@ protocol SchemaEvolutionTest {
 
     record AddFieldWithDefault2 {
         int a;
-        string b = "";
+        string b = "s";
     }
 
     record RemoveFieldWithoutDefault1 {
@@ -81,7 +81,7 @@ protocol SchemaEvolutionTest {
 
     record RemoveFieldWithDefault1 {
         int a;
-        string b = "";
+        string b = "s";
     }
 
     record RemoveFieldWithDefault2 {

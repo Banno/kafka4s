@@ -115,7 +115,15 @@ topic. For this, we can use Kafka4s' `avro4s` integration!
 
 #### Writing typed records with an Avro4s producer
 
-Turning a generic producer into a typed producer is as simple as the following:
+Turning a generic producer into a typed producer is simple. We first ensure that `com.sksamuel.avro4s.RecordFormat` instances for our data are in scope:
+
+```tut
+implicit val CustomerRecordFormat = com.sksamuel.avro4s.RecordFormat[Customer]
+implicit val CustomerIdRecordFormat = com.sksamuel.avro4s.RecordFormat[CustomerId]
+
+```
+
+And with those implicits in scope, we can create our producer:
 
 ```tut
 val avro4sProducer = producer.map(_.toAvro4s[CustomerId, Customer])
