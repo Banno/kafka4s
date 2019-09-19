@@ -7,21 +7,17 @@ import cats.effect._
 import consumer._
 import producer._
 import org.apache.kafka.clients.producer.ProducerRecord
-
 import scala.concurrent.duration._
 import com.banno.kafka.producer._
 import com.banno.kafka.consumer._
 import fs2._
-
 import scala.concurrent.ExecutionContext
-
 import cats.effect.concurrent.Ref
-
 import scala.util.Random
 import com.mrdziuban.ScalacheckMagnolia._
+import com.sksamuel.avro4s.RecordFormat
 import org.apache.kafka.common.TopicPartition
 import org.scalatestplus.scalacheck._
-
 import scala.collection.JavaConverters._
 import java.util.ConcurrentModificationException
 import org.apache.kafka.common.errors.WakeupException
@@ -328,6 +324,8 @@ class ConsumerAndProducerApiSpec
   //for avro4s tests
   case class PersonId(id: String)
   case class Person2(name: String)
+  implicit def personIdRecordFormat = RecordFormat[PersonId]
+  implicit def person2RecordFormat = RecordFormat[Person2]
 
   property("avro4s") {
     val groupId = genGroupId

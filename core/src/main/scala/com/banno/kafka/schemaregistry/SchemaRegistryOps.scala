@@ -17,7 +17,7 @@
 package com.banno.kafka.schemaregistry
 
 import org.apache.avro.Schema
-import com.sksamuel.avro4s.SchemaFor
+import com.sksamuel.avro4s.{DefaultFieldMapper, SchemaFor}
 import cats.FlatMap
 import cats.implicits._
 
@@ -27,7 +27,7 @@ case class SchemaRegistryOps[F[_]](registry: SchemaRegistryApi[F]) {
   def valueSubject(topic: String): String = topic + "-value"
 
   def register[A](subject: String)(implicit SF: SchemaFor[A]): F[Int] =
-    registry.register(subject, SF())
+    registry.register(subject, SF.schema(DefaultFieldMapper))
 
   def registerKey[K: SchemaFor](topic: String): F[Int] =
     register[K](keySubject(topic))
@@ -45,7 +45,7 @@ case class SchemaRegistryOps[F[_]](registry: SchemaRegistryApi[F]) {
     registry.testCompatibility(subject, schema)
 
   def isCompatible[A](subject: String)(implicit SF: SchemaFor[A]): F[Boolean] =
-    isCompatible(subject, SF())
+    isCompatible(subject, SF.schema(DefaultFieldMapper))
 
   def isKeyCompatible[K: SchemaFor](topic: String): F[Boolean] =
     isCompatible[K](keySubject(topic))
