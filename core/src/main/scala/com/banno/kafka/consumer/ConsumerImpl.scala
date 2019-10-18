@@ -110,7 +110,7 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
     F.delay(c.pause(partitions.asJavaCollection))
   def paused: F[Set[TopicPartition]] = F.delay(c.paused().asScala.toSet)
   def poll(timeout: FiniteDuration): F[ConsumerRecords[K, V]] =
-    log.debug(s"${Thread.currentThread.getId} poll($timeout)...") *> F.delay(
+    log.trace(s"${Thread.currentThread.getId} poll($timeout)...") *> F.delay(
       c.poll(java.time.Duration.ofMillis(timeout.toMillis))
     )
   def position(partition: TopicPartition): F[Long] = F.delay(c.position(partition))
