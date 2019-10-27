@@ -63,7 +63,7 @@ lazy val commonSettings = Seq(
   startYear := Some(2019),
   licenses += ("Apache-2.0", new URL("https://www.apache.org/licenses/LICENSE-2.0.txt")),
 
-  resolvers += "confluent" at "http://packages.confluent.io/maven/",
+  resolvers += "confluent" at "https://packages.confluent.io/maven/",
 
   addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3"),
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
