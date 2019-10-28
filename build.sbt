@@ -34,7 +34,7 @@ lazy val contributors = Seq(
 )
 
 lazy val V = new {
-  val scala_2_12 = "2.12.8"
+  val scala_2_12 = "2.12.10"
   val cats = "1.6.1"
   val fs2 = "1.0.5"
   val kafka = "2.3.0"
