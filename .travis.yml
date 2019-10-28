@@ -1,7 +1,8 @@
 version: ~> 1.0
 
-sudo: false
 language: scala
+
+dist: xenial
 
 services:
   - docker
