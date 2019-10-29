@@ -25,7 +25,7 @@ lazy val examples = project
   .disablePlugins(MimaPlugin)
   .settings(commonSettings, skipOnPublishSettings)
   .settings(
-     libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.0.0.0-RC2"
+     libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.0.0.0-RC6"
   )
 
 lazy val contributors = Seq(
@@ -34,13 +34,13 @@ lazy val contributors = Seq(
 )
 
 lazy val V = new {
-  val scala_2_12 = "2.12.8"
-  val cats = "1.6.1"
-  val fs2 = "1.0.5"
-  val kafka = "2.3.0"
+  val scala_2_12 = "2.12.10"
+  val cats = "2.0.0"
+  val fs2 = "2.0.1"
+  val kafka = "2.3.1"
   val confluent = "5.3.1"
-  val avro4s = "3.0.1"
-  val log4cats = "0.3.0"
+  val avro4s = "3.0.2"
+  val log4cats = "1.0.1"
   val scalacheckMagnolia = "0.0.2"
 }
 
@@ -74,7 +74,7 @@ lazy val commonSettings = Seq(
     "javax.ws.rs" % "javax.ws.rs-api" % "2.1.1" artifacts Artifact("javax.ws.rs-api", "jar", "jar"), // This explicit dependency is needed for confluent (see https://github.com/sbt/sbt/issues/3618#issuecomment-413257502)
     "io.confluent"                  % "kafka-avro-serializer"     % V.confluent exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j") exclude("org.apache.zookeeper", "zookeeper"),
     "com.sksamuel.avro4s"          %% "avro4s-core"               % V.avro4s,
-    "io.prometheus"                 % "simpleclient"              % "0.6.0",
+    "io.prometheus"                 % "simpleclient"              % "0.8.0",
     "io.chrisdavenport"            %% "log4cats-slf4j"            % V.log4cats,
     "org.apache.curator"            % "curator-test"              % "4.2.0"          % "test",
     "org.apache.kafka"             %% "kafka"                     % V.kafka          % "test" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
