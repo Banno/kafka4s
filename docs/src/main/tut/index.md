@@ -13,6 +13,8 @@ To use kafka4s in an existing SBT project with Scala 2.12 or a later version, ad
 `build.sbt` depending on your needs:
 
 ```scala
+resolvers += "confluent" at "https://packages.confluent.io/maven/"
+
 libraryDependencies ++= Seq(
   "com.banno" %% "kafka4s" % "<version>"
 )
