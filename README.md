@@ -15,6 +15,8 @@ libraryDependencies ++= Seq(
 )
 ```
 
+Note: If your project uses fs2 1.x, you'll want releases from the 2.x series. For fs2 2.x projects, you'll want 3.x series releases.
+
 Sending records to Kafka is an effect. If we wanted to periodically write random integers to a Kafka topic, we could do:
 
 ```scala
