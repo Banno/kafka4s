@@ -1,5 +1,5 @@
 lazy val kafka4s = project.in(file("."))
-  .aggregate(core, docs, examples)
+  .aggregate(core, connect, docs, examples)
   .settings(
     commonSettings,
     releaseSettings,
@@ -8,9 +8,46 @@ lazy val kafka4s = project.in(file("."))
   )
 
 lazy val core = project
-  .settings(commonSettings, releaseSettings, mimaSettings)
+  .settings(commonSettings, testSettings, releaseSettings, mimaSettings)
   .settings(
-    name := "kafka4s"
+    name := "kafka4s",
+    resolvers += "confluent" at "https://packages.confluent.io/maven/",
+    libraryDependencies ++= Seq(
+      "co.fs2"                       %% "fs2-core"                  % V.fs2,
+      //TODO may no longer need logging excludes for kafka-clients, need to verify
+      "org.apache.kafka"              % "kafka-clients"             % V.kafka exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
+      "javax.ws.rs" % "javax.ws.rs-api" % "2.1.1" artifacts Artifact("javax.ws.rs-api", "jar", "jar"), // This explicit dependency is needed for confluent (see https://github.com/sbt/sbt/issues/3618#issuecomment-413257502)
+      "io.confluent"                  % "kafka-avro-serializer"     % V.confluent exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j") exclude("org.apache.zookeeper", "zookeeper"),
+      "com.sksamuel.avro4s"          %% "avro4s-core"               % V.avro4s,
+      "io.prometheus"                 % "simpleclient"              % "0.8.0",
+      "io.chrisdavenport"            %% "log4cats-slf4j"            % V.log4cats,
+      "org.apache.curator"            % "curator-test"              % "4.2.0"          % "test",
+      "org.apache.kafka"             %% "kafka"                     % V.kafka          % "test" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
+      "org.apache.kafka"             %% "kafka"                     % V.kafka          % "test" classifier "test" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
+      "org.apache.kafka"              % "kafka-clients"             % V.kafka          % "test" classifier "test" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
+      "io.confluent"                  % "kafka-schema-registry"     % V.confluent      % "test" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
+      "io.confluent"                  % "kafka-schema-registry"     % V.confluent      % "test" classifier "tests" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
+      "junit"                         % "junit"                     % "4.12"           % "test",
+      "ch.qos.logback"                % "logback-classic"           % "1.2.3"          % "test",
+      "org.slf4j"                     % "log4j-over-slf4j"          % "1.7.28"         % "test",
+      "org.typelevel"                %% "cats-laws"                 % V.cats           % "test",
+      "org.typelevel"                %% "discipline"                % "0.11.1"         % "test"
+    ),
+    sourceGenerators in Test += (avroScalaGenerate in Test).taskValue,
+    watchSources ++= ((avroSourceDirectories in Test).value ** "*.avdl").get,
+  )
+
+lazy val connect = project
+  .settings(commonSettings, testSettings, releaseSettings, mimaSettings)
+  .settings(
+    name := "kafka4s-connect",
+    libraryDependencies ++= Seq(
+      "org.apache.kafka" % "connect-api" % V.kafka,
+      "com.chuusai" %% "shapeless" % V.shapeless,
+      "io.circe" %% "circe-generic" % V.circe,
+      "io.circe" %% "circe-jawn" % V.circe,
+      "io.chrisdavenport" %% "log4cats-slf4j" % V.log4cats,
+    )
   )
 
 lazy val docs = project
@@ -41,6 +78,10 @@ lazy val V = new {
   val confluent = "5.3.1"
   val avro4s = "3.0.2"
   val log4cats = "1.0.1"
+  val shapeless = "2.3.3"
+  val circe = "0.11.1"
+  val scalatest = "3.0.8"
+  val scalacheck = "1.14.2"
   val scalacheckMagnolia = "0.0.2"
 }
 
@@ -63,36 +104,16 @@ lazy val commonSettings = Seq(
   startYear := Some(2019),
   licenses += ("Apache-2.0", new URL("https://www.apache.org/licenses/LICENSE-2.0.txt")),
 
-  resolvers += "confluent" at "https://packages.confluent.io/maven/",
-
   addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3"),
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
+)
+
+lazy val testSettings = Seq(
   libraryDependencies ++= Seq(
-    "co.fs2"                       %% "fs2-core"                  % V.fs2,
-    //TODO may no longer need logging excludes for kafka-clients, need to verify
-    "org.apache.kafka"              % "kafka-clients"             % V.kafka exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
-    "javax.ws.rs" % "javax.ws.rs-api" % "2.1.1" artifacts Artifact("javax.ws.rs-api", "jar", "jar"), // This explicit dependency is needed for confluent (see https://github.com/sbt/sbt/issues/3618#issuecomment-413257502)
-    "io.confluent"                  % "kafka-avro-serializer"     % V.confluent exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j") exclude("org.apache.zookeeper", "zookeeper"),
-    "com.sksamuel.avro4s"          %% "avro4s-core"               % V.avro4s,
-    "io.prometheus"                 % "simpleclient"              % "0.8.0",
-    "io.chrisdavenport"            %% "log4cats-slf4j"            % V.log4cats,
-    "org.apache.curator"            % "curator-test"              % "4.2.0"          % "test",
-    "org.apache.kafka"             %% "kafka"                     % V.kafka          % "test" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
-    "org.apache.kafka"             %% "kafka"                     % V.kafka          % "test" classifier "test" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
-    "org.apache.kafka"              % "kafka-clients"             % V.kafka          % "test" classifier "test" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
-    "io.confluent"                  % "kafka-schema-registry"     % V.confluent      % "test" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
-    "io.confluent"                  % "kafka-schema-registry"     % V.confluent      % "test" classifier "tests" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
-    "junit"                         % "junit"                     % "4.12"           % "test",
-    "ch.qos.logback"                % "logback-classic"           % "1.2.3"          % "test",
-    "org.slf4j"                     % "log4j-over-slf4j"          % "1.7.28"         % "test",
-    "org.scalacheck"               %% "scalacheck"                % "1.14.2"         % "test",
-    "org.scalatest"                %% "scalatest"                 % "3.0.8"          % "test",
-    "com.mrdziuban"                %% "scalacheck-magnolia"       % V.scalacheckMagnolia % "test",
-    "org.typelevel"                %% "cats-laws"                 % V.cats           % "test",
-    "org.typelevel"                %% "discipline"                % "0.11.1"         % "test"
+    "org.scalacheck" %% "scalacheck" % V.scalacheck % "test",
+    "org.scalatest" %% "scalatest" % V.scalatest % "test",
+    "com.mrdziuban" %% "scalacheck-magnolia" % V.scalacheckMagnolia % "test",
   ),
-  sourceGenerators in Test += (avroScalaGenerate in Test).taskValue,
-  watchSources ++= ((avroSourceDirectories in Test).value ** "*.avdl").get,
   testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oS"),
 )
 
