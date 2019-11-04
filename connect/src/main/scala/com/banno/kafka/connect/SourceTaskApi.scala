@@ -68,7 +68,9 @@ object SourceTaskApi {
             os <- lastOffsets.get
             records <- p(os)
             _ <- lastOffsets.update(
-              _ ++ records.groupBy(_.sourcePartition).mapValues(_.last.sourceOffset) //TODO do something more efficient than groupBy
+              _ ++ records
+                .groupBy(_.sourcePartition)
+                .mapValues(_.last.sourceOffset) //TODO do something more efficient than groupBy
             )
           } yield records.map(_.toSourceRecord)
 

@@ -41,7 +41,9 @@ object MapDecoder {
       val name = witness.value.name
       field[K](
         StringDecoder[H]
-          .decode(m.getOrElse(name, throw new RuntimeException(s"Map does not contain $name: ${m.keys}")))
+          .decode(
+            m.getOrElse(name, throw new RuntimeException(s"Map does not contain $name: ${m.keys}"))
+          )
       ) :: tDecoder.decode(m)
     }
 

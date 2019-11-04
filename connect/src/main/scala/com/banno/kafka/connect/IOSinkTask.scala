@@ -29,7 +29,7 @@ abstract class IOSinkTask(apiIO: IO[SinkTaskApi[IO]]) extends SinkTask {
     api.close(partitions.asScala).unsafeRunSync()
   override def flush(currentOffsets: JMap[TopicPartition, OffsetAndMetadata]): Unit =
     api.flush(currentOffsets.asScala.toMap).unsafeRunSync()
-  override def initialize(context: SinkTaskContext): Unit = 
+  override def initialize(context: SinkTaskContext): Unit =
     api.initialize(context).unsafeRunSync()
   override def open(partitions: JCollection[TopicPartition]): Unit =
     api.open(partitions.asScala).unsafeRunSync()
@@ -41,8 +41,8 @@ abstract class IOSinkTask(apiIO: IO[SinkTaskApi[IO]]) extends SinkTask {
     api.put(records.asScala).unsafeRunSync()
   override def start(props: JMap[String, String]): Unit =
     api.start(props.asScala.toMap).unsafeRunSync()
-  override def stop(): Unit = 
+  override def stop(): Unit =
     api.stop.unsafeRunSync()
-  override def version(): String = 
+  override def version(): String =
     api.version.unsafeRunSync()
 }
