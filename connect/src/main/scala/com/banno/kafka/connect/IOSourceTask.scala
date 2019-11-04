@@ -25,6 +25,8 @@ import cats.effect.IO
 import java.util.{List => JList, Map => JMap}
 import scala.collection.JavaConverters._
 
+/** Source connectors should provide a class that extends this, and return it from the connector's taskClass method. Kafka Connect will instantiate it via reflection, to run the tasks.
+  * The "end of the universe" for source tasks. */
 abstract class IOSourceTask(apiIO: IO[SourceTaskApi[IO]]) extends SourceTask {
   val api: SourceTaskApi[IO] = apiIO.unsafeRunSync()
   override def commit(): Unit =

@@ -23,6 +23,8 @@ import cats.effect.IO
 import java.util.{Map => JMap, Collection => JCollection}
 import scala.collection.JavaConverters._
 
+/** Sink connectors should provide a class that extends this, and return it from the connector's taskClass method. Kafka Connect will instantiate it via reflection, to run the tasks.
+  * The "end of the universe" for sink tasks. */
 abstract class IOSinkTask(apiIO: IO[SinkTaskApi[IO]]) extends SinkTask {
   val api: SinkTaskApi[IO] = apiIO.unsafeRunSync()
   override def close(partitions: JCollection[TopicPartition]): Unit =

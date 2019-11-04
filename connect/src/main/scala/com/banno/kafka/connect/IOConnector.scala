@@ -26,6 +26,7 @@ import scala.collection.JavaConverters._
 import org.apache.kafka.connect.source.SourceConnector
 import org.apache.kafka.connect.sink.SinkConnector
 
+/** Adapter between the Kafka Connect Java API and ConnectorApi. The "end of the universe" for connectors. */
 trait IOConnector extends KCConnector {
   def api: ConnectorApi[IO]
   override def config(): ConfigDef =
@@ -50,12 +51,14 @@ trait IOConnector extends KCConnector {
     api.version.unsafeRunSync()
 }
 
+/** Source connectors should provide a class that extends this, and specify it in the connector.class config, which Kafka Connect will instantiate via reflection, to run the connector. */
 abstract class IOSourceConnector(apiIO: IO[ConnectorApi[IO]])
     extends SourceConnector
     with IOConnector {
   override val api: ConnectorApi[IO] = apiIO.unsafeRunSync()
 }
 
+/** Sink connectors should provide a class that extends this, and specify it in the connector.class config, which Kafka Connect will instantiate via reflection, to run the connector. */
 abstract class IOSinkConnector(apiIO: IO[ConnectorApi[IO]]) extends SinkConnector with IOConnector {
   override val api: ConnectorApi[IO] = apiIO.unsafeRunSync()
 }

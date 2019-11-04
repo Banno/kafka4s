@@ -13,3 +13,6 @@ options:
 
   - title: Kafka Client Metrics
     url: docs/kafka-client-metrics.html
+
+  - title: Kafka Connect
+    url: docs/kafka-connect.html
