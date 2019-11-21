@@ -41,7 +41,7 @@ lazy val V = new {
   val confluent = "5.3.1"
   val avro4s = "3.0.2"
   val log4cats = "1.0.1"
-  val scalacheckMagnolia = "0.0.2"
+  val scalacheckMagnolia = "0.0.3"
 }
 
 lazy val commonSettings = Seq(
