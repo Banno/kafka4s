@@ -5,8 +5,10 @@ import com.banno.kafka.admin._
 import cats.effect._
 import cats.implicits._
 import org.apache.kafka.clients.admin._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class AdminApiSpec extends FlatSpec with Matchers with InMemoryKafka {
+class AdminApiSpec extends AnyFlatSpec with Matchers with InMemoryKafka {
 
   //Probably don't need to test every single AdminClient operation; this is just a sanity check that it is all wired up properly
 

@@ -14,6 +14,8 @@ import com.sksamuel.avro4s.{DefaultFieldMapper, RecordFormat, SchemaFor}
 import com.banno._
 import scala.collection.JavaConverters._
 import shapeless._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.propspec.AnyPropSpec
 
 // http://avro.apache.org/docs/current/api/java/index.html
 object Compatibility {
@@ -69,7 +71,7 @@ object Compatibility {
 }
 
 class AvrohuggerAvro4sSchemaEvolutionSpec
-    extends PropSpec
+    extends AnyPropSpec
     with ScalaCheckDrivenPropertyChecks
     with Matchers {
 

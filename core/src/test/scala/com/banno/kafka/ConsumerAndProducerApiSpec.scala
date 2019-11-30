@@ -21,9 +21,11 @@ import org.scalatestplus.scalacheck._
 import scala.collection.JavaConverters._
 import java.util.ConcurrentModificationException
 import org.apache.kafka.common.errors.WakeupException
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.propspec.AnyPropSpec
 
 class ConsumerAndProducerApiSpec
-    extends PropSpec
+    extends AnyPropSpec
     with ScalaCheckDrivenPropertyChecks
     with Matchers
     with EitherValues

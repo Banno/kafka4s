@@ -13,8 +13,10 @@ import io.prometheus.client.CollectorRegistry
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class PrometheusMetricsReporterApiSpec extends FlatSpec with Matchers with InMemoryKafka {
+class PrometheusMetricsReporterApiSpec extends AnyFlatSpec with Matchers with InMemoryKafka {
   implicit val defaultContextShift = IO.contextShift(ExecutionContext.global)
   implicit val defaultConcurrent = IO.ioConcurrentEffect(defaultContextShift)
   implicit val defaultTimer = IO.timer(ExecutionContext.global)
