@@ -86,7 +86,7 @@ lazy val commonSettings = Seq(
     "ch.qos.logback"                % "logback-classic"           % "1.2.3"          % "test",
     "org.slf4j"                     % "log4j-over-slf4j"          % "1.7.28"         % "test",
     "org.scalacheck"               %% "scalacheck"                % "1.14.3"         % "test",
-    "org.scalatest"                %% "scalatest"                 % "3.0.8"          % "test",
+    "org.scalatest"                %% "scalatest"                 % "3.1.0"          % "test",
     "com.mrdziuban"                %% "scalacheck-magnolia"       % V.scalacheckMagnolia % "test",
     "org.typelevel"                %% "cats-laws"                 % V.cats           % "test",
     "org.typelevel"                %% "discipline"                % "0.11.1"         % "test"
