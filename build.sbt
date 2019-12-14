@@ -25,7 +25,7 @@ lazy val examples = project
   .disablePlugins(MimaPlugin)
   .settings(commonSettings, skipOnPublishSettings)
   .settings(
-     libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.0.0.0-RC8"
+     libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.0.0.0-RC10"
   )
 
 lazy val contributors = Seq(
@@ -85,8 +85,8 @@ lazy val commonSettings = Seq(
     "junit"                         % "junit"                     % "4.12"           % "test",
     "ch.qos.logback"                % "logback-classic"           % "1.2.3"          % "test",
     "org.slf4j"                     % "log4j-over-slf4j"          % "1.7.28"         % "test",
-    "org.scalacheck"               %% "scalacheck"                % "1.14.2"         % "test",
-    "org.scalatest"                %% "scalatest"                 % "3.1.0"          % "test",
+    "org.scalacheck"               %% "scalacheck"                % "1.14.3"         % "test",
+    "org.scalatest"                %% "scalatest"                 % "3.0.8"          % "test",
     "com.mrdziuban"                %% "scalacheck-magnolia"       % V.scalacheckMagnolia % "test",
     "org.typelevel"                %% "cats-laws"                 % V.cats           % "test",
     "org.typelevel"                %% "discipline"                % "0.11.1"         % "test"
