@@ -35,6 +35,7 @@ lazy val contributors = Seq(
 
 lazy val V = new {
   val scala_2_12 = "2.12.10"
+  val scala_2_13 = "2.13.1"
   val cats = "2.0.0"
   val fs2 = "2.2.2"
   val kafka = "2.3.1"
@@ -47,7 +48,7 @@ lazy val V = new {
 lazy val commonSettings = Seq(
   organization := "com.banno",
   scalaVersion := V.scala_2_12,
-  crossScalaVersions := Seq(V.scala_2_12),
+  crossScalaVersions := Seq(V.scala_2_12, V.scala_2_13),
 
   publishArtifact in ThisBuild := true,
 
