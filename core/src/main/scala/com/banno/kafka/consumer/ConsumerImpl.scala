@@ -66,7 +66,9 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
   def commitSync: F[Unit] = F.delay(c.commitSync())
   def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] =
     F.delay(c.commitSync(offsets.asJava))
-  def committed(partitions: Set[TopicPartition]): F[mutable.Map[TopicPartition, OffsetAndMetadata]] =
+  def committed(
+      partitions: Set[TopicPartition]
+  ): F[mutable.Map[TopicPartition, OffsetAndMetadata]] =
     F.delay(c.committed(partitions.asJava).asScala)
   def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
     F.delay(c.endOffsets(partitions.asJavaCollection).asScala.toMap.mapValues(Long.unbox))

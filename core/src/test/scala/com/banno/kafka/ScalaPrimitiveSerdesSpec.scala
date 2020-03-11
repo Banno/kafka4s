@@ -5,7 +5,10 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.propspec.AnyPropSpec
 import org.scalatestplus.scalacheck._
 
-class ScalaPrimitiveSerdesSpec extends AnyPropSpec with ScalaCheckDrivenPropertyChecks with Matchers {
+class ScalaPrimitiveSerdesSpec
+    extends AnyPropSpec
+    with ScalaCheckDrivenPropertyChecks
+    with Matchers {
 
   property("Scala Double serde") {
     val s = implicitly[Serializer[Double]]

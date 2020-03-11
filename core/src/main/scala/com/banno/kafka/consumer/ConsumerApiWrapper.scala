@@ -40,7 +40,8 @@ trait ConsumerApiWrapper[F[_], K, V] extends ConsumerApi[F, K, V] {
   def commitAsync(callback: OffsetCommitCallback): F[Unit] = api.commitAsync(callback)
   def commitSync: F[Unit] = api.commitSync
   def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] = api.commitSync(offsets)
-  def committed(partition: Set[TopicPartition]): F[mutable.Map[TopicPartition, OffsetAndMetadata]] = api.committed(partition)
+  def committed(partition: Set[TopicPartition]): F[mutable.Map[TopicPartition, OffsetAndMetadata]] =
+    api.committed(partition)
   def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
     api.endOffsets(partitions)
   def listTopics: F[Map[String, Seq[PartitionInfo]]] = api.listTopics

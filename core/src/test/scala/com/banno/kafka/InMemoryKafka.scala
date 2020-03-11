@@ -32,7 +32,10 @@ trait InMemoryKafka extends BeforeAndAfterAll { this: Suite =>
   def createTopic(partitionCount: Int = 1): String = {
     val topic = genTopic
     AdminApi
-      .createTopicsIdempotent[IO](bootstrapServer, List(new NewTopic(topic, partitionCount, 1.toShort)))
+      .createTopicsIdempotent[IO](
+        bootstrapServer,
+        List(new NewTopic(topic, partitionCount, 1.toShort))
+      )
       .unsafeRunSync()
     topic
   }
