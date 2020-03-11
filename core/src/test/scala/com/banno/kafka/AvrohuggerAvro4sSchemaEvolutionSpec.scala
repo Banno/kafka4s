@@ -1,17 +1,15 @@
 package com.banno.kafka
 
-import org.scalatest._
 import org.scalatestplus.scalacheck._
-import io.confluent.kafka.serializers.{
-  AbstractKafkaAvroSerDeConfig,
-  KafkaAvroDeserializer,
-  KafkaAvroSerializer
-}
+import io.confluent.kafka.serializers._
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
 import org.apache.avro._
 import org.apache.avro.generic.GenericRecord
 import com.sksamuel.avro4s.{DefaultFieldMapper, RecordFormat, SchemaFor}
 import com.banno._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.propspec.AnyPropSpec
+
 import scala.collection.JavaConverters._
 import shapeless._
 
@@ -69,7 +67,7 @@ object Compatibility {
 }
 
 class AvrohuggerAvro4sSchemaEvolutionSpec
-    extends PropSpec
+    extends AnyPropSpec
     with ScalaCheckDrivenPropertyChecks
     with Matchers {
 

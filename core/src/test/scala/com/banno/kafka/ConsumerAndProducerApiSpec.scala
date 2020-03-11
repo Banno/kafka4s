@@ -1,29 +1,36 @@
 package com.banno.kafka
 
-import org.scalatest._
 import org.scalacheck._
 import cats.implicits._
 import cats.effect._
 import consumer._
 import producer._
 import org.apache.kafka.clients.producer.ProducerRecord
+
 import scala.concurrent.duration._
 import com.banno.kafka.producer._
 import com.banno.kafka.consumer._
 import fs2._
+
 import scala.concurrent.ExecutionContext
 import cats.effect.concurrent.Ref
+
 import scala.util.Random
-import com.mrdziuban.ScalacheckMagnolia._
+import org.scalacheck.magnolia._
 import com.sksamuel.avro4s.RecordFormat
 import org.apache.kafka.common.TopicPartition
 import org.scalatestplus.scalacheck._
+
 import scala.collection.JavaConverters._
 import java.util.ConcurrentModificationException
+
 import org.apache.kafka.common.errors.WakeupException
+import org.scalatest.EitherValues
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.propspec.AnyPropSpec
 
 class ConsumerAndProducerApiSpec
-    extends PropSpec
+    extends AnyPropSpec
     with ScalaCheckDrivenPropertyChecks
     with Matchers
     with EitherValues

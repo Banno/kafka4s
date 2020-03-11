@@ -5,9 +5,11 @@ import io.confluent.kafka.schemaregistry.RestApp;
 import io.confluent.kafka.schemaregistry.avro.AvroCompatibilityLevel;
 import io.confluent.kafka.schemaregistry.rest.SchemaRegistryConfig;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Properties;
 import kafka.server.KafkaConfig$;
 import org.apache.curator.test.InstanceSpec;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.junit.rules.ExternalResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -165,18 +167,7 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
    * @param topic The name of the topic.
    */
   public void createTopic(String topic) {
-    createTopic(topic, 1, 1, new Properties());
-  }
-
-  /**
-   * Creates a Kafka topic with the given parameters.
-   *
-   * @param topic       The name of the topic.
-   * @param partitions  The number of partitions for this topic.
-   * @param replication The replication factor for (the partitions of) this topic.
-   */
-  public void createTopic(String topic, int partitions, int replication) {
-    createTopic(topic, partitions, replication, new Properties());
+    this.createTopic(topic, 1, (short)1);
   }
 
   /**
@@ -185,13 +176,11 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
    * @param topic       The name of the topic.
    * @param partitions  The number of partitions for this topic.
    * @param replication The replication factor for (partitions of) this topic.
-   * @param topicConfig Additional topic-level configuration settings.
    */
   public void createTopic(String topic,
                           int partitions,
-                          int replication,
-                          Properties topicConfig) {
-    broker.createTopic(topic, partitions, replication, topicConfig);
+                          short replication) {
+    broker.createTopic(topic, partitions, replication);
   }
 
   public boolean isRunning() {

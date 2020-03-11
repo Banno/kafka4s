@@ -1,15 +1,13 @@
 package io.confluent.examples.streams.kafka;
 
-import kafka.admin.AdminUtils;
-import kafka.admin.RackAwareMode;
+import io.confluent.kafka.schemaregistry.storage.serialization.ZkStringSerializer;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaConfig$;
 import kafka.server.KafkaServer;
 import kafka.utils.TestUtils;
-import kafka.utils.ZKStringSerializer$;
-import kafka.utils.ZkUtils;
 import org.I0Itec.zkclient.ZkClient;
-import org.I0Itec.zkclient.ZkConnection;
+import org.apache.kafka.clients.admin.KafkaAdminClient;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.network.ListenerName;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.utils.Time;
@@ -19,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Properties;
 
 //Adapted from https://github.com/confluentinc/kafka-streams-examples
@@ -26,7 +25,7 @@ import java.util.Properties;
 /**
  * Runs an in-memory, "embedded" instance of a Kafka broker, which listens at `127.0.0.1:9092` by
  * default.
- *
+ * <p>
  * Requires a running ZooKeeper instance to connect to.  By default, it expects a ZooKeeper instance
  * running at `127.0.0.1:2181`.  You can specify a different ZooKeeper instance by setting the
  * `zookeeper.connect` parameter in the broker's configuration.
@@ -83,12 +82,12 @@ public class KafkaEmbedded {
 
   /**
    * This broker's `metadata.broker.list` value.  Example: `127.0.0.1:9092`.
-   *
+   * <p>
    * You can use this to tell Kafka producers and consumers how to connect to this instance.
    */
   public String brokerList() {
     return String.join(":", kafka.config().hostName(), Integer.toString(kafka.boundPort(ListenerName.forSecurityProtocol(SecurityProtocol
-                                                                                            .PLAINTEXT))));
+        .PLAINTEXT))));
   }
 
 
@@ -119,7 +118,7 @@ public class KafkaEmbedded {
    * @param topic The name of the topic.
    */
   public void createTopic(String topic) {
-    createTopic(topic, 1, 1, new Properties());
+    createTopic(topic, 1, (short)1);
   }
 
   /**
@@ -129,24 +128,19 @@ public class KafkaEmbedded {
    * @param partitions  The number of partitions for this topic.
    * @param replication The replication factor for (the partitions of) this topic.
    */
-  public void createTopic(String topic, int partitions, int replication) {
-    createTopic(topic, partitions, replication, new Properties());
+  public void createTopic(String topic, int partitions, short replication) {
+    ArrayList<NewTopic> topics = new ArrayList<>();
+    topics.add(new NewTopic(topic, partitions, replication));
+    createTopics(topics);
   }
 
   /**
    * Create a Kafka topic with the given parameters.
    *
-   * @param topic       The name of the topic.
-   * @param partitions  The number of partitions for this topic.
-   * @param replication The replication factor for (partitions of) this topic.
-   * @param topicConfig Additional topic-level configuration settings.
+   * @param topics List of new topics you want to create
    */
-  public void createTopic(String topic,
-                          int partitions,
-                          int replication,
-                          Properties topicConfig) {
-    log.debug("Creating topic { name: {}, partitions: {}, replication: {}, config: {} }",
-        topic, partitions, replication, topicConfig);
+  public void createTopics(ArrayList<NewTopic> topics) {
+    log.debug("Creating topics: " + topics);
     // Note: You must initialize the ZkClient with ZKStringSerializer.  If you don't, then
     // createTopic() will only seem to work (it will return without error).  The topic will exist in
     // only ZooKeeper and will be returned when listing topics, but Kafka itself does not create the
@@ -155,10 +149,8 @@ public class KafkaEmbedded {
         zookeeperConnect(),
         DEFAULT_ZK_SESSION_TIMEOUT_MS,
         DEFAULT_ZK_CONNECTION_TIMEOUT_MS,
-        ZKStringSerializer$.MODULE$);
-    boolean isSecure = false;
-    ZkUtils zkUtils = new ZkUtils(zkClient, new ZkConnection(zookeeperConnect()), isSecure);
-    AdminUtils.createTopic(zkUtils, topic, partitions, replication, topicConfig, RackAwareMode.Enforced$.MODULE$);
+        new ZkStringSerializer());
+    KafkaAdminClient.create(new Properties()).createTopics(topics);
     zkClient.close();
   }
 

@@ -1,12 +1,13 @@
 package com.banno.kafka
 
-import org.scalatest._
 import com.banno.kafka.admin._
 import cats.effect._
 import cats.implicits._
 import org.apache.kafka.clients.admin._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class AdminApiSpec extends FlatSpec with Matchers with InMemoryKafka {
+class AdminApiSpec extends AnyFlatSpec with Matchers with InMemoryKafka {
 
   //Probably don't need to test every single AdminClient operation; this is just a sanity check that it is all wired up properly
 
@@ -15,8 +16,8 @@ class AdminApiSpec extends FlatSpec with Matchers with InMemoryKafka {
       for {
         ltr1 <- admin.listTopics
         ns1 <- F.delay(ltr1.names().get())
-        _ <- admin.createTopicsIdempotent(List(new NewTopic("test1", 1, 1)))
-        _ <- admin.createTopicsIdempotent(List(new NewTopic("test1", 1, 1)))
+        _ <- admin.createTopicsIdempotent(List(new NewTopic("test1", 1, 1.toShort)))
+        _ <- admin.createTopicsIdempotent(List(new NewTopic("test1", 1, 1.toShort)))
         ltr2 <- admin.listTopics
         ns2 <- F.delay(ltr2.names.get())
       } yield (ns1, ns2)

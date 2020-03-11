@@ -20,6 +20,7 @@ import cats.implicits._
 import cats.effect.{Async, ContextShift, Resource, Sync}
 import fs2.Stream
 import java.util.regex.Pattern
+
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import org.apache.kafka.common._
@@ -30,6 +31,8 @@ import com.sksamuel.avro4s.FromRecord
 import io.confluent.kafka.serializers.KafkaAvroDeserializer
 import com.banno.kafka._
 import java.util.concurrent.{Executors, ThreadFactory}
+
+import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
 
 trait ConsumerApi[F[_], K, V] {
@@ -50,7 +53,7 @@ trait ConsumerApi[F[_], K, V] {
   def commitAsync(callback: OffsetCommitCallback): F[Unit]
   def commitSync: F[Unit]
   def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit]
-  def committed(partition: TopicPartition): F[OffsetAndMetadata]
+  def committed(partition: Set[TopicPartition]): F[mutable.Map[TopicPartition, OffsetAndMetadata]]
   def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]]
   def endOffsets(
       partitions: Iterable[TopicPartition],
