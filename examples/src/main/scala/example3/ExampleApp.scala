@@ -34,7 +34,7 @@ final class ExampleApp[F[_]: Concurrent: ContextShift: Timer] {
   val topic = new NewTopic(s"example3", 1, 3)
   val kafkaBootstrapServers = "kafka.local:9092,kafka.local:9093"
 
-  def randomInt: F[Int] = Sync[F].delay(Random.nextInt())
+  val randomInt: F[Int] = Sync[F].delay(Random.nextInt())
 
   val example: F[Unit] =
     for {
