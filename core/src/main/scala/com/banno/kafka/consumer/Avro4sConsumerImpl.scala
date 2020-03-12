@@ -53,7 +53,8 @@ case class Avro4sConsumerImpl[F[_]: Functor, K: FromRecord, V: FromRecord](
   def commitAsync(callback: OffsetCommitCallback): F[Unit] = c.commitAsync(callback)
   def commitSync: F[Unit] = c.commitSync
   def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] = c.commitSync(offsets)
-  def committed(partition: Set[TopicPartition]): F[mutable.Map[TopicPartition, OffsetAndMetadata]] = c.committed(partition)
+  def committed(partition: Set[TopicPartition]): F[mutable.Map[TopicPartition, OffsetAndMetadata]] =
+    c.committed(partition)
   def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
     c.endOffsets(partitions)
   def endOffsets(
