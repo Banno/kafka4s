@@ -42,12 +42,12 @@ final class ExampleApp[F[_]: Concurrent: ContextShift: Timer] {
 
       writeStream = Stream
         .resource(ProducerApi.resource[F, Int, Int](BootstrapServers(kafkaBootstrapServers)))
-        .flatMap { p =>
+        .flatMap { producer =>
           Stream
             .awakeDelay[F](1 second)
             .evalMap { _ =>
               val i = Random.nextInt()
-              p.sendAndForget(new ProducerRecord(topic.name, i, i))
+              producer.sendAndForget(new ProducerRecord(topic.name, i, i))
             }
         }
 
