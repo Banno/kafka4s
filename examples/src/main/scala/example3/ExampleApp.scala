@@ -34,6 +34,8 @@ final class ExampleApp[F[_]: Concurrent: ContextShift: Timer] {
   val topic = new NewTopic(s"example3", 1, 3)
   val kafkaBootstrapServers = "kafka.local:9092,kafka.local:9093"
 
+  def randomInt: F[Int] = Sync[F].delay(Random.nextInt())
+
   val example: F[Unit] =
     for {
       _ <- Sync[F].delay(println("Starting kafka4s example"))
@@ -46,8 +48,7 @@ final class ExampleApp[F[_]: Concurrent: ContextShift: Timer] {
           Stream
             .awakeDelay[F](1 second)
             .evalMap { _ =>
-              val i = Random.nextInt()
-              producer.sendAndForget(new ProducerRecord(topic.name, i, i))
+              randomInt.flatMap(i => producer.sendAndForget(new ProducerRecord(topic.name, i, i)))
             }
         }
 
