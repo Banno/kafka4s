@@ -20,21 +20,17 @@ Note: If your project uses fs2 1.x, you'll want releases from the 2.x series. Fo
 Sending records to Kafka is an effect. If we wanted to periodically write random integers to a Kafka topic, we could do:
 
 ```scala
-Stream.resource(
-ProducerApi
-  .resource[F, Int, Int](BootstrapServers(kafkaBootstrapServers))
-  .map(
-    p =>
-      Timer[F]
-        .sleep(1 second)
-        .flatMap(
-          _ =>
-            Sync[F]
-              .delay(Random.nextInt())
-              .flatMap(i => p.sendAndForget(new ProducerRecord(topic.name, i, i)))
-        )
-  )
-)
+Stream
+  .resource(ProducerApi.resource[F, Int, Int](BootstrapServers(kafkaBootstrapServers)))
+  .flatMap { producer =>
+    Stream
+      .awakeDelay[F](1 second)
+      .evalMap { _ =>
+        Sync[F].delay(Random.nextInt()).flatMap { i =>
+          producer.sendAndForget(new ProducerRecord(topic.name, i, i))
+        }
+      }
+  }
 ```
 
 Polling Kafka for records is also an effect, and we can obtain a stream of records from a topic. We can print the even random integers from the above topic using:
