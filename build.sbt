@@ -91,7 +91,6 @@ lazy val commonSettings = Seq(
     "io.prometheus"                 % "simpleclient"              % V.simpleClient,
     "io.chrisdavenport"            %% "log4cats-slf4j"            % V.log4cats,
     "org.apache.curator"            % "curator-test"              % V.curator            % "test",
-    "org.apache.kafka"             %% "kafka"                     % V.kafka              % "test" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
     "org.apache.kafka"             %% "kafka"                     % V.kafka              % "test" classifier "test" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
     "org.apache.kafka"              % "kafka-clients"             % V.kafka              % "test" classifier "test" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
     "org.apache.kafka"              % "kafka-streams"             % V.kafka              % "test" classifier "test" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
