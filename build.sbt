@@ -94,6 +94,8 @@ lazy val commonSettings = Seq(
     "org.apache.kafka"             %% "kafka"                     % V.kafka              % "test" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
     "org.apache.kafka"             %% "kafka"                     % V.kafka              % "test" classifier "test" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
     "org.apache.kafka"              % "kafka-clients"             % V.kafka              % "test" classifier "test" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
+    "org.apache.kafka"              % "kafka-streams"             % V.kafka              % "test" classifier "test" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
+    "org.apache.kafka"              % "kafka-streams-test-utils"  % V.kafka              % "test" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
     "io.confluent"                  % "kafka-schema-registry"     % V.confluent          % "test" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
     "io.confluent"                  % "kafka-schema-registry"     % V.confluent          % "test" classifier "tests" exclude("org.slf4j", "slf4j-log4j12") exclude("log4j", "log4j"),
     "junit"                         % "junit"                     % V.junit              % "test",
