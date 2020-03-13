@@ -3,6 +3,7 @@ package io.confluent.examples.streams.kafka;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaConfig$;
 import kafka.server.KafkaServer;
+import kafka.utils.TestUtils;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -13,7 +14,6 @@ import org.apache.kafka.common.utils.Time;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.banno.kafka.TestUtils;
 
 import java.io.File;
 import java.io.IOException;
