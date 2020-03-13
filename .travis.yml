@@ -11,7 +11,7 @@ scala:
   - 2.12.10
 
 jdk:
-  - openjdk11
+  - openjdk8
 
 before_install:
   - export PATH=${PATH}:./vendor/bundle
