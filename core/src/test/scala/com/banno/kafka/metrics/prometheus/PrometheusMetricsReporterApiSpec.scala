@@ -1,6 +1,5 @@
 package com.banno.kafka.metrics.prometheus
 
-import org.scalatest._
 import cats.implicits._
 import cats.effect.IO
 import com.banno.kafka._
@@ -9,12 +8,14 @@ import com.banno.kafka.consumer._
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
 import io.prometheus.client.CollectorRegistry
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-class PrometheusMetricsReporterApiSpec extends FlatSpec with Matchers with InMemoryKafka {
+class PrometheusMetricsReporterApiSpec extends AnyFlatSpec with Matchers with InMemoryKafka {
   implicit val defaultContextShift = IO.contextShift(ExecutionContext.global)
   implicit val defaultConcurrent = IO.ioConcurrentEffect(defaultContextShift)
   implicit val defaultTimer = IO.timer(ExecutionContext.global)

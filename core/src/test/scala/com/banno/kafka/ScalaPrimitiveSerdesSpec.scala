@@ -1,10 +1,14 @@
 package com.banno.kafka
 
-import org.scalatest._
 import org.apache.kafka.common.serialization._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.propspec.AnyPropSpec
 import org.scalatestplus.scalacheck._
 
-class ScalaPrimitiveSerdesSpec extends PropSpec with ScalaCheckDrivenPropertyChecks with Matchers {
+class ScalaPrimitiveSerdesSpec
+    extends AnyPropSpec
+    with ScalaCheckDrivenPropertyChecks
+    with Matchers {
 
   property("Scala Double serde") {
     val s = implicitly[Serializer[Double]]

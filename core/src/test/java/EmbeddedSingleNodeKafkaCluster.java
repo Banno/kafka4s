@@ -4,13 +4,17 @@ import io.confluent.examples.streams.zookeeper.ZooKeeperEmbedded;
 import io.confluent.kafka.schemaregistry.RestApp;
 import io.confluent.kafka.schemaregistry.avro.AvroCompatibilityLevel;
 import io.confluent.kafka.schemaregistry.rest.SchemaRegistryConfig;
-import java.io.IOException;
-import java.util.Properties;
 import kafka.server.KafkaConfig$;
 import org.apache.curator.test.InstanceSpec;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.junit.rules.ExternalResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Properties;
 
 //Adapted from https://github.com/confluentinc/kafka-streams-examples
 
@@ -25,8 +29,12 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
   private static final String KAFKA_SCHEMAS_TOPIC = "_schemas";
   private static final String AVRO_COMPATIBILITY_TYPE = AvroCompatibilityLevel.NONE.name;
 
+  private static final String KAFKASTORE_OPERATION_TIMEOUT_MS = "60000";
+  private static final String KAFKASTORE_DEBUG = "true";
+  private static final String KAFKASTORE_INIT_TIMEOUT = "90000";
+
   private ZooKeeperEmbedded zookeeper;
-  private KafkaEmbedded broker;
+  private io.confluent.examples.streams.kafka.KafkaEmbedded broker;
   private RestApp schemaRegistry;
   private final Properties brokerConfig;
   private boolean running;
@@ -43,8 +51,9 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
    *
    * @param brokerConfig Additional broker configuration settings.
    */
-  public EmbeddedSingleNodeKafkaCluster(Properties brokerConfig) {
+  public EmbeddedSingleNodeKafkaCluster(final Properties brokerConfig) {
     this.brokerConfig = new Properties();
+    this.brokerConfig.put(SchemaRegistryConfig.KAFKASTORE_TIMEOUT_CONFIG, KAFKASTORE_OPERATION_TIMEOUT_MS);
     this.brokerConfig.putAll(brokerConfig);
   }
 
@@ -57,37 +66,36 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
     zookeeper = new ZooKeeperEmbedded();
     log.debug("ZooKeeper instance is running at {}", zookeeper.connectString());
 
-    Properties effectiveBrokerConfig = effectiveBrokerConfigFrom(brokerConfig, zookeeper);
+    final Properties effectiveBrokerConfig = effectiveBrokerConfigFrom(brokerConfig, zookeeper);
     log.debug("Starting a Kafka instance on port {} ...",
-        effectiveBrokerConfig.getProperty(KafkaConfig$.MODULE$.PortProp()));
-    broker = new KafkaEmbedded(effectiveBrokerConfig);
+      effectiveBrokerConfig.getProperty(KafkaConfig$.MODULE$.PortProp()));
+    broker = new io.confluent.examples.streams.kafka.KafkaEmbedded(effectiveBrokerConfig);
     log.debug("Kafka instance is running at {}, connected to ZooKeeper at {}",
-        broker.brokerList(), broker.zookeeperConnect());
+      broker.brokerList(), broker.zookeeperConnect());
 
-    int port = InstanceSpec.getRandomPort();
-    String listener = "http://0.0.0.0:" + Integer.toString(port);
-    log.debug("Starting Schema Registry listening at {}...", listener);
-    Properties properties = new Properties();
-    properties.setProperty(SchemaRegistryConfig.LISTENERS_CONFIG, listener); //avoid this WARN log: DEPRECATION warning: `listeners` configuration is not configured. Falling back to the deprecated `port` configuration.
-    schemaRegistry = new RestApp(
-        port,
-        zookeeperConnect(),
-        KAFKA_SCHEMAS_TOPIC, AVRO_COMPATIBILITY_TYPE, properties);
+    final Properties schemaRegistryProps = new Properties();
+
+    schemaRegistryProps.put(SchemaRegistryConfig.KAFKASTORE_TIMEOUT_CONFIG, KAFKASTORE_OPERATION_TIMEOUT_MS);
+    schemaRegistryProps.put(SchemaRegistryConfig.DEBUG_CONFIG, KAFKASTORE_DEBUG);
+    schemaRegistryProps.put(SchemaRegistryConfig.KAFKASTORE_INIT_TIMEOUT_CONFIG, KAFKASTORE_INIT_TIMEOUT);
+
+    schemaRegistry = new RestApp(0, zookeeperConnect(), KAFKA_SCHEMAS_TOPIC, AVRO_COMPATIBILITY_TYPE, schemaRegistryProps);
     schemaRegistry.start();
-    log.debug("Schema Registry is listening at {}, schemaRegistryUrl is {}", listener, schemaRegistryUrl());
     running = true;
   }
 
-  private Properties effectiveBrokerConfigFrom(Properties brokerConfig, ZooKeeperEmbedded zookeeper) {
-    Properties effectiveConfig = new Properties();
+  private Properties effectiveBrokerConfigFrom(final Properties brokerConfig, final ZooKeeperEmbedded zookeeper) {
+    final Properties effectiveConfig = new Properties();
     effectiveConfig.putAll(brokerConfig);
     effectiveConfig.put(KafkaConfig$.MODULE$.ZkConnectProp(), zookeeper.connectString());
+    effectiveConfig.put(KafkaConfig$.MODULE$.ZkSessionTimeoutMsProp(), 30 * 1000);
     effectiveConfig.put(KafkaConfig$.MODULE$.PortProp(), DEFAULT_BROKER_PORT);
-
+    effectiveConfig.put(KafkaConfig$.MODULE$.ZkConnectionTimeoutMsProp(), 60 * 1000);
     effectiveConfig.put(KafkaConfig$.MODULE$.DeleteTopicEnableProp(), true);
     effectiveConfig.put(KafkaConfig$.MODULE$.LogCleanerDedupeBufferSizeProp(), 2 * 1024 * 1024L);
     effectiveConfig.put(KafkaConfig$.MODULE$.GroupMinSessionTimeoutMsProp(), 0);
     effectiveConfig.put(KafkaConfig$.MODULE$.OffsetsTopicReplicationFactorProp(), (short) 1);
+    effectiveConfig.put(KafkaConfig$.MODULE$.OffsetsTopicPartitionsProp(), 1);
     effectiveConfig.put(KafkaConfig$.MODULE$.AutoCreateTopicsEnableProp(), true);
     return effectiveConfig;
   }
@@ -112,8 +120,8 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
         if (schemaRegistry != null) {
           schemaRegistry.stop();
         }
-      } catch (Exception e) {
-        throw new RuntimeException(e);
+      } catch (final Exception fatal) {
+        throw new RuntimeException(fatal);
       }
       if (broker != null) {
         broker.stop();
@@ -122,8 +130,8 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
         if (zookeeper != null) {
           zookeeper.stop();
         }
-      } catch (IOException e) {
-        throw new RuntimeException(e);
+      } catch (final IOException fatal) {
+        throw new RuntimeException(fatal);
       }
     } finally {
       running = false;
@@ -133,7 +141,7 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
 
   /**
    * This cluster's `bootstrap.servers` value.  Example: `127.0.0.1:9092`.
-   *
+   * <p>
    * You can use this to tell Kafka Streams applications, Kafka producers, and Kafka consumers (new
    * consumer API) how to connect to this cluster.
    */
@@ -144,7 +152,7 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
   /**
    * This cluster's ZK connection string aka `zookeeper.connect` in `hostnameOrIp:port` format.
    * Example: `127.0.0.1:2181`.
-   *
+   * <p>
    * You can use this to e.g. tell Kafka consumers (old consumer API) how to connect to this
    * cluster.
    */
@@ -156,7 +164,7 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
    * The "schema.registry.url" setting of the schema registry instance.
    */
   public String schemaRegistryUrl() {
-    return schemaRegistry.restConnect.replaceAll("0.0.0.0", "localhost");
+    return schemaRegistry.restConnect;
   }
 
   /**
@@ -164,8 +172,8 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
    *
    * @param topic The name of the topic.
    */
-  public void createTopic(String topic) {
-    createTopic(topic, 1, 1, new Properties());
+  public void createTopic(final String topic) throws InterruptedException {
+    createTopic(topic, 1, (short) 1, Collections.emptyMap());
   }
 
   /**
@@ -175,8 +183,8 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
    * @param partitions  The number of partitions for this topic.
    * @param replication The replication factor for (the partitions of) this topic.
    */
-  public void createTopic(String topic, int partitions, int replication) {
-    createTopic(topic, partitions, replication, new Properties());
+  public void createTopic(final String topic, final int partitions, final short replication) throws InterruptedException {
+    createTopic(topic, partitions, replication, Collections.emptyMap());
   }
 
   /**
@@ -187,10 +195,26 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
    * @param replication The replication factor for (partitions of) this topic.
    * @param topicConfig Additional topic-level configuration settings.
    */
-  public void createTopic(String topic,
-                          int partitions,
-                          int replication,
-                          Properties topicConfig) {
+  public void createTopic(final String topic,
+                          final int partitions,
+                          final short replication,
+                          final Map<String, String> topicConfig) throws InterruptedException {
+    createTopic(60000L, topic, partitions, replication, topicConfig);
+  }
+
+  /**
+   * Creates a Kafka topic with the given parameters and blocks until all topics got created.
+   *
+   * @param topic       The name of the topic.
+   * @param partitions  The number of partitions for this topic.
+   * @param replication The replication factor for (partitions of) this topic.
+   * @param topicConfig Additional topic-level configuration settings.
+   */
+  public void createTopic(final long timeoutMs,
+                          final String topic,
+                          final int partitions,
+                          final short replication,
+                          final Map<String, String> topicConfig) throws InterruptedException {
     broker.createTopic(topic, partitions, replication, topicConfig);
   }
 

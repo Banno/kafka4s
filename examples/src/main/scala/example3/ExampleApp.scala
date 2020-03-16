@@ -31,7 +31,7 @@ import scala.util.Random
 final class ExampleApp[F[_]: Concurrent: ContextShift: Timer] {
 
   // Change these for your environment as needed
-  val topic = new NewTopic(s"example3", 1, 3)
+  val topic = new NewTopic(s"example3", 1, 3.toShort)
   val kafkaBootstrapServers = "kafka.local:9092,kafka.local:9093"
 
   val example: F[Unit] =

@@ -33,7 +33,7 @@ final class ExampleApp[F[_]: Async: ContextShift] {
   import ExampleApp._
 
   // Change these for your environment as needed
-  val topic = new NewTopic(s"example1.customers.v1", 1, 3)
+  val topic = new NewTopic(s"example1.customers.v1", 1, 3.toShort)
   val kafkaBootstrapServers = "kafka.local:9092,kafka.local:9093"
   val schemaRegistryUri = "http://kafka.local:8081"
 

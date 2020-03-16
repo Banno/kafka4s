@@ -27,6 +27,8 @@ import scala.concurrent.duration._
 import org.apache.kafka.common._
 import org.apache.kafka.clients.consumer._
 
+import scala.collection.mutable
+
 case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
     extends ConsumerApi[F, K, V] {
   private[this] val log = Slf4jLogger.getLoggerFromClass(this.getClass)
@@ -64,7 +66,10 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
   def commitSync: F[Unit] = F.delay(c.commitSync())
   def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] =
     F.delay(c.commitSync(offsets.asJava))
-  def committed(partition: TopicPartition): F[OffsetAndMetadata] = F.delay(c.committed(partition))
+  def committed(
+      partitions: Set[TopicPartition]
+  ): F[mutable.Map[TopicPartition, OffsetAndMetadata]] =
+    F.delay(c.committed(partitions.asJava).asScala)
   def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
     F.delay(c.endOffsets(partitions.asJavaCollection).asScala.toMap.mapValues(Long.unbox))
   def endOffsets(
