@@ -1,38 +1,3 @@
-lazy val kafka4s = project.in(file("."))
-  .aggregate(core, docs, examples)
-  .settings(
-    commonSettings,
-    releaseSettings,
-    mimaSettings,
-    skipOnPublishSettings,
-  )
-
-lazy val core = project
-  .settings(commonSettings, releaseSettings, mimaSettings)
-  .settings(
-    name := "kafka4s"
-  )
-
-lazy val docs = project
-  .dependsOn(core)
-  .enablePlugins(MicrositesPlugin)
-  .enablePlugins(TutPlugin)
-  .disablePlugins(MimaPlugin)
-  .settings(commonSettings, skipOnPublishSettings, micrositeSettings)
-
-lazy val examples = project
-  .dependsOn(core)
-  .disablePlugins(MimaPlugin)
-  .settings(commonSettings, skipOnPublishSettings)
-  .settings(
-     libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.0.0.0-RC11"
-  )
-
-lazy val contributors = Seq(
-  "amohrland" -> "Andrew Mohrland",
-  "zcox"      -> "Zach Cox",
-)
-
 lazy val V = new {
   val scala_2_13 = "2.13.1"
   val scala_2_12 = "2.12.10"
@@ -58,24 +23,95 @@ lazy val V = new {
   val simpleClient = "0.8.1"
 }
 
+lazy val kafka4s = project.in(file("."))
+  .settings(publish / skip := true)
+  .disablePlugins(MimaPlugin)
+  .aggregate(core) // , docs, examples)
+  // .settings(
+  //   commonSettings,
+    // releaseSettings,
+    // mimaSettings,
+    // skipOnPublishSettings,
+  // )
+
+lazy val core = project
+  .settings(commonSettings) //, releaseSettings, mimaSettings)
+  .settings(
+    name := "kafka4s",
+    mimaBinaryIssueFilters ++= {
+      import com.typesafe.tools.mima.core._
+      import com.typesafe.tools.mima.core.ProblemFilters._
+      Seq()
+    }
+  )
+
+// lazy val examples = project
+//   .settings(publish / skip := true)
+//   .disablePlugins(MimaPlugin)
+//   .settings(commonSettings) //, skipOnPublishSettings)
+//   .dependsOn(core)
+//   .settings(
+//      libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.0.0.0-RC11"
+//   )
+
+// lazy val docs = project
+//   .settings(publish / skip := true)
+//   .disablePlugins(MimaPlugin)
+//   .enablePlugins(MicrositesPlugin)
+//   .enablePlugins(TutPlugin)
+//   .settings(commonSettings)
+//   .dependsOn(core)
+  // .settings(commonSettings, skipOnPublishSettings, micrositeSettings)
+  // .settings {
+  // import microsites._
+  // Seq(
+  //   micrositeName := "kafka4s",
+  //   micrositeDescription := "Functional programming with Kafka and Scala",
+  //   micrositeAuthor := "Jack Henry & Associates, Inc.®",
+  //   micrositeGithubOwner := "Banno",
+  //   micrositeGithubRepo := "kafka4s",
+  //   micrositeTwitter := "@kafka4s",
+  //   micrositeBaseUrl := "/kafka4s",
+  //   micrositeDocumentationUrl := "/kafka4s/docs",
+  //   micrositeFooterText := None,
+  //   micrositeHighlightTheme := "atom-one-light",
+  //   micrositePalette := Map(
+  //     "brand-primary" -> "#3e5b95",
+  //     "brand-secondary" -> "#294066",
+  //     "brand-tertiary" -> "#2d5799",
+  //     "gray-dark" -> "#49494B",
+  //     "gray" -> "#7B7B7E",
+  //     "gray-light" -> "#E5E5E6",
+  //     "gray-lighter" -> "#F4F3F4",
+  //     "white-color" -> "#FFFFFF"
+  //   ),
+  //   fork in tut := true,
+  //   scalacOptions in Tut --= Seq(
+  //     "-Xfatal-warnings",
+  //     "-Ywarn-unused-import",
+  //     "-Ywarn-numeric-widen",
+  //     "-Ywarn-dead-code",
+  //     "-Ywarn-unused:imports",
+  //     "-Xlint:-missing-interpolator,_"
+  //   ),
+  //   libraryDependencies += "com.47deg" %% "github4s" % V.github4s,
+  //   micrositePushSiteWith := GitHub4s,
+  //   micrositeGithubToken := sys.env.get("GITHUB_TOKEN"),
+  //   micrositeExtraMdFiles := Map(
+  //     file("CHANGELOG.md")        -> ExtraMdFileConfig("changelog.md", "page", Map("title" -> "changelog", "section" -> "changelog", "position" -> "100")),
+  //     file("CODE_OF_CONDUCT.md")  -> ExtraMdFileConfig("code-of-conduct.md",   "page", Map("title" -> "code of conduct",   "section" -> "code of conduct",   "position" -> "101")),
+  //     file("LICENSE")             -> ExtraMdFileConfig("license.md",   "page", Map("title" -> "license",   "section" -> "license",   "position" -> "102"))
+  //   )
+  // )
+  // }
+
 lazy val commonSettings = Seq(
-  organization := "com.banno",
   scalaVersion := V.scala_2_12,
-  crossScalaVersions := Seq(V.scala_2_12),
+  crossScalaVersions := Seq(scalaVersion.value),
 
-  publishArtifact in ThisBuild := true,
+  // publishArtifact in ThisBuild := true,
 
-  cancelable in Global := true,
-
-  scalacOptions ++= Seq(
-    "-language:postfixOps",
-    "-Xlog-free-terms",
-    "-Xlog-free-types",
-  ),
-
-  organizationName := "Jack Henry & Associates, Inc.®",
-  startYear := Some(2019),
-  licenses += ("Apache-2.0", new URL("https://www.apache.org/licenses/LICENSE-2.0.txt")),
+  // cancelable in Global := true,
 
   resolvers += "confluent" at "https://packages.confluent.io/maven/",
 
@@ -112,172 +148,135 @@ lazy val commonSettings = Seq(
   testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oS"),
 )
 
-lazy val releaseSettings = {
-  import ReleaseTransformations._
-  Seq(
-    releaseCrossBuild := true,
-    releaseProcess := Seq[ReleaseStep](
-      checkSnapshotDependencies,
-      inquireVersions,
-      runClean,
-      runTest,
-      setReleaseVersion,
-      commitReleaseVersion,
-      tagRelease,
-      releaseStepCommandAndRemaining("+publishSigned"),
-      setNextVersion,
-      commitNextVersion,
-      releaseStepCommand("sonatypeReleaseAll"),
-      pushChanges
-    ),
-    publishTo := {
-      val nexus = "https://oss.sonatype.org/"
-      if (isSnapshot.value)
-        Some("snapshots" at nexus + "content/repositories/snapshots")
-      else
-        Some("releases" at nexus + "service/local/staging/deploy/maven2")
-    },
-    credentials ++= (
-      for {
-        username <- Option(System.getenv().get("SONATYPE_USERNAME"))
-        password <- Option(System.getenv().get("SONATYPE_PASSWORD"))
-      } yield
-        Credentials(
-          "Sonatype Nexus Repository Manager",
-          "oss.sonatype.org",
-          username,
-          password
-        )
-    ).toSeq,
-    publishArtifact in Test := false,
-    // releasePublishArtifactsAction := PgpKeys.publishSigned.value,
-    scmInfo := Some(
-      ScmInfo(
-        url("https://github.com/banno/kafka4s"),
-        "git@github.com:banno/kafka4s.git"
-      )
-    ),
-    homepage := Some(url("https://github.com/banno/kafka4s")),
-    publishMavenStyle := true,
-    pomIncludeRepository := { _ =>
-      false
-    },
-    pomExtra := {
-      <developers>
-        {for ((username, name) <- contributors) yield
-        <developer>
-          <id>{username}</id>
-          <name>{name}</name>
-          <url>http://github.com/{username}</url>
-        </developer>
-        }
-      </developers>
-    }
-  )
-}
-
-lazy val mimaSettings = {
-  import sbtrelease.Version
-
-  def semverBinCompatVersions(major: Int, minor: Int, patch: Int): Set[(Int, Int, Int)] = {
-    val majorVersions: List[Int] =
-      if (major == 0 && minor == 0) List.empty[Int] // If 0.0.x do not check MiMa
-      else List(major)
-    val minorVersions : List[Int] =
-      if (major >= 1) Range(0, minor).inclusive.toList
-      else List(minor)
-    def patchVersions(currentMinVersion: Int): List[Int] =
-      if (minor == 0 && patch == 0) List.empty[Int]
-      else if (currentMinVersion != minor) List(0)
-      else Range(0, patch - 1).inclusive.toList
-
-    val versions = for {
-      maj <- majorVersions
-      min <- minorVersions
-      pat <- patchVersions(min)
-    } yield (maj, min, pat)
-    versions.toSet
-  }
-
-  def mimaVersions(version: String): Set[String] = {
-    Version(version) match {
-      case Some(Version(major, Seq(minor, patch), _)) =>
-        semverBinCompatVersions(major.toInt, minor.toInt, patch.toInt)
-          .map{case (maj, min, pat) => maj.toString + "." + min.toString + "." + pat.toString}
-      case _ =>
-        Set.empty[String]
-    }
-  }
-  // Safety Net For Exclusions
-  lazy val excludedVersions: Set[String] = Set()
-
-  // Safety Net for Inclusions
-  lazy val extraVersions: Set[String] = Set()
-
-  Seq(
-    mimaFailOnNoPrevious := false, // TODO Set this to true (or remove altogether) once binary compatibility is desired.
-    mimaFailOnProblem := mimaVersions(version.value).nonEmpty,
-    mimaPreviousArtifacts := (mimaVersions(version.value) ++ extraVersions)
-      .filterNot(excludedVersions.contains(_))
-      .map{v =>
-        val moduleN = moduleName.value + "_" + scalaBinaryVersion.value.toString
-        organization.value % moduleN % v
-      },
-    mimaBinaryIssueFilters ++= {
-      import com.typesafe.tools.mima.core._
-      import com.typesafe.tools.mima.core.ProblemFilters._
-      Seq()
-    }
-  )
-}
-
-lazy val micrositeSettings = {
-  import microsites._
-  Seq(
-    micrositeName := "kafka4s",
-    micrositeDescription := "Functional programming with Kafka and Scala",
-    micrositeAuthor := "Jack Henry & Associates, Inc.®",
-    micrositeGithubOwner := "Banno",
-    micrositeGithubRepo := "kafka4s",
-    micrositeTwitter := "@kafka4s",
-    micrositeBaseUrl := "/kafka4s",
-    micrositeDocumentationUrl := "/kafka4s/docs",
-    micrositeFooterText := None,
-    micrositeHighlightTheme := "atom-one-light",
-    micrositePalette := Map(
-      "brand-primary" -> "#3e5b95",
-      "brand-secondary" -> "#294066",
-      "brand-tertiary" -> "#2d5799",
-      "gray-dark" -> "#49494B",
-      "gray" -> "#7B7B7E",
-      "gray-light" -> "#E5E5E6",
-      "gray-lighter" -> "#F4F3F4",
-      "white-color" -> "#FFFFFF"
-    ),
-    fork in tut := true,
-    scalacOptions in Tut --= Seq(
-      "-Xfatal-warnings",
-      "-Ywarn-unused-import",
-      "-Ywarn-numeric-widen",
-      "-Ywarn-dead-code",
-      "-Ywarn-unused:imports",
-      "-Xlint:-missing-interpolator,_"
-    ),
-    libraryDependencies += "com.47deg" %% "github4s" % V.github4s,
-    micrositePushSiteWith := GitHub4s,
-    micrositeGithubToken := sys.env.get("GITHUB_TOKEN"),
-    micrositeExtraMdFiles := Map(
-      file("CHANGELOG.md")        -> ExtraMdFileConfig("changelog.md", "page", Map("title" -> "changelog", "section" -> "changelog", "position" -> "100")),
-      file("CODE_OF_CONDUCT.md")  -> ExtraMdFileConfig("code-of-conduct.md",   "page", Map("title" -> "code of conduct",   "section" -> "code of conduct",   "position" -> "101")),
-      file("LICENSE")             -> ExtraMdFileConfig("license.md",   "page", Map("title" -> "license",   "section" -> "license",   "position" -> "102"))
-    )
-  )
-}
-
-lazy val skipOnPublishSettings = Seq(
-  skip in publish := true,
-  publish := (()),
-  publishLocal := (()),
-  publishArtifact := false,
-  publishTo := None
+lazy val contributors = Seq(
+  "amohrland" -> "Andrew Mohrland",
+  "zcox"      -> "Zach Cox",
 )
+
+inThisBuild(List(
+  organization := "com.banno",
+developers := {
+    for {
+      (username, name) <- contributors
+    } yield {
+      Developer(username, name, "", url(s"http://github.com/$username"))
+    },
+  }.toList,
+  scalacOptions ++= Seq(
+    "-language:postfixOps",
+    "-Xlog-free-terms",
+    "-Xlog-free-types",
+  ),
+  pomIncludeRepository := { _ => false },
+
+  organizationName := "Jack Henry & Associates, Inc.®",
+  startYear := Some(2019),
+  licenses += ("Apache-2.0", new URL("https://www.apache.org/licenses/LICENSE-2.0.txt")),
+  homepage := Some(url("https://github.com/banno/kafka4s")),
+))
+
+// lazy val releaseSettings = {
+//   import ReleaseTransformations._
+//   Seq(
+//     releaseCrossBuild := true,
+//     releaseProcess := Seq[ReleaseStep](
+//       checkSnapshotDependencies,
+//       inquireVersions,
+//       runClean,
+//       runTest,
+//       setReleaseVersion,
+//       commitReleaseVersion,
+//       tagRelease,
+//       releaseStepCommandAndRemaining("+publishSigned"),
+//       setNextVersion,
+//       commitNextVersion,
+//       releaseStepCommand("sonatypeReleaseAll"),
+//       pushChanges
+//     ),
+//     publishArtifact in Test := false,
+//     // releasePublishArtifactsAction := PgpKeys.publishSigned.value,
+//     scmInfo := Some(
+//       ScmInfo(
+//         url("https://github.com/banno/kafka4s"),
+//         "git@github.com:banno/kafka4s.git"
+//       )
+//     ),
+//     homepage := Some(url("https://github.com/banno/kafka4s")),
+//     pomExtra := {
+//       <developers>
+//         {for ((username, name) <- contributors) yield
+//         <developer>
+//           <id>{username}</id>
+//           <name>{name}</name>
+//           <url>http://github.com/{username}</url>
+//         </developer>
+//         }
+//       </developers>
+//     }
+//   )
+// }
+
+// lazy val mimaSettings = {
+//   import sbtrelease.Version
+
+//   def semverBinCompatVersions(major: Int, minor: Int, patch: Int): Set[(Int, Int, Int)] = {
+//     val majorVersions: List[Int] =
+//       if (major == 0 && minor == 0) List.empty[Int] // If 0.0.x do not check MiMa
+//       else List(major)
+//     val minorVersions : List[Int] =
+//       if (major >= 1) Range(0, minor).inclusive.toList
+//       else List(minor)
+//     def patchVersions(currentMinVersion: Int): List[Int] =
+//       if (minor == 0 && patch == 0) List.empty[Int]
+//       else if (currentMinVersion != minor) List(0)
+//       else Range(0, patch - 1).inclusive.toList
+
+//     val versions = for {
+//       maj <- majorVersions
+//       min <- minorVersions
+//       pat <- patchVersions(min)
+//     } yield (maj, min, pat)
+//     versions.toSet
+//   }
+
+//   def mimaVersions(version: String): Set[String] = {
+//     Version(version) match {
+//       case Some(Version(major, Seq(minor, patch), _)) =>
+//         semverBinCompatVersions(major.toInt, minor.toInt, patch.toInt)
+//           .map{case (maj, min, pat) => maj.toString + "." + min.toString + "." + pat.toString}
+//       case _ =>
+//         Set.empty[String]
+//     }
+//   }
+//   // Safety Net For Exclusions
+//   lazy val excludedVersions: Set[String] = Set()
+
+//   // Safety Net for Inclusions
+//   lazy val extraVersions: Set[String] = Set()
+
+//   Seq(
+//     mimaFailOnNoPrevious := false, // TODO Set this to true (or remove altogether) once binary compatibility is desired.
+//     mimaFailOnProblem := mimaVersions(version.value).nonEmpty,
+//     mimaPreviousArtifacts := (mimaVersions(version.value) ++ extraVersions)
+//       .filterNot(excludedVersions.contains(_))
+//       .map{v =>
+//         val moduleN = moduleName.value + "_" + scalaBinaryVersion.value.toString
+//         organization.value % moduleN % v
+//       },
+//     mimaBinaryIssueFilters ++= {
+//       import com.typesafe.tools.mima.core._
+//       import com.typesafe.tools.mima.core.ProblemFilters._
+//       Seq()
+//     }
+//   )
+// }
+
+// lazy val skipOnPublishSettings = Seq(
+//   skip in publish := true,
+//   publish := (()),
+//   publishLocal := (()),
+//   publishArtifact := false,
+// )
+
+addCommandAlias("fmt", "scalafmtSbt;scalafmtAll;")
+addCommandAlias("fmtck", "scalafmtSbtCheck;scalafmtCheckAll;")

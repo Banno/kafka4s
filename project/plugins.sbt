@@ -1,18 +1,15 @@
-addSbtPlugin("com.dwijnand" % "sbt-travisci" % "1.2.0")
-addSbtPlugin("com.typesafe.sbt" % "sbt-git" % "1.0.0")
-addSbtPlugin("com.jsuereth" % "sbt-pgp" % "2.0.0")
+addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.3.7")
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.3.1")
+addSbtPlugin("com.julianpeeters" % "sbt-avrohugger" % "2.0.0-RC22")
+
 addSbtPlugin("io.github.davidgregory084" % "sbt-tpolecat" % "0.1.10")
-addSbtPlugin("org.lyranthe.sbt" % "partial-unification" % "1.1.2")
-addSbtPlugin("com.github.gseitz" % "sbt-release" % "1.0.13")
-addSbtPlugin("org.xerial.sbt" % "sbt-sonatype" % "3.8.1")
-addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.6.1")
+
 addSbtPlugin("org.tpolecat" % "tut-plugin" % "0.6.13")
 addSbtPlugin("com.47deg" % "sbt-microsites" % "0.9.7")
 addSbtPlugin("com.typesafe.sbt" % "sbt-ghpages" % "0.6.3")
-addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.3.7")
-addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "0.6.1")
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.32")
+
 addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.4.0")
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.3.1")
-addSbtPlugin("com.julianpeeters" % "sbt-avrohugger" % "2.0.0-RC22")
-addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.10.0-RC1")
+
+addSbtPlugin("io.chrisdavenport" % "sbt-mima-version-check" % "0.1.2")
+
+addSbtPlugin("com.geirsson" % "sbt-ci-release" % "1.5.2")
