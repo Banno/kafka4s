@@ -45,69 +45,69 @@ lazy val core = project
     }
   )
 
-lazy val examples = project
-  .settings(publish / skip := true)
-  .disablePlugins(MimaPlugin)
-  .settings(commonSettings) //, skipOnPublishSettings)
-  .dependsOn(core)
-  .settings(
-     libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.0.0.0-RC11"
-  )
+// lazy val examples = project
+//   .settings(publish / skip := true)
+//   .disablePlugins(MimaPlugin)
+//   .settings(commonSettings) //, skipOnPublishSettings)
+//   .dependsOn(core)
+//   .settings(
+//      libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.0.0.0-RC11"
+//   )
 
-lazy val docs = project
-  .settings(publish / skip := true)
-  .disablePlugins(MimaPlugin)
-  .enablePlugins(MicrositesPlugin)
-  .enablePlugins(TutPlugin)
-  .settings(commonSettings)
-  .dependsOn(core)
+// lazy val docs = project
+//   .settings(publish / skip := true)
+//   .disablePlugins(MimaPlugin)
+//   .enablePlugins(MicrositesPlugin)
+//   .enablePlugins(TutPlugin)
+//   .settings(commonSettings)
+//   .dependsOn(core)
   // .settings(commonSettings, skipOnPublishSettings, micrositeSettings)
-  .settings {
-  import microsites._
-  Seq(
-    micrositeName := "kafka4s",
-    micrositeDescription := "Functional programming with Kafka and Scala",
-    micrositeAuthor := "Jack Henry & Associates, Inc.®",
-    micrositeGithubOwner := "Banno",
-    micrositeGithubRepo := "kafka4s",
-    micrositeTwitter := "@kafka4s",
-    micrositeBaseUrl := "/kafka4s",
-    micrositeDocumentationUrl := "/kafka4s/docs",
-    micrositeFooterText := None,
-    micrositeHighlightTheme := "atom-one-light",
-    micrositePalette := Map(
-      "brand-primary" -> "#3e5b95",
-      "brand-secondary" -> "#294066",
-      "brand-tertiary" -> "#2d5799",
-      "gray-dark" -> "#49494B",
-      "gray" -> "#7B7B7E",
-      "gray-light" -> "#E5E5E6",
-      "gray-lighter" -> "#F4F3F4",
-      "white-color" -> "#FFFFFF"
-    ),
-    fork in tut := true,
-    scalacOptions in Tut --= Seq(
-      "-Xfatal-warnings",
-      "-Ywarn-unused-import",
-      "-Ywarn-numeric-widen",
-      "-Ywarn-dead-code",
-      "-Ywarn-unused:imports",
-      "-Xlint:-missing-interpolator,_"
-    ),
-    libraryDependencies += "com.47deg" %% "github4s" % V.github4s,
-    micrositePushSiteWith := GitHub4s,
-    micrositeGithubToken := sys.env.get("GITHUB_TOKEN"),
-    micrositeExtraMdFiles := Map(
-      file("CHANGELOG.md")        -> ExtraMdFileConfig("changelog.md", "page", Map("title" -> "changelog", "section" -> "changelog", "position" -> "100")),
-      file("CODE_OF_CONDUCT.md")  -> ExtraMdFileConfig("code-of-conduct.md",   "page", Map("title" -> "code of conduct",   "section" -> "code of conduct",   "position" -> "101")),
-      file("LICENSE")             -> ExtraMdFileConfig("license.md",   "page", Map("title" -> "license",   "section" -> "license",   "position" -> "102"))
-    )
-  )
-  }
+  // .settings {
+  // import microsites._
+  // Seq(
+  //   micrositeName := "kafka4s",
+  //   micrositeDescription := "Functional programming with Kafka and Scala",
+  //   micrositeAuthor := "Jack Henry & Associates, Inc.®",
+  //   micrositeGithubOwner := "Banno",
+  //   micrositeGithubRepo := "kafka4s",
+  //   micrositeTwitter := "@kafka4s",
+  //   micrositeBaseUrl := "/kafka4s",
+  //   micrositeDocumentationUrl := "/kafka4s/docs",
+  //   micrositeFooterText := None,
+  //   micrositeHighlightTheme := "atom-one-light",
+  //   micrositePalette := Map(
+  //     "brand-primary" -> "#3e5b95",
+  //     "brand-secondary" -> "#294066",
+  //     "brand-tertiary" -> "#2d5799",
+  //     "gray-dark" -> "#49494B",
+  //     "gray" -> "#7B7B7E",
+  //     "gray-light" -> "#E5E5E6",
+  //     "gray-lighter" -> "#F4F3F4",
+  //     "white-color" -> "#FFFFFF"
+  //   ),
+  //   fork in tut := true,
+  //   scalacOptions in Tut --= Seq(
+  //     "-Xfatal-warnings",
+  //     "-Ywarn-unused-import",
+  //     "-Ywarn-numeric-widen",
+  //     "-Ywarn-dead-code",
+  //     "-Ywarn-unused:imports",
+  //     "-Xlint:-missing-interpolator,_"
+  //   ),
+  //   libraryDependencies += "com.47deg" %% "github4s" % V.github4s,
+  //   micrositePushSiteWith := GitHub4s,
+  //   micrositeGithubToken := sys.env.get("GITHUB_TOKEN"),
+  //   micrositeExtraMdFiles := Map(
+  //     file("CHANGELOG.md")        -> ExtraMdFileConfig("changelog.md", "page", Map("title" -> "changelog", "section" -> "changelog", "position" -> "100")),
+  //     file("CODE_OF_CONDUCT.md")  -> ExtraMdFileConfig("code-of-conduct.md",   "page", Map("title" -> "code of conduct",   "section" -> "code of conduct",   "position" -> "101")),
+  //     file("LICENSE")             -> ExtraMdFileConfig("license.md",   "page", Map("title" -> "license",   "section" -> "license",   "position" -> "102"))
+  //   )
+  // )
+  // }
 
 lazy val commonSettings = Seq(
   scalaVersion := V.scala_2_12,
-  crossScalaVersions := Seq(V.scala_2_12),
+  crossScalaVersions := Seq(scalaVersion.value),
 
   // publishArtifact in ThisBuild := true,
 
@@ -277,3 +277,6 @@ developers := {
 //   publishLocal := (()),
 //   publishArtifact := false,
 // )
+
+addCommandAlias("fmt", "scalafmtSbt;scalafmtAll;")
+addCommandAlias("fmtck", "scalafmtSbtCheck;scalafmtCheckAll;")
