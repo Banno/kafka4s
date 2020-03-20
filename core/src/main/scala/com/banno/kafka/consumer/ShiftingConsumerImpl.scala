@@ -54,6 +54,8 @@ case class ShiftingConsumerImpl[F[_]: Async, K, V](
   def commitSync: F[Unit] = CS.evalOn(blockingContext)(c.commitSync)
   def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] =
     CS.evalOn(blockingContext)(c.commitSync(offsets))
+  def committed(partition: TopicPartition): F[OffsetAndMetadata] =
+    c.committed(partition)
   def committed(partition: Set[TopicPartition]): F[mutable.Map[TopicPartition, OffsetAndMetadata]] =
     CS.evalOn(blockingContext)(c.committed(partition))
   def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =

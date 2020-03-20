@@ -53,6 +53,7 @@ trait ConsumerApi[F[_], K, V] {
   def commitAsync(callback: OffsetCommitCallback): F[Unit]
   def commitSync: F[Unit]
   def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit]
+  def committed(partition: TopicPartition): F[OffsetAndMetadata]
   def committed(partition: Set[TopicPartition]): F[mutable.Map[TopicPartition, OffsetAndMetadata]]
   def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]]
   def endOffsets(

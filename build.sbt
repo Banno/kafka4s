@@ -108,6 +108,7 @@ lazy val core = project
 lazy val commonSettings = Seq(
   scalaVersion := V.scala_2_12,
   crossScalaVersions := Seq(scalaVersion.value),
+  scalacOptions --= Seq("-Xfatal-warnings"),
 
   // publishArtifact in ThisBuild := true,
 
@@ -167,6 +168,7 @@ developers := {
     "-Xlog-free-terms",
     "-Xlog-free-types",
   ),
+
   pomIncludeRepository := { _ => false },
 
   organizationName := "Jack Henry & Associates, Inc.®",
