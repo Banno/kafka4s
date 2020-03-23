@@ -26,16 +26,10 @@ lazy val V = new {
 lazy val kafka4s = project.in(file("."))
   .settings(publish / skip := true)
   .disablePlugins(MimaPlugin)
-  .aggregate(core) // , docs, examples)
-  // .settings(
-  //   commonSettings,
-    // releaseSettings,
-    // mimaSettings,
-    // skipOnPublishSettings,
-  // )
+  .aggregate(core, examples)
 
 lazy val core = project
-  .settings(commonSettings) //, releaseSettings, mimaSettings)
+  .settings(commonSettings)
   .settings(
     name := "kafka4s",
     mimaBinaryIssueFilters ++= {
@@ -45,14 +39,12 @@ lazy val core = project
     }
   )
 
-// lazy val examples = project
-//   .settings(publish / skip := true)
-//   .disablePlugins(MimaPlugin)
-//   .settings(commonSettings) //, skipOnPublishSettings)
-//   .dependsOn(core)
-//   .settings(
-//      libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.0.0.0-RC11"
-//   )
+lazy val examples = project
+  .settings(publish / skip := true)
+  .settings(commonSettings)
+  .settings(libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.0.0.0-RC11")
+  .disablePlugins(MimaPlugin)
+  .dependsOn(core)
 
 // lazy val docs = project
 //   .settings(publish / skip := true)
