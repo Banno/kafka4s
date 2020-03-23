@@ -30,9 +30,7 @@ before_script:
 script:
   - sbt ++$TRAVIS_SCALA_VERSION clean
   - sbt ++$TRAVIS_SCALA_VERSION headerCheck
-  - sbt ++$TRAVIS_SCALA_VERSION scalafmtCheckAll
-  # - sbt ++$TRAVIS_SCALA_VERSION "scalafmtSbtCheck;scalafmtCheckAll"
-  - sbt ++$TRAVIS_SCALA_VERSION mimaReportBinaryIssues
+  - sbt ++$TRAVIS_SCALA_VERSION "scalafmtSbtCheck;scalafmtCheckAll"
   - sbt ++$TRAVIS_SCALA_VERSION test
   # - sbt ++$TRAVIS_SCALA_VERSION docs/makeMicrosite
 
