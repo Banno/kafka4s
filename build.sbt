@@ -12,7 +12,7 @@ lazy val V = new {
   val javaxWs = "2.1.1"
   val junit = "4.13"
   val kafka = "2.4.1"
-  val kindProjector = "0.10.3"
+  val kindProjector = "0.11.0"
   val log4cats = "1.0.1"
   val log4j = "1.7.30"
   val logback = "1.2.3"
@@ -107,7 +107,7 @@ lazy val commonSettings = Seq(
 
   resolvers += "confluent" at "https://packages.confluent.io/maven/",
 
-  addCompilerPlugin("org.typelevel" %% "kind-projector" % V.kindProjector),
+  addCompilerPlugin("org.typelevel" %% "kind-projector" % V.kindProjector cross CrossVersion.full),
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % V.betterMonadicFor),
   libraryDependencies ++= Seq(
     "co.fs2"                       %% "fs2-core"                  % V.fs2,
