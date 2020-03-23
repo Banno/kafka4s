@@ -101,14 +101,11 @@ lazy val commonSettings = Seq(
   scalaVersion := V.scala_2_12,
   crossScalaVersions := Seq(scalaVersion.value),
 
-  // publishArtifact in ThisBuild := true,
-
-  // cancelable in Global := true,
-
   resolvers += "confluent" at "https://packages.confluent.io/maven/",
 
   addCompilerPlugin("org.typelevel" %% "kind-projector" % V.kindProjector cross CrossVersion.full),
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % V.betterMonadicFor),
+
   libraryDependencies ++= Seq(
     "co.fs2"                       %% "fs2-core"                  % V.fs2,
     //TODO may no longer need logging excludes for kafka-clients, need to verify
@@ -166,109 +163,6 @@ developers := {
   licenses += ("Apache-2.0", new URL("https://www.apache.org/licenses/LICENSE-2.0.txt")),
   homepage := Some(url("https://github.com/banno/kafka4s")),
 ))
-
-// lazy val releaseSettings = {
-//   import ReleaseTransformations._
-//   Seq(
-//     releaseCrossBuild := true,
-//     releaseProcess := Seq[ReleaseStep](
-//       checkSnapshotDependencies,
-//       inquireVersions,
-//       runClean,
-//       runTest,
-//       setReleaseVersion,
-//       commitReleaseVersion,
-//       tagRelease,
-//       releaseStepCommandAndRemaining("+publishSigned"),
-//       setNextVersion,
-//       commitNextVersion,
-//       releaseStepCommand("sonatypeReleaseAll"),
-//       pushChanges
-//     ),
-//     publishArtifact in Test := false,
-//     // releasePublishArtifactsAction := PgpKeys.publishSigned.value,
-//     scmInfo := Some(
-//       ScmInfo(
-//         url("https://github.com/banno/kafka4s"),
-//         "git@github.com:banno/kafka4s.git"
-//       )
-//     ),
-//     homepage := Some(url("https://github.com/banno/kafka4s")),
-//     pomExtra := {
-//       <developers>
-//         {for ((username, name) <- contributors) yield
-//         <developer>
-//           <id>{username}</id>
-//           <name>{name}</name>
-//           <url>http://github.com/{username}</url>
-//         </developer>
-//         }
-//       </developers>
-//     }
-//   )
-// }
-
-// lazy val mimaSettings = {
-//   import sbtrelease.Version
-
-//   def semverBinCompatVersions(major: Int, minor: Int, patch: Int): Set[(Int, Int, Int)] = {
-//     val majorVersions: List[Int] =
-//       if (major == 0 && minor == 0) List.empty[Int] // If 0.0.x do not check MiMa
-//       else List(major)
-//     val minorVersions : List[Int] =
-//       if (major >= 1) Range(0, minor).inclusive.toList
-//       else List(minor)
-//     def patchVersions(currentMinVersion: Int): List[Int] =
-//       if (minor == 0 && patch == 0) List.empty[Int]
-//       else if (currentMinVersion != minor) List(0)
-//       else Range(0, patch - 1).inclusive.toList
-
-//     val versions = for {
-//       maj <- majorVersions
-//       min <- minorVersions
-//       pat <- patchVersions(min)
-//     } yield (maj, min, pat)
-//     versions.toSet
-//   }
-
-//   def mimaVersions(version: String): Set[String] = {
-//     Version(version) match {
-//       case Some(Version(major, Seq(minor, patch), _)) =>
-//         semverBinCompatVersions(major.toInt, minor.toInt, patch.toInt)
-//           .map{case (maj, min, pat) => maj.toString + "." + min.toString + "." + pat.toString}
-//       case _ =>
-//         Set.empty[String]
-//     }
-//   }
-//   // Safety Net For Exclusions
-//   lazy val excludedVersions: Set[String] = Set()
-
-//   // Safety Net for Inclusions
-//   lazy val extraVersions: Set[String] = Set()
-
-//   Seq(
-//     mimaFailOnNoPrevious := false, // TODO Set this to true (or remove altogether) once binary compatibility is desired.
-//     mimaFailOnProblem := mimaVersions(version.value).nonEmpty,
-//     mimaPreviousArtifacts := (mimaVersions(version.value) ++ extraVersions)
-//       .filterNot(excludedVersions.contains(_))
-//       .map{v =>
-//         val moduleN = moduleName.value + "_" + scalaBinaryVersion.value.toString
-//         organization.value % moduleN % v
-//       },
-//     mimaBinaryIssueFilters ++= {
-//       import com.typesafe.tools.mima.core._
-//       import com.typesafe.tools.mima.core.ProblemFilters._
-//       Seq()
-//     }
-//   )
-// }
-
-// lazy val skipOnPublishSettings = Seq(
-//   skip in publish := true,
-//   publish := (()),
-//   publishLocal := (()),
-//   publishArtifact := false,
-// )
 
 addCommandAlias("fmt", "scalafmtSbt;scalafmtAll;")
 addCommandAlias("fmtck", "scalafmtSbtCheck;scalafmtCheckAll;")
