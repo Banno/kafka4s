@@ -728,6 +728,103 @@ object PrometheusMetricsReporterApi {
           case MetricId("consumer-metrics", "reauthentication-latency-avg", List("client-id")) =>
             ignore
 
+          // New in 2.4.1.
+          // TODO Decide if we want to use any of the following metrics
+          case MetricId(
+              "consumer-fetch-manager-metrics",
+              "preferred-read-replica",
+              List("client-id", "partition", "topic")
+              ) =>
+            ignore
+          case MetricId("consumer-metrics", "poll-idle-ratio-avg", List("client-id")) =>
+            ignore
+          case MetricId("consumer-metrics", "time-between-poll-max", List("client-id")) =>
+            ignore
+          case MetricId("consumer-metrics", "time-between-poll-avg", List("client-id")) =>
+            ignore
+          case MetricId("consumer-metrics", "last-poll-seconds-ago", List("client-id")) =>
+            ignore
+          case MetricId(
+              "consumer-coordinator-metrics",
+              "partition-lost-latency-max",
+              List("client-id")
+              ) =>
+            ignore
+          case MetricId(
+              "consumer-coordinator-metrics",
+              "partition-lost-latency-avg",
+              List("client-id")
+              ) =>
+            ignore
+          case MetricId(
+              "consumer-coordinator-metrics",
+              "partition-assigned-latency-max",
+              List("client-id")
+              ) =>
+            ignore
+          case MetricId(
+              "consumer-coordinator-metrics",
+              "partition-assigned-latency-avg",
+              List("client-id")
+              ) =>
+            ignore
+          case MetricId(
+              "consumer-coordinator-metrics",
+              "partition-revoked-latency-max",
+              List("client-id")
+              ) =>
+            ignore
+          case MetricId(
+              "consumer-coordinator-metrics",
+              "partition-revoked-latency-avg",
+              List("client-id")
+              ) =>
+            ignore
+          case MetricId("consumer-coordinator-metrics", "rebalance-total", List("client-id")) =>
+            ignore
+          case MetricId(
+              "consumer-coordinator-metrics",
+              "rebalance-rate-per-hour",
+              List("client-id")
+              ) =>
+            ignore
+          case MetricId(
+              "consumer-coordinator-metrics",
+              "rebalance-latency-max",
+              List("client-id")
+              ) =>
+            ignore
+          case MetricId(
+              "consumer-coordinator-metrics",
+              "rebalance-latency-total",
+              List("client-id")
+              ) =>
+            ignore
+          case MetricId(
+              "consumer-coordinator-metrics",
+              "rebalance-latency-avg",
+              List("client-id")
+              ) =>
+            ignore
+          case MetricId(
+              "consumer-coordinator-metrics",
+              "last-rebalance-seconds-ago",
+              List("client-id")
+              ) =>
+            ignore
+          case MetricId(
+              "consumer-coordinator-metrics",
+              "failed-rebalance-rate-per-hour",
+              List("client-id")
+              ) =>
+            ignore
+          case MetricId(
+              "consumer-coordinator-metrics",
+              "failed-rebalance-total",
+              List("client-id")
+              ) =>
+            ignore
+
           case id =>
             log.error(
               s"Could not create Prometheus collector for unknown Kafka consumer metric: $id"
