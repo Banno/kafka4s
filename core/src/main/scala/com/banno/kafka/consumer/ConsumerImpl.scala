@@ -68,7 +68,13 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
     F.delay(c.commitSync(offsets.asJava))
   def committed(
       partitions: Set[TopicPartition]
-  ): F[Map[TopicPartition, OffsetAndMetadata]] = F.delay(c.committed(partitions.asJava).asScala.toMap)
+  ): F[Map[TopicPartition, OffsetAndMetadata]] =
+    F.delay(
+      c.committed(partitions.asJava)
+        .asScala
+        .filter(valueIsNotNull)
+        .toMap
+    )
   def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
     F.delay(c.endOffsets(partitions.asJavaCollection).asScala.toMap.mapValues(Long.unbox))
   def endOffsets(
@@ -152,6 +158,7 @@ object ConsumerImpl {
   ): ConsumerApi[F, K, V] =
     ConsumerImpl(c)
 
-  def valueIsNotNull(keyValPair: (TopicPartition, OffsetAndTimestamp)): Boolean =
+  def valueIsNotNull[A](keyValPair: (TopicPartition, A)): Boolean =
     keyValPair._2 != null
+
 }
