@@ -22,8 +22,6 @@ import org.apache.kafka.clients.consumer._
 import scala.concurrent.duration._
 import java.util.regex.Pattern
 
-import scala.collection.mutable
-
 trait ConsumerApiWrapper[F[_], K, V] extends ConsumerApi[F, K, V] {
   def api: ConsumerApi[F, K, V]
   def assign(partitions: Iterable[TopicPartition]): F[Unit] = api.assign(partitions)
@@ -40,7 +38,7 @@ trait ConsumerApiWrapper[F[_], K, V] extends ConsumerApi[F, K, V] {
   def commitAsync(callback: OffsetCommitCallback): F[Unit] = api.commitAsync(callback)
   def commitSync: F[Unit] = api.commitSync
   def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] = api.commitSync(offsets)
-  def committed(partition: Set[TopicPartition]): F[mutable.Map[TopicPartition, OffsetAndMetadata]] =
+  def committed(partition: Set[TopicPartition]): F[Map[TopicPartition, OffsetAndMetadata]] =
     api.committed(partition)
   def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
     api.endOffsets(partitions)
