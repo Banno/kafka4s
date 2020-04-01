@@ -27,9 +27,10 @@ import scala.concurrent.duration._
 import org.apache.kafka.common._
 import org.apache.kafka.clients.consumer._
 
-
 case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
     extends ConsumerApi[F, K, V] {
+  import ConsumerImpl.valueIsNotNull
+
   private[this] val log = Slf4jLogger.getLoggerFromClass(this.getClass)
   def assign(partitions: Iterable[TopicPartition]): F[Unit] =
     F.delay(c.assign(partitions.asJavaCollection)) *> log.debug(s"Assigned $partitions")
@@ -67,8 +68,7 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
     F.delay(c.commitSync(offsets.asJava))
   def committed(
       partitions: Set[TopicPartition]
-  ): F[Map[TopicPartition, OffsetAndMetadata]] =
-    F.delay(c.committed(partitions.asJava).asScala.toMap)
+  ): F[Map[TopicPartition, OffsetAndMetadata]] = F.delay(c.committed(partitions.asJava).asScala.toMap)
   def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
     F.delay(c.endOffsets(partitions.asJavaCollection).asScala.toMap.mapValues(Long.unbox))
   def endOffsets(
@@ -94,7 +94,12 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long]
   ): F[Map[TopicPartition, OffsetAndTimestamp]] =
-    F.delay(c.offsetsForTimes(timestampsToSearch.mapValues(Long.box).asJava).asScala.toMap)
+    F.delay(
+      c.offsetsForTimes(timestampsToSearch.mapValues(Long.box).asJava)
+        .asScala
+        .filter(valueIsNotNull)
+        .toMap
+    )
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long],
       timeout: FiniteDuration
@@ -105,6 +110,7 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
           java.time.Duration.ofMillis(timeout.toMillis)
         )
         .asScala
+        .filter(valueIsNotNull)
         .toMap
     )
   def partitionsFor(topic: String): F[Seq[PartitionInfo]] = F.delay(c.partitionsFor(topic).asScala)
@@ -145,4 +151,7 @@ object ConsumerImpl {
       c: Consumer[K, V]
   ): ConsumerApi[F, K, V] =
     ConsumerImpl(c)
+
+  def valueIsNotNull(keyValPair: (TopicPartition, OffsetAndTimestamp)): Boolean =
+    keyValPair._2 != null
 }

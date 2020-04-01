@@ -59,9 +59,23 @@ trait ConsumerApi[F[_], K, V] {
   def listTopics: F[Map[String, Seq[PartitionInfo]]]
   def listTopics(timeout: FiniteDuration): F[Map[String, Seq[PartitionInfo]]]
   def metrics: F[Map[MetricName, Metric]]
+
+  /**
+    * see [[org.apache.kafka.clients.consumer.KafkaConsumer#offsetsForTimes(java.util.Map)]]
+    * @return a mapping from partition to the timestamp and offset of the first message with timestamp
+    *         greater than or equal to the target timestamp.
+    *         The partition is not in the map if there is no such message
+    */
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long]
   ): F[Map[TopicPartition, OffsetAndTimestamp]]
+
+  /**
+    * see [[org.apache.kafka.clients.consumer.KafkaConsumer#offsetsForTimes(java.util.Map, java.time.Duration)]]
+    * @return a mapping from partition to the timestamp and offset of the first message with timestamp
+    *         greater than or equal to the target timestamp.
+    *         The partition is not in the map if there is no such message
+    */
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long],
       timeout: FiniteDuration
