@@ -27,7 +27,6 @@ import scala.concurrent.duration._
 import org.apache.kafka.common._
 import org.apache.kafka.clients.consumer._
 
-import scala.collection.mutable
 
 case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
     extends ConsumerApi[F, K, V] {
@@ -68,8 +67,8 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
     F.delay(c.commitSync(offsets.asJava))
   def committed(
       partitions: Set[TopicPartition]
-  ): F[mutable.Map[TopicPartition, OffsetAndMetadata]] =
-    F.delay(c.committed(partitions.asJava).asScala)
+  ): F[Map[TopicPartition, OffsetAndMetadata]] =
+    F.delay(c.committed(partitions.asJava).asScala.toMap)
   def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
     F.delay(c.endOffsets(partitions.asJavaCollection).asScala.toMap.mapValues(Long.unbox))
   def endOffsets(
