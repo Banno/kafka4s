@@ -16,7 +16,7 @@
 
 package com.banno.kafka.producer
 
-import cats.effect.{Async, ContextShift}
+import cats.effect._
 import java.util.concurrent.{Future => JFuture}
 
 import scala.concurrent.duration._
@@ -24,28 +24,26 @@ import org.apache.kafka.common._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.clients.producer._
 
-import scala.concurrent.ExecutionContext
-
 case class ShiftingProducerImpl[F[_]: Async, K, V](
     p: ProducerApi[F, K, V],
-    blockingContext: ExecutionContext
+    blockingContext: Blocker
 )(implicit CS: ContextShift[F])
     extends ProducerApi[F, K, V] {
-  def abortTransaction: F[Unit] = CS.evalOn(blockingContext)(p.abortTransaction)
-  def beginTransaction: F[Unit] = CS.evalOn(blockingContext)(p.beginTransaction)
-  def close: F[Unit] = CS.evalOn(blockingContext)(p.close)
-  def close(timeout: FiniteDuration): F[Unit] = CS.evalOn(blockingContext)(p.close(timeout))
-  def commitTransaction: F[Unit] = CS.evalOn(blockingContext)(p.commitTransaction)
-  def flush: F[Unit] = CS.evalOn(blockingContext)(p.flush)
-  def initTransactions: F[Unit] = CS.evalOn(blockingContext)(p.initTransactions)
-  def metrics: F[Map[MetricName, Metric]] = CS.evalOn(blockingContext)(p.metrics)
+  def abortTransaction: F[Unit] = this.blockingContext.blockOn(p.abortTransaction)
+  def beginTransaction: F[Unit] = this.blockingContext.blockOn(p.beginTransaction)
+  def close: F[Unit] = this.blockingContext.blockOn(p.close)
+  def close(timeout: FiniteDuration): F[Unit] = this.blockingContext.blockOn(p.close(timeout))
+  def commitTransaction: F[Unit] = this.blockingContext.blockOn(p.commitTransaction)
+  def flush: F[Unit] = this.blockingContext.blockOn(p.flush)
+  def initTransactions: F[Unit] = this.blockingContext.blockOn(p.initTransactions)
+  def metrics: F[Map[MetricName, Metric]] = this.blockingContext.blockOn(p.metrics)
   def partitionsFor(topic: String): F[Seq[PartitionInfo]] =
-    CS.evalOn(blockingContext)(p.partitionsFor(topic))
+    this.blockingContext.blockOn(p.partitionsFor(topic))
   def sendOffsetsToTransaction(
       offsets: Map[TopicPartition, OffsetAndMetadata],
       consumerGroupId: String
   ): F[Unit] =
-    CS.evalOn(blockingContext)(p.sendOffsetsToTransaction(offsets, consumerGroupId))
+    this.blockingContext.blockOn(p.sendOffsetsToTransaction(offsets, consumerGroupId))
 
   private[producer] def sendRaw(record: ProducerRecord[K, V]): JFuture[RecordMetadata] =
     p.sendRaw(record)
@@ -59,9 +57,9 @@ case class ShiftingProducerImpl[F[_]: Async, K, V](
   ): Unit = p.sendRaw(record, callback)
 
   def sendAndForget(record: ProducerRecord[K, V]): F[Unit] =
-    CS.evalOn(blockingContext)(p.sendAndForget(record))
+    this.blockingContext.blockOn(p.sendAndForget(record))
   def sendSync(record: ProducerRecord[K, V]): F[RecordMetadata] =
-    CS.evalOn(blockingContext)(p.sendSync(record))
+    this.blockingContext.blockOn(p.sendSync(record))
   def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata] =
-    CS.evalOn(blockingContext)(p.sendAsync(record))
+    this.blockingContext.blockOn(p.sendAsync(record))
 }

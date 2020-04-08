@@ -18,6 +18,7 @@ package com.banno.kafka.consumer
 
 import fs2.Stream
 import cats.effect._
+import cats.effect.concurrent._
 import cats.implicits._
 import java.util.regex.Pattern
 import scala.collection.JavaConverters._
@@ -29,8 +30,8 @@ import org.apache.avro.generic.GenericRecord
 import com.sksamuel.avro4s.FromRecord
 import io.confluent.kafka.serializers.KafkaAvroDeserializer
 import com.banno.kafka._
-import java.util.concurrent.{Executors, ThreadFactory}
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
+import java.util.concurrent._
+import java.util.concurrent.atomic.AtomicLong
 
 trait ConsumerApi[F[_], K, V] {
   def assign(partitions: Iterable[TopicPartition]): F[Unit]
@@ -99,21 +100,40 @@ object ConsumerApi {
   ): F[KafkaConsumer[K, V]] =
     Sync[F].delay(new KafkaConsumer[K, V](configs.toMap.asJava, keyDeserializer, valueDeserializer))
 
+  /** Provides a default `cats.effect.Blocker` for use with a Kafka4s Consumer. */
   object BlockingContext {
 
-    def resource[F[_]: Sync]: Resource[F, ExecutionContextExecutorService] =
-      Resource.make(
-        Sync[F].delay(
-          ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor(new ThreadFactory {
-            val factory = Executors.defaultThreadFactory()
-            def newThread(r: Runnable): Thread = {
-              val t = factory.newThread(r)
-              t.setName("kafka4s-consumer")
+    private[this] val poolCounter: Ref[IO, Long] =
+      Ref.unsafe[IO, Long](0L)
+
+    private[this] def newThreadFactory[F[_]](implicit F: LiftIO[F], FS: Sync[F]): F[ThreadFactory] =
+      // Because poolCounter is statically initialized global variable, we
+      // need to suspend before access in order to not violate RF.
+      //
+      // https://github.com/typelevel/cats-effect/blob/v2.0.0/core/shared/src/main/scala/cats/effect/concurrent/Ref.scala#L176
+      FS.suspend(
+        F.liftIO(this.poolCounter.modify(l => (l + 1L, l))).map((poolCounter: Long) =>
+          new ThreadFactory {
+
+            // We are firmly in Java land here. So we need to use Java level atomic primitives.
+            private val threadCounter: AtomicLong =
+              new AtomicLong(0L)
+            private val backingFactory: ThreadFactory =
+              Executors.defaultThreadFactory()
+
+            override final def newThread(r: Runnable): Thread = {
+              val t: Thread = this.backingFactory.newThread(r)
+              val id: Long = this.threadCounter.incrementAndGet()
+              t.setName(s"kafka4s-consumer-pool${poolCounter}-${id}")
               t
             }
-          }))
+          }
         )
-      )(a => Sync[F].delay(a.shutdown()))
+      )
+
+    /** A default `cats.effect.Blocker`. */
+    def defaultBlocker[F[_]: LiftIO: Sync]: Resource[F, Blocker] =
+      Blocker.fromExecutorService(this.newThreadFactory[F].map(tf => Executors.newCachedThreadPool(tf)))
   }
 
   def resource[F[_]: Async: ContextShift, K, V](
@@ -121,26 +141,41 @@ object ConsumerApi {
       valueDeserializer: Deserializer[V],
       configs: (String, AnyRef)*
   ): Resource[F, ConsumerApi[F, K, V]] =
-    BlockingContext.resource.flatMap(
-      e =>
-        Resource.make(
-          createKafkaConsumer[F, K, V](keyDeserializer, valueDeserializer, configs: _*)
-            .map(c => ShiftingConsumerImpl.create(ConsumerImpl(c), e))
-        )(_.close)
+    BlockingContext.defaultBlocker.flatMap((b: Blocker) =>
+      this.resourceWithBlocker[F, K, V](b, keyDeserializer, valueDeserializer, configs: _*)
     )
+
+  def resourceWithBlocker[F[_]: Async: ContextShift, K, V](
+      blocker: Blocker,
+      keyDeserializer: Deserializer[K],
+      valueDeserializer: Deserializer[V],
+      configs: (String, AnyRef)*
+  ): Resource[F, ConsumerApi[F, K, V]] =
+    Resource.make(
+      createKafkaConsumer[F, K, V](keyDeserializer, valueDeserializer, configs: _*)
+        .map(c => ShiftingConsumerImpl.create(ConsumerImpl(c), blocker))
+    )(_.close)
 
   def resource[F[_]: Async: ContextShift, K: Deserializer, V: Deserializer](
       configs: (String, AnyRef)*
   ): Resource[F, ConsumerApi[F, K, V]] =
-    resource[F, K, V](implicitly[Deserializer[K]], implicitly[Deserializer[V]], configs: _*)
+    BlockingContext.defaultBlocker.flatMap((b: Blocker) =>
+      this.resourceWithBlocker[F, K, V](b, configs: _*)
+    )
+
+  def resourceWithBlocker[F[_]: Async: ContextShift, K: Deserializer, V: Deserializer](
+      blocker: Blocker,
+      configs: (String, AnyRef)*
+  ): Resource[F, ConsumerApi[F, K, V]] =
+    resourceWithBlocker[F, K, V](blocker, implicitly[Deserializer[K]], implicitly[Deserializer[V]], configs: _*)
 
   object Avro {
 
     def resource[F[_]: Async: ContextShift, K, V](
         configs: (String, AnyRef)*
     ): Resource[F, ConsumerApi[F, K, V]] =
-      BlockingContext.resource.flatMap(
-        e =>
+      BlockingContext.defaultBlocker.flatMap(
+        (blocker: Blocker) =>
           Resource.make(
             createKafkaConsumer[F, K, V](
               (
@@ -148,7 +183,7 @@ object ConsumerApi {
                   KeyDeserializerClass(classOf[KafkaAvroDeserializer]) +
                   ValueDeserializerClass(classOf[KafkaAvroDeserializer])
               ).toSeq: _*
-            ).map(c => ShiftingConsumerImpl.create(ConsumerImpl(c), e))
+            ).map(c => ShiftingConsumerImpl.create(ConsumerImpl(c), blocker))
           )(_.close)
       )
 
