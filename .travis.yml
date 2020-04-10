@@ -13,6 +13,7 @@ scala:
 
 jdk:
   - openjdk8
+  - openjdk11
 
 before_install:
   - git fetch --tags

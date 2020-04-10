@@ -156,6 +156,13 @@ lazy val commonSettings = Seq(
       .classifier("tests")
       .exclude("org.slf4j", "slf4j-log4j12")
       .exclude("log4j", "log4j"),
+    // A fix from @coacoas that allows building for JDK 11.
+    // io.confluent:kafka-schema-registry:5.4.1
+    // depends on io.confluent:rest-utils:5.4.1
+    // which depends on jersey-bean-validation:2.28
+    // which depends on hibernate-validator:6.0.11.Final
+    // which gives rise to https://hibernate.atlassian.net/browse/HV-1644.
+    "org.hibernate.validator" % "hibernate-validator" % "6.0.12.Final",
     "junit" % "junit" % V.junit % "test",
     "ch.qos.logback" % "logback-classic" % V.logback % "test",
     "org.slf4j" % "log4j-over-slf4j" % V.log4j % "test",
