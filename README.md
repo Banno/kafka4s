@@ -1,4 +1,4 @@
-# kafka4s - Functional programming with Kafka and Scala [![Build Status](https://travis-ci.com/banno/kafka4s.svg?branch=master)](https://travis-ci.com/banno/kafka4s) [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.banno/kafka4s_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.banno/kafka4s_2.12) ![Code of Conduct](https://img.shields.io/badge/Code%20of%20Conduct-Scala-blue.svg)
+# kafka4s - Functional programming with Kafka and Scala [![Build Status](https://travis-ci.com/banno/kafka4s.svg?branch=master)](https://travis-ci.com/banno/kafka4s) [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.banno/kafka4s_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.banno/kafka4s_2.13) ![Code of Conduct](https://img.shields.io/badge/Code%20of%20Conduct-Scala-blue.svg)
 
 kafka4s provides pure, referentially transparent functions for working with Kafka, and integrates with FP libraries such as [cats-effect](https://typelevel.org/cats-effect) and [fs2](https://fs2.io).
 
