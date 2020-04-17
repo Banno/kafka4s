@@ -43,7 +43,7 @@ cache:
   directories:
     - $HOME/.ivy2/cache
     - $HOME/.coursier/cache
-    - $HOME/.sbt
+    # - $HOME/.sbt
     - $HOME/.rvm/
     - vendor/bundle
 
