@@ -23,7 +23,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.clients.consumer.{ConsumerRecord, ConsumerRecords, OffsetAndMetadata}
 import com.sksamuel.avro4s.{FromRecord, ToRecord}
 import cats._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import java.lang.{
   Double => JDouble,
   Float => JFloat,
@@ -65,7 +65,7 @@ package object kafka {
 
     /** lastOffsets + 1, can be used to commit the offsets that the consumer should read next, after these records. */
     def nextOffsets: Map[TopicPartition, OffsetAndMetadata] =
-      lastOffsets.mapValues(o => new OffsetAndMetadata(o + 1))
+      lastOffsets.view.mapValues(o => new OffsetAndMetadata(o + 1)).toMap
   }
 
   implicit class ScalaConsumerRecord[K, V](cr: ConsumerRecord[K, V]) {
