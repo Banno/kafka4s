@@ -39,16 +39,16 @@ after_success:
   - test $TRAVIS_PULL_REQUEST == "false" && (test $TRAVIS_BRANCH == "master" || test $TRAVIS_TAG != "") && test $TRAVIS_REPO_SLUG == "Banno/kafka4s" && sbt ++$TRAVIS_SCALA_VERSION ci-release
   - test $TRAVIS_SCALA_VERSION == "2.12.11" && test $TRAVIS_PULL_REQUEST == "false" && test $TRAVIS_BRANCH == "master" && test $TRAVIS_REPO_SLUG == "Banno/kafka4s" && sbt ++$TRAVIS_SCALA_VERSION docs/publishMicrosite
 
-cache:
-  directories:
-    - $HOME/.ivy2/cache
-    - $HOME/.coursier/cache
-    - $HOME/.sbt
-    - $HOME/.rvm/
-    - vendor/bundle
+# cache:
+#   directories:
+#     - $HOME/.ivy2/cache
+#     - $HOME/.coursier/cache
+#     - $HOME/.sbt
+#     - $HOME/.rvm/
+#     - vendor/bundle
 
-before_cache:
-  - find $HOME/.sbt -name "*.lock" -type f -delete
-  - find $HOME/.ivy2/cache -name "ivydata-*.properties" -type f -delete
-  - find $HOME/.coursier/cache -name "*.lock" -type f -delete
+# before_cache:
+#   - find $HOME/.sbt -name "*.lock" -type f -delete
+#   - find $HOME/.ivy2/cache -name "ivydata-*.properties" -type f -delete
+#   - find $HOME/.coursier/cache -name "*.lock" -type f -delete
 
