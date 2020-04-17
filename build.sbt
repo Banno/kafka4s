@@ -120,16 +120,6 @@ lazy val tests = project
       ("org.apache.kafka" % "kafka-clients" % V.kafka % "test").classifier("test"),
       ("org.apache.kafka" % "kafka-streams" % V.kafka % "test").classifier("test"),
       ("org.apache.kafka" % "kafka-streams-test-utils" % V.kafka % "test"),
-      ("io.confluent" % "kafka-schema-registry" % V.confluent % "test"),
-      ("io.confluent" % "kafka-schema-registry" % V.confluent % "test").classifier("tests"),
-      // A fix from @coacoas that allows building for JDK 11.
-      // io.confluent:kafka-schema-registry:5.4.1
-      // depends on io.confluent:rest-utils:5.4.1
-      // which depends on jersey-bean-validation:2.28
-      // which depends on hibernate-validator:6.0.11.Final
-      // which gives rise to https://hibernate.atlassian.net/browse/HV-1644.
-      "org.hibernate.validator" % "hibernate-validator" % "6.0.12.Final",
-      "junit" % "junit" % V.junit % "test",
       "ch.qos.logback" % "logback-classic" % V.logback % "test",
       "org.slf4j" % "log4j-over-slf4j" % V.log4j % "test",
       "org.scalacheck" %% "scalacheck" % V.scalacheck % "test",
