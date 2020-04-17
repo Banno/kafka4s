@@ -27,7 +27,7 @@ lazy val kafka4s = project
   .settings(scalaVersion := V.scala_2_12)
   .settings(publish / skip := true)
   .disablePlugins(MimaPlugin)
-  .aggregate(core, tests, examples, docs)
+  .aggregate(core, examples, docs)
 
 lazy val core = project
   .settings(commonSettings)
@@ -38,6 +38,23 @@ lazy val core = project
       import com.typesafe.tools.mima.core.ProblemFilters._
       Seq()
     },
+  )
+  .settings(
+    libraryDependencies ++= Seq(
+      "org.apache.curator" % "curator-test" % V.curator % "test",
+      ("org.apache.kafka" %% "kafka" % V.kafka % "test").classifier("test"),
+      ("org.apache.kafka" % "kafka-clients" % V.kafka % "test").classifier("test"),
+      ("org.apache.kafka" % "kafka-streams" % V.kafka % "test").classifier("test"),
+      ("org.apache.kafka" % "kafka-streams-test-utils" % V.kafka % "test"),
+      "ch.qos.logback" % "logback-classic" % V.logback % "test",
+      "org.slf4j" % "log4j-over-slf4j" % V.log4j % "test",
+      "org.scalacheck" %% "scalacheck" % V.scalacheck % "test",
+      "org.scalatest" %% "scalatest" % V.scalatest % "test",
+      "org.scalatestplus" %% "scalatestplus-scalacheck" % V.scalatestPlus % "test",
+      "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % "test",
+      "org.typelevel" %% "cats-laws" % V.cats % "test",
+      "org.typelevel" %% "discipline-scalatest" % V.discipline % "test",
+    )
   )
 
 lazy val examples = project
@@ -108,30 +125,6 @@ lazy val docs = project
       ),
     )
   }
-
-lazy val tests = project
-  .settings(publish / skip := true)
-  .settings(commonSettings)
-  .settings(crossScalaVersions -= V.scala_2_13)
-  .settings(
-    libraryDependencies ++= Seq(
-      "org.apache.curator" % "curator-test" % V.curator % "test",
-      ("org.apache.kafka" %% "kafka" % V.kafka % "test").classifier("test"),
-      ("org.apache.kafka" % "kafka-clients" % V.kafka % "test").classifier("test"),
-      ("org.apache.kafka" % "kafka-streams" % V.kafka % "test").classifier("test"),
-      ("org.apache.kafka" % "kafka-streams-test-utils" % V.kafka % "test"),
-      "ch.qos.logback" % "logback-classic" % V.logback % "test",
-      "org.slf4j" % "log4j-over-slf4j" % V.log4j % "test",
-      "org.scalacheck" %% "scalacheck" % V.scalacheck % "test",
-      "org.scalatest" %% "scalatest" % V.scalatest % "test",
-      "org.scalatestplus" %% "scalatestplus-scalacheck" % V.scalatestPlus % "test",
-      "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % "test",
-      "org.typelevel" %% "cats-laws" % V.cats % "test",
-      "org.typelevel" %% "discipline-scalatest" % V.discipline % "test",
-    )
-  )
-  .disablePlugins(MimaPlugin)
-  .dependsOn(core % "compile->compile;test->test")
 
 lazy val commonSettings = Seq(
   scalaVersion := V.scala_2_12,
