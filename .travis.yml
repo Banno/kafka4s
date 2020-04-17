@@ -33,11 +33,11 @@ script:
   - sbt ++$TRAVIS_SCALA_VERSION headerCheck
   - sbt ++$TRAVIS_SCALA_VERSION "scalafmtSbtCheck;scalafmtCheckAll"
   - sbt ++$TRAVIS_SCALA_VERSION test
-  - sbt ++2.12.11 docs/makeMicrosite
+  - sbt ++$TRAVIS_SCALA_VERSION docs/makeMicrosite
 
 after_success:
   - test $TRAVIS_PULL_REQUEST == "false" && (test $TRAVIS_BRANCH == "master" || test $TRAVIS_TAG != "") && test $TRAVIS_REPO_SLUG == "Banno/kafka4s" && sbt ++$TRAVIS_SCALA_VERSION ci-release
-  - test $TRAVIS_PULL_REQUEST == "false" && test $TRAVIS_BRANCH == "master" && test $TRAVIS_REPO_SLUG == "Banno/kafka4s" && sbt ++2.12.11 docs/publishMicrosite
+  - test $TRAVIS_SCALA_VERSION == "2.13.1" && test $TRAVIS_PULL_REQUEST == "false" && test $TRAVIS_BRANCH == "master" && test $TRAVIS_REPO_SLUG == "Banno/kafka4s" && sbt ++$TRAVIS_SCALA_VERSION docs/publishMicrosite
 
 cache:
   directories:
