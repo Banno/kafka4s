@@ -1,7 +1,7 @@
 package com.banno.kafka
 
 import org.scalatest.{BeforeAndAfterAll, Suite}
-import io.confluent.examples.streams.kafka.EmbeddedSingleNodeKafkaCluster
+// import io.confluent.examples.streams.kafka.EmbeddedSingleNodeKafkaCluster
 import org.scalacheck.Gen
 import com.banno.kafka.admin.AdminApi
 import cats.effect.IO
@@ -12,18 +12,20 @@ trait InMemoryKafka extends BeforeAndAfterAll { this: Suite =>
 
   val log = Slf4jLogger.getLoggerFromClass[IO](this.getClass)
 
-  val kafkaCluster = new EmbeddedSingleNodeKafkaCluster()
-  def bootstrapServer = kafkaCluster.bootstrapServers()
-  def schemaRegistryUrl = kafkaCluster.schemaRegistryUrl()
+  // val kafkaCluster = new EmbeddedSingleNodeKafkaCluster()
+  // val bootstrapServer = "localhost:9092"
+  val bootstrapServer = "kafka.local:9092"
+  // val schemaRegistryUrl = "http://localhost:8081"
+  val schemaRegistryUrl = "http://kafka.local:8081"
 
   override def beforeAll(): Unit = {
     log.info(s"Starting in-memory Kafka cluster for ${getClass.getName}").unsafeRunSync()
-    kafkaCluster.start()
+    // kafkaCluster.start()
   }
 
   override def afterAll(): Unit = {
     log.info(s"Stopping in-memory Kafka cluster for ${getClass.getName}").unsafeRunSync()
-    kafkaCluster.stop()
+    // kafkaCluster.stop()
   }
 
   def randomId: String = Gen.listOfN(10, Gen.alphaChar).map(_.mkString).sample.get
