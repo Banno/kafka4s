@@ -1,7 +1,7 @@
 addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.3.7")
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.3.4")
 addSbtPlugin("com.julianpeeters" % "sbt-avrohugger" % "2.0.0-RC22")
-addSbtPlugin("io.github.davidgregory084" % "sbt-tpolecat" % "0.1.10")
+addSbtPlugin("io.github.davidgregory084" % "sbt-tpolecat" % "0.1.11")
 addSbtPlugin("org.tpolecat" % "tut-plugin" % "0.6.13")
 addSbtPlugin("com.47deg" % "sbt-microsites" % "0.9.7")
 addSbtPlugin("com.typesafe.sbt" % "sbt-ghpages" % "0.6.3")
