@@ -63,6 +63,9 @@ package object kafka {
     def lastOffsets: Map[TopicPartition, Long] =
       crs.partitions.asScala.toSeq.map(tp => (tp -> crs.records(tp).asScala.last.offset)).toMap
 
+    /** lastOffsets + 1, can be used to commit the offsets that the consumer should read next, after these records. */
+    def nextOffsets: Map[TopicPartition, OffsetAndMetadata] =
+      lastOffsets.mapValues(o => new OffsetAndMetadata(o + 1))
   }
 
   implicit class ScalaConsumerRecord[K, V](cr: ConsumerRecord[K, V]) {
