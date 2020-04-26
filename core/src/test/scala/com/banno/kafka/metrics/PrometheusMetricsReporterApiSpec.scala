@@ -1,5 +1,6 @@
 package com.banno.kafka.metrics.prometheus
 
+import scala.collection.compat._
 import cats.implicits._
 import cats.effect.IO
 import com.banno.kafka._
@@ -11,7 +12,7 @@ import io.prometheus.client.CollectorRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 

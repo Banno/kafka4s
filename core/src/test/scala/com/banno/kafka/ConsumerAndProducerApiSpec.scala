@@ -1,5 +1,6 @@
 package com.banno.kafka
 
+import scala.collection.compat._
 import org.scalacheck._
 import cats.implicits._
 import cats.effect._
