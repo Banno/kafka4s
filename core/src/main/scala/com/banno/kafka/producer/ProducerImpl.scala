@@ -16,10 +16,11 @@
 
 package com.banno.kafka.producer
 
+import scala.collection.compat._
 import cats.implicits._
 import cats.effect.Async
 import java.util.concurrent.{Future => JFuture}
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
 import org.apache.kafka.common._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
@@ -36,7 +37,8 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
   def flush: F[Unit] = F.delay(p.flush())
   def initTransactions: F[Unit] = F.delay(p.initTransactions())
   def metrics: F[Map[MetricName, Metric]] = F.delay(p.metrics().asScala.toMap)
-  def partitionsFor(topic: String): F[Seq[PartitionInfo]] = F.delay(p.partitionsFor(topic).asScala)
+  def partitionsFor(topic: String): F[Seq[PartitionInfo]] =
+    F.delay(p.partitionsFor(topic).asScala.toSeq)
   def sendOffsetsToTransaction(
       offsets: Map[TopicPartition, OffsetAndMetadata],
       consumerGroupId: String

@@ -16,13 +16,14 @@
 
 package com.banno.kafka.consumer
 
+import scala.collection.compat._
 import cats.implicits._
 import cats.effect.Sync
 import java.util.regex.Pattern
 
 import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
 import org.apache.kafka.common._
 import org.apache.kafka.clients.consumer._
@@ -36,7 +37,9 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
     F.delay(c.assign(partitions.asJavaCollection)) *> log.debug(s"Assigned $partitions")
   def assignment: F[Set[TopicPartition]] = F.delay(c.assignment().asScala.toSet)
   def beginningOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
-    F.delay(c.beginningOffsets(partitions.asJavaCollection).asScala.toMap.mapValues(Long.unbox))
+    F.delay(
+      c.beginningOffsets(partitions.asJavaCollection).asScala.toMap.view.mapValues(Long.unbox).toMap
+    )
   def beginningOffsets(
       partitions: Iterable[TopicPartition],
       timeout: FiniteDuration
@@ -48,7 +51,9 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
         )
         .asScala
         .toMap
+        .view
         .mapValues(Long.unbox)
+        .toMap
     )
   def close: F[Unit] =
     log.debug(s"${Thread.currentThread.getId} consumer.close()...") *> F.delay(c.close()) *> log
@@ -76,7 +81,9 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
         .toMap
     )
   def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
-    F.delay(c.endOffsets(partitions.asJavaCollection).asScala.toMap.mapValues(Long.unbox))
+    F.delay(
+      c.endOffsets(partitions.asJavaCollection).asScala.toMap.view.mapValues(Long.unbox).toMap
+    )
   def endOffsets(
       partitions: Iterable[TopicPartition],
       timeout: FiniteDuration
@@ -85,23 +92,27 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
       c.endOffsets(partitions.asJavaCollection, java.time.Duration.ofMillis(timeout.toMillis))
         .asScala
         .toMap
+        .view
         .mapValues(Long.unbox)
+        .toMap
     )
   def listTopics: F[Map[String, Seq[PartitionInfo]]] =
-    F.delay(c.listTopics().asScala.toMap.mapValues(_.asScala))
+    F.delay(c.listTopics().asScala.toMap.view.mapValues(_.asScala.toSeq).toMap)
   def listTopics(timeout: FiniteDuration): F[Map[String, Seq[PartitionInfo]]] =
     F.delay(
       c.listTopics(java.time.Duration.ofMillis(timeout.toMillis))
         .asScala
         .toMap
-        .mapValues(_.asScala)
+        .view
+        .mapValues(_.asScala.toSeq)
+        .toMap
     )
   def metrics: F[Map[MetricName, Metric]] = F.delay(c.metrics().asScala.toMap)
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long]
   ): F[Map[TopicPartition, OffsetAndTimestamp]] =
     F.delay(
-      c.offsetsForTimes(timestampsToSearch.mapValues(Long.box).asJava)
+      c.offsetsForTimes(timestampsToSearch.view.mapValues(Long.box).toMap.asJava)
         .asScala
         .filter(valueIsNotNull)
         .toMap
@@ -112,16 +123,17 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
   ): F[Map[TopicPartition, OffsetAndTimestamp]] =
     F.delay(
       c.offsetsForTimes(
-          timestampsToSearch.mapValues(Long.box).asJava,
+          timestampsToSearch.view.mapValues(Long.box).toMap.asJava,
           java.time.Duration.ofMillis(timeout.toMillis)
         )
         .asScala
         .filter(valueIsNotNull)
         .toMap
     )
-  def partitionsFor(topic: String): F[Seq[PartitionInfo]] = F.delay(c.partitionsFor(topic).asScala)
+  def partitionsFor(topic: String): F[Seq[PartitionInfo]] =
+    F.delay(c.partitionsFor(topic).asScala.toSeq)
   def partitionsFor(topic: String, timeout: FiniteDuration): F[Seq[PartitionInfo]] =
-    F.delay(c.partitionsFor(topic, java.time.Duration.ofMillis(timeout.toMillis)).asScala)
+    F.delay(c.partitionsFor(topic, java.time.Duration.ofMillis(timeout.toMillis)).asScala.toSeq)
   def pause(partitions: Iterable[TopicPartition]): F[Unit] =
     F.delay(c.pause(partitions.asJavaCollection))
   def paused: F[Set[TopicPartition]] = F.delay(c.paused().asScala.toSet)

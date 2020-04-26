@@ -16,6 +16,7 @@
 
 package com.banno.kafka.metrics.prometheus
 
+import scala.collection.compat._
 import cats.effect.concurrent.Ref
 import com.banno.kafka.metrics.MetricsReporterApi
 import cats.implicits._
@@ -24,7 +25,7 @@ import fs2.Stream
 import fs2.concurrent.SignallingRef
 import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import org.apache.kafka.common.metrics.KafkaMetric
 import io.prometheus.client.{CollectorRegistry, Counter, Gauge}
 

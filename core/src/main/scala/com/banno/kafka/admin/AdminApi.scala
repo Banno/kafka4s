@@ -16,6 +16,7 @@
 
 package com.banno.kafka.admin
 
+import scala.collection.compat._
 import cats.implicits._
 import cats.effect.{Resource, Sync}
 import fs2.Stream
@@ -26,7 +27,7 @@ import org.apache.kafka.clients.admin._
 import java.util.Properties
 
 import scala.concurrent.duration._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import com.banno.kafka._
 
 /*

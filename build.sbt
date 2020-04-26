@@ -40,9 +40,14 @@ lazy val core = project
       import com.typesafe.tools.mima.core.ProblemFilters._
       Seq()
     },
+    scalacOptions --= Seq(
+      "-Wunused:imports",
+      "-Ywarn-unused:imports",
+    ),
   )
   .settings(
     libraryDependencies ++= Seq(
+      "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.4",
       "org.apache.curator" % "curator-test" % V.curator % "test",
       ("org.apache.kafka" %% "kafka" % V.kafka % "test").classifier("test"),
       ("org.apache.kafka" % "kafka-clients" % V.kafka % "test").classifier("test"),

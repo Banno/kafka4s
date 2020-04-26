@@ -16,6 +16,7 @@
 
 package com.banno
 
+import scala.collection.compat._
 import org.apache.kafka.common.{PartitionInfo, TopicPartition}
 import org.apache.kafka.common.serialization._
 import org.apache.avro.generic.GenericRecord

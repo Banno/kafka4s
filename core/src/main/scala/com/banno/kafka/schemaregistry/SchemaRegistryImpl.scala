@@ -16,6 +16,7 @@
 
 package com.banno.kafka.schemaregistry
 
+import scala.collection.compat._
 import org.apache.avro.Schema
 import io.confluent.kafka.schemaregistry.client.{SchemaMetadata, SchemaRegistryClient}
 import cats.effect.Sync
