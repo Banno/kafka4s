@@ -1,5 +1,7 @@
+Global / onChangedBuildSource := ReloadOnSourceChanges
+
 val V = new {
-  val scala_2_13 = "2.13.1"
+  val scala_2_13 = "2.13.2"
   val scala_2_12 = "2.12.11"
   val avro4s = "3.0.9"
   val betterMonadicFor = "0.3.1"
@@ -38,9 +40,14 @@ lazy val core = project
       import com.typesafe.tools.mima.core.ProblemFilters._
       Seq()
     },
+    scalacOptions --= Seq(
+      "-Wunused:imports",
+      "-Ywarn-unused:imports",
+    ),
   )
   .settings(
     libraryDependencies ++= Seq(
+      "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.4",
       "org.apache.curator" % "curator-test" % V.curator % "test",
       ("org.apache.kafka" %% "kafka" % V.kafka % "test").classifier("test"),
       ("org.apache.kafka" % "kafka-clients" % V.kafka % "test").classifier("test"),
