@@ -41,7 +41,7 @@ import com.banno.kafka._, com.banno.kafka.admin._
 import org.apache.kafka.clients.admin.NewTopic
 ```
 
-Now we can create a topic named `customers.v1` with 1 partition and 3 replicas:
+Now we can create a topic named `customers.v1` with 1 partition and 1 replica:
 
 ```tut
 val topic = new NewTopic("customers.v1", 1, 1.toShort)
