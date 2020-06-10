@@ -140,3 +140,20 @@ object IsolationLevel {
 object MaxPollRecords {
   def apply(count: Int): (String, AnyRef) = ConsumerConfig.MAX_POLL_RECORDS_CONFIG -> count.toString
 }
+
+object KeySubjectNameStrategy {
+  import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig
+  import io.confluent.kafka.serializers.subject.{RecordNameStrategy => KRecordNameStrategy}
+  val RecordNameStrategy: (String, AnyRef) =
+    AbstractKafkaAvroSerDeConfig.KEY_SUBJECT_NAME_STRATEGY -> classOf[
+      KRecordNameStrategy,
+    ].getName()
+}
+object ValueSubjectNameStrategy {
+  import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig
+  import io.confluent.kafka.serializers.subject.{RecordNameStrategy => KRecordNameStrategy}
+  val RecordNameStrategy: (String, AnyRef) =
+    AbstractKafkaAvroSerDeConfig.VALUE_SUBJECT_NAME_STRATEGY -> classOf[
+      KRecordNameStrategy,
+    ].getName()
+}
