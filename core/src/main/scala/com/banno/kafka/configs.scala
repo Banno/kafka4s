@@ -22,6 +22,11 @@ import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.metrics.MetricsReporter
 import io.confluent.kafka.serializers.{AbstractKafkaAvroSerDeConfig, KafkaAvroDeserializerConfig}
 import scala.reflect.ClassTag
+import io.confluent.kafka.serializers.subject.{
+  RecordNameStrategy => KRecordNameStrategy,
+  TopicNameStrategy => KTopicNameStrategy,
+  TopicRecordNameStrategy => KTopicRecordNameStrategy
+}
 
 //TODO other configs... maybe we could auto generate these somehow?
 
@@ -142,18 +147,16 @@ object MaxPollRecords {
 }
 
 object KeySubjectNameStrategy {
-  import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig
-  import io.confluent.kafka.serializers.subject.{RecordNameStrategy => KRecordNameStrategy}
-  val RecordNameStrategy: (String, AnyRef) =
-    AbstractKafkaAvroSerDeConfig.KEY_SUBJECT_NAME_STRATEGY -> classOf[
-      KRecordNameStrategy,
-    ].getName()
+  val strategy = AbstractKafkaAvroSerDeConfig.KEY_SUBJECT_NAME_STRATEGY
+  val RecordNameStrategy: (String, AnyRef) = strategy -> classOf[KRecordNameStrategy].getName()
+  val TopicNameStrategy: (String, AnyRef) = strategy -> classOf[KTopicNameStrategy].getName()
+  val TopicRecordNameStrategy: (String, AnyRef) = strategy -> classOf[KTopicRecordNameStrategy]
+    .getName()
 }
 object ValueSubjectNameStrategy {
-  import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig
-  import io.confluent.kafka.serializers.subject.{RecordNameStrategy => KRecordNameStrategy}
-  val RecordNameStrategy: (String, AnyRef) =
-    AbstractKafkaAvroSerDeConfig.VALUE_SUBJECT_NAME_STRATEGY -> classOf[
-      KRecordNameStrategy,
-    ].getName()
+  val strategy = AbstractKafkaAvroSerDeConfig.VALUE_SUBJECT_NAME_STRATEGY
+  val RecordNameStrategy: (String, AnyRef) = strategy -> classOf[KRecordNameStrategy].getName()
+  val TopicNameStrategy: (String, AnyRef) = strategy -> classOf[KTopicNameStrategy].getName()
+  val TopicRecordNameStrategy: (String, AnyRef) = strategy -> classOf[KTopicRecordNameStrategy]
+    .getName()
 }
