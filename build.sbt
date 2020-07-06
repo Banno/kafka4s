@@ -21,7 +21,7 @@ val V = new {
   val scalacheckMagnolia = "0.4.0"
   val scalatest = "3.1.1"
   val scalatestPlus = "3.1.0.0-RC2"
-  val simpleClient = "0.8.1"
+  val simpleClient = "0.9.0"
 }
 
 lazy val kafka4s = project
