@@ -7,10 +7,10 @@ val V = new {
   val betterMonadicFor = "0.3.1"
   val cats = "2.1.1"
   val confluent = "5.4.1"
-  val curator = "4.3.0"
+  val curator = "5.1.0"
   val discipline = "1.0.1"
-  val fs2 = "2.4.2"
-  val github4s = "0.24.0"
+  val fs2 = "2.3.0"
+  val github4s = "0.24.1"
   val junit = "4.13"
   val kafka = "2.5.0"
   val kindProjector = "0.11.0"
@@ -21,7 +21,7 @@ val V = new {
   val scalacheckMagnolia = "0.4.0"
   val scalatest = "3.1.1"
   val scalatestPlus = "3.1.0.0-RC2"
-  val simpleClient = "0.8.1"
+  val simpleClient = "0.9.0"
 }
 
 lazy val kafka4s = project
@@ -67,7 +67,7 @@ lazy val core = project
 lazy val examples = project
   .settings(publish / skip := true)
   .settings(commonSettings)
-  .settings(libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.0.0.0-RC13")
+  .settings(libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.0.0.0-RC14")
   .disablePlugins(MimaPlugin)
   .dependsOn(core)
 
