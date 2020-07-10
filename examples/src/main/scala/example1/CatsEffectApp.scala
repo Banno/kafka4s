@@ -16,7 +16,6 @@
 
 package example1
 
-import cats.implicits._
 import cats.effect._
 
 object CatsEffectApp extends IOApp {
