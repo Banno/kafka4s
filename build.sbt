@@ -19,7 +19,7 @@ val V = new {
   val logback = "1.2.3"
   val scalacheck = "1.14.3"
   val scalacheckMagnolia = "0.4.0"
-  val scalatest = "3.1.2"
+  val scalatest = "3.2.0"
   val scalatestPlus = "3.1.0.0-RC2"
   val simpleClient = "0.9.0"
 }
