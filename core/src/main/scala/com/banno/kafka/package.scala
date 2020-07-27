@@ -144,7 +144,8 @@ package object kafka {
     def valueAs[V](topic: String)(implicit vd: Deserializer[V]): V = vd.deserialize(topic, cr.value)
 
     /** This only works when both key and value are non-null. */
-    def as[K, V](topic: String)(implicit
+    def as[K, V](topic: String)(
+        implicit
         kd: Deserializer[K],
         vd: Deserializer[V]
     ): ConsumerRecord[K, V] =
@@ -155,7 +156,9 @@ package object kafka {
     def recordListAs[K: Deserializer, V: Deserializer](topic: String): List[ConsumerRecord[K, V]] =
       crs.recordList(topic).map(_.as[K, V](topic))
 
-    def recordStreamAs[F[_], K: Deserializer, V: Deserializer](topic: String): Stream[F, ConsumerRecord[K, V]] =
+    def recordStreamAs[F[_], K: Deserializer, V: Deserializer](
+        topic: String
+    ): Stream[F, ConsumerRecord[K, V]] =
       crs.recordStream[F](topic).map(_.as[K, V](topic))
   }
 

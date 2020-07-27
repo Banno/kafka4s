@@ -136,7 +136,9 @@ object ConsumerApi {
     resource[F, K, V](implicitly[Deserializer[K]], implicitly[Deserializer[V]], configs: _*)
 
   object ByteArray {
-    def resource[F[_]: Async: ContextShift](configs: (String, AnyRef)*): Resource[F, ConsumerApi[F, Array[Byte], Array[Byte]]] = 
+    def resource[F[_]: Async: ContextShift](
+        configs: (String, AnyRef)*
+    ): Resource[F, ConsumerApi[F, Array[Byte], Array[Byte]]] =
       ConsumerApi.resource[F, Array[Byte], Array[Byte]](configs: _*)
   }
 
