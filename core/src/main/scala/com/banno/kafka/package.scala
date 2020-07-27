@@ -35,6 +35,7 @@ import java.lang.{
 import java.util.{Map => JMap}
 import org.apache.kafka.common.utils.Bytes
 import java.nio.ByteBuffer
+import fs2.Stream
 
 package object kafka {
 
@@ -59,6 +60,12 @@ package object kafka {
 
   implicit class ScalaConsumerRecords[K, V](crs: ConsumerRecords[K, V]) {
 
+    def recordList(topic: String): List[ConsumerRecord[K, V]] =
+      crs.records(topic).asScala.toList
+
+    def recordStream[F[_]](topic: String): Stream[F, ConsumerRecord[K, V]] =
+      Stream.emits(recordList(topic)).covary[F]
+
     /** Returns the last (latest, highest) offset for each topic partition in the collection of records. */
     //TODO this REALLY needs to be tested... assumes records for partition are in-order, calling .last hopefully never fails, etc
     def lastOffsets: Map[TopicPartition, Long] =
@@ -72,6 +79,8 @@ package object kafka {
   implicit class ScalaConsumerRecord[K, V](cr: ConsumerRecord[K, V]) {
     def maybeKey: Option[K] = Option(cr.key)
     def maybeValue: Option[V] = Option(cr.value)
+
+    def keyValue: (K, V) = (cr.key, cr.value)
 
     def offsetMap: Map[TopicPartition, OffsetAndMetadata] =
       Map(new TopicPartition(cr.topic, cr.partition) -> new OffsetAndMetadata(cr.offset))
@@ -122,6 +131,32 @@ package object kafka {
           .toMap
           .asJava
       )
+  }
+
+  implicit class ByteArrayConsumerRecord(cr: ConsumerRecord[Array[Byte], Array[Byte]]) {
+    def maybeKeyAs[K](topic: String)(implicit kd: Deserializer[K]): Option[K] =
+      cr.maybeKey.map(kd.deserialize(topic, _))
+    def maybeValueAs[V](topic: String)(implicit vd: Deserializer[V]): Option[V] =
+      cr.maybeValue.map(vd.deserialize(topic, _))
+
+    //note that these will probably throw NPE if key/value is null
+    def keyAs[K](topic: String)(implicit kd: Deserializer[K]): K = kd.deserialize(topic, cr.key)
+    def valueAs[V](topic: String)(implicit vd: Deserializer[V]): V = vd.deserialize(topic, cr.value)
+
+    /** This only works when both key and value are non-null. */
+    def as[K, V](topic: String)(implicit
+        kd: Deserializer[K],
+        vd: Deserializer[V]
+    ): ConsumerRecord[K, V] =
+      cr.bimap(kd.deserialize(topic, _), vd.deserialize(topic, _))
+  }
+
+  implicit class ByteArrayConsumerRecords(crs: ConsumerRecords[Array[Byte], Array[Byte]]) {
+    def recordListAs[K: Deserializer, V: Deserializer](topic: String): List[ConsumerRecord[K, V]] =
+      crs.recordList(topic).map(_.as[K, V](topic))
+
+    def recordStreamAs[F[_], K: Deserializer, V: Deserializer](topic: String): Stream[F, ConsumerRecord[K, V]] =
+      crs.recordStream[F](topic).map(_.as[K, V](topic))
   }
 
   implicit def eqProducerRecord[K, V]: Eq[ProducerRecord[K, V]] =
