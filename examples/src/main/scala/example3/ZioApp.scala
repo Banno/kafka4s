@@ -21,6 +21,6 @@ import zio.interop.catz._
 import zio.interop.catz.implicits._
 
 object ZioApp extends CatsApp {
-  override def run(args: List[String]): ZIO[ZEnv, Nothing, Int] =
-    ExampleApp[Task].example.fold(_ => 1, _ => 0)
+  override def run(args: List[String]): URIO[ZEnv, ExitCode] =
+    ExampleApp[Task].example.fold(_ => ExitCode.failure, _ => ExitCode.success)
 }
