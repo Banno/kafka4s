@@ -57,23 +57,27 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
     pipeAsync.apply(_).void
 
   def transaction[G[_]: Foldable](
+      records: G[ProducerRecord[K, V]]
+  )(implicit F: MonadError[F, Throwable]): F[Unit] =
+    (for {
+      _ <- producer.beginTransaction
+      //should be no need to wait for RecordMetadatas or errors, since commitTransaction flushes and throws
+      _ <- producer.sendAndForgetBatch(records)
+      _ <- producer.commitTransaction
+    } yield ()).handleErrorWith(KafkaTransactionError(_, producer))
+
+  def transaction[G[_]: Foldable](
       records: G[ProducerRecord[K, V]],
       offsets: Map[TopicPartition, OffsetAndMetadata],
       consumerGroupId: String
   )(implicit F: MonadError[F, Throwable]): F[Unit] =
     (for {
       _ <- producer.beginTransaction
-      _ <- sendAndForgetBatch(records) //should be no need to wait for RecordMetadatas or errors, since commitTransaction flushes and throws
+      //should be no need to wait for RecordMetadatas or errors, since commitTransaction flushes and throws
+      _ <- sendAndForgetBatch(records)
       _ <- producer.sendOffsetsToTransaction(offsets, consumerGroupId)
       _ <- producer.commitTransaction
-    } yield ()).handleErrorWith {
-      // Exception-handling described in https://kafka.apache.org/10/javadoc/org/apache/kafka/clients/producer/KafkaProducer.html#send-org.apache.kafka.clients.producer.ProducerRecord-org.apache.kafka.clients.producer.Callback-
-      case e: ProducerFencedException => F.raiseError(e)
-      case e: OutOfOrderSequenceException => F.raiseError(e)
-      case e: UnsupportedVersionException => F.raiseError(e)
-      case e: AuthorizationException => F.raiseError(e)
-      case _ => producer.abortTransaction
-    }
+    } yield ()).handleErrorWith(KafkaTransactionError(_, producer))
 }
 
 import org.apache.avro.generic.GenericRecord
