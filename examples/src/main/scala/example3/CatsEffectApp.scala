@@ -17,7 +17,6 @@
 package example3
 
 import cats.effect._
-import cats.implicits._
 
 object CatsEffectApp extends IOApp {
   override def run(args: List[String]): IO[ExitCode] =
