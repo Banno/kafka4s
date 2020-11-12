@@ -3,13 +3,13 @@ Global / onChangedBuildSource := ReloadOnSourceChanges
 val V = new {
   val scala_2_13 = "2.13.3"
   val scala_2_12 = "2.12.11"
-  val avro4s = "3.0.9"
+  val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
-  val cats = "2.1.1"
+  val cats = "2.2.0"
   val confluent = "5.4.1"
   val curator = "5.1.0"
-  val discipline = "2.0.0"
-  val fs2 = "2.4.4"
+  val discipline = "2.0.1"
+  val fs2 = "2.4.5"
   val github4s = "0.25.0"
   val junit = "4.13"
   val kafka = "2.6.0"
@@ -18,8 +18,8 @@ val V = new {
   val log4j = "1.7.30"
   val logback = "1.2.3"
   val scalacheck = "1.14.3"
-  val scalacheckMagnolia = "0.5.1"
-  val scalatest = "3.2.2"
+  val scalacheckMagnolia = "0.4.0"
+  val scalatest = "3.2.3"
   val scalatestPlus = "3.1.0.0-RC2"
   val simpleClient = "0.9.0"
 }
@@ -47,7 +47,7 @@ lazy val core = project
   )
   .settings(
     libraryDependencies ++= Seq(
-      "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.6",
+      "org.scala-lang.modules" %% "scala-collection-compat" % "2.2.0",
       "org.apache.curator" % "curator-test" % V.curator % "test",
       ("org.apache.kafka" %% "kafka" % V.kafka % "test").classifier("test"),
       ("org.apache.kafka" % "kafka-clients" % V.kafka % "test").classifier("test"),
