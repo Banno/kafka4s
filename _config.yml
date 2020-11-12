@@ -6,6 +6,6 @@ docs: true
 collections:
   tut:
     output: true
-version: 3.0.0-M23+10-8ed98d13-SNAPSHOT
+version: 3.0.0-M23+12-f2ad4e75-SNAPSHOT
 org: Jack Henry & Associates, Inc.®
 markdown: kramdown
