@@ -23,7 +23,7 @@ import com.banno.kafka.admin._
 import com.banno.kafka.schemaregistry._
 import com.banno.kafka.consumer._
 import com.banno.kafka.producer._
-import com.sksamuel.avro4s.RecordFormat
+import com.sksamuel.avro4s._
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.producer.ProducerRecord
 import scala.concurrent.duration._
@@ -31,6 +31,10 @@ import org.apache.kafka.common.TopicPartition
 
 final class ExampleApp[F[_]: Async: ContextShift] {
   import ExampleApp._
+
+  implicit def RecordFormatPriority = RecordFormat[Priority]
+  implicit def RecordFormatCustomer = RecordFormat[Customer]
+  implicit def RecordFormatCustomerId = RecordFormat[CustomerId]
 
   // Change these for your environment as needed
   val topic = new NewTopic(s"example1.customers.v1", 1, 3.toShort)
@@ -48,8 +52,8 @@ final class ExampleApp[F[_]: Async: ContextShift] {
             address = s"address-${a}",
             priority = a % 3 match {
               case 0 => None
-              case 1 => Some(Gold)
-              case 2 => Some(Platinum)
+              case 1 => Some(Priority.Gold)
+              case 2 => Some(Priority.Platinum)
             }
           )
         )
@@ -109,15 +113,13 @@ final class ExampleApp[F[_]: Async: ContextShift] {
 }
 
 object ExampleApp {
-  implicit def customerIdRecordFormat = RecordFormat[CustomerId]
-  implicit def customerRecordFormat = RecordFormat[Customer]
-  implicit def priorityRecordFormat = RecordFormat[Priority]
-
   def apply[F[_]: Async: ContextShift] = new ExampleApp[F]
-}
 
-case class CustomerId(id: String)
-sealed trait Priority
-case object Platinum extends Priority
-case object Gold extends Priority
-case class Customer(name: String, address: String, priority: Option[Priority] = None)
+  case class CustomerId(id: String)
+  case class Customer(name: String, address: String, priority: Option[Priority] = None)
+  sealed trait Priority
+  object Priority {
+    case object Platinum extends Priority
+    case object Gold extends Priority
+  }
+}

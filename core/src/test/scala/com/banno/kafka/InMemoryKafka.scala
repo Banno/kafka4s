@@ -12,9 +12,7 @@ trait InMemoryKafka extends BeforeAndAfterAll { this: Suite =>
   val log = Slf4jLogger.getLoggerFromClass[IO](this.getClass)
 
   val bootstrapServer = "localhost:9092"
-  // val bootstrapServer = "kafka.local:9092"
-  val schemaRegistryUrl = "http://localhost:8081"
-  // val schemaRegistryUrl = "http://kafka.local:8081"
+  val schemaRegistryUrl = "http://localhost:8091"
 
   override def beforeAll(): Unit =
     log.info(s"Using docker-machine Kafka cluster for ${getClass.getName}").unsafeRunSync()
