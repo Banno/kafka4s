@@ -1,10 +1,12 @@
 target/
 .idea/
+.bsp/
+.bloop/
+.metals/
+**/project/metals.sbt
 # vim
 *.sw?
 
 # Ignore [ce]tags files
 tags
 
-.bloop
-.metals
