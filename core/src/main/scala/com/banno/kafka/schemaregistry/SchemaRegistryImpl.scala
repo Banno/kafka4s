@@ -20,6 +20,8 @@ import scala.collection.compat._
 import org.apache.avro.Schema
 import io.confluent.kafka.schemaregistry.client.{SchemaMetadata, SchemaRegistryClient}
 import cats.effect.Sync
+import io.confluent.kafka.schemaregistry.ParsedSchema
+
 import scala.jdk.CollectionConverters._
 
 case class SchemaRegistryImpl[F[_]](c: SchemaRegistryClient)(implicit F: Sync[F])
@@ -27,7 +29,10 @@ case class SchemaRegistryImpl[F[_]](c: SchemaRegistryClient)(implicit F: Sync[F]
   import SchemaRegistryApi._
 
   def getAllSubjects: F[Iterable[String]] = F.delay(c.getAllSubjects().asScala)
+  @deprecated("Use getSchemaById instead.", "3.0.0-M24")
   def getById(id: Int): F[Schema] = F.delay(c.getById(id))
+//  def getSchemaById(id: Int): F[ParsedSchema]
+  @deprecated("Use getSchemaBySubjectAndId instead.", "3.0.0-M24")
   def getBySubjectAndId(subject: String, id: Int): F[Schema] =
     F.delay(c.getBySubjectAndId(subject, id))
   def getCompatibility(subject: String): F[SchemaRegistryApi.CompatibilityLevel] =
@@ -36,8 +41,13 @@ case class SchemaRegistryImpl[F[_]](c: SchemaRegistryClient)(implicit F: Sync[F]
     F.delay(c.getLatestSchemaMetadata(subject))
   def getSchemaMetadata(subject: String, version: Int): F[SchemaMetadata] =
     F.delay(c.getSchemaMetadata(subject, version))
-  def getVersion(subject: String, schema: Schema): F[Int] = F.delay(c.getVersion(subject, schema))
-  def register(subject: String, schema: Schema): F[Int] = F.delay(c.register(subject, schema))
+  @deprecated("Use getVersion(String,ParsedSchema) instead.", "3.0.0-M24")
+  def getVersion(subject: String, schema: Schema): F[Int] =
+    F.delay(c.getVersion(subject, schema))
+  @deprecated("Use register(String,ParsedSchema) instead.", "3.0.0-M24")
+  def register(subject: String, schema: Schema): F[Int] =
+    F.delay(c.register(subject, schema))
+  @deprecated("Use testCompatibility(String,ParsedSchema) instead.", "3.0.0-M24")
   def testCompatibility(subject: String, schema: Schema): F[Boolean] =
     F.delay(c.testCompatibility(subject, schema))
   def updateCompatibility(subject: String, compatibility: CompatibilityLevel): F[String] =
