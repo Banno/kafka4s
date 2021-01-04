@@ -11,8 +11,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java: [adopt@1.8.0-272, adopt@1.11.0-9, adopt@1.15.0-1]
-        scala: [2.12.12, 2.13.4]
+        # java: [adopt@1.8.0-272, adopt@1.11.0-9, adopt@1.15.0-1]
+        java: [adopt@1.11.0-9]
+        # scala: [2.12.12, 2.13.4]
+        scala: [2.13.4]
     env:
       SCALA_VERSION: ${{ matrix.scala }}
     steps:
@@ -44,31 +46,31 @@ jobs:
         run: sbt ++$SCALA_VERSION mimaReportBinaryIssues
       - name: Test
         run: sbt ++$SCALA_VERSION test
-      - name: Scaladoc
-        run: sbt ++$SCALA_VERSION doc
-  docs:
-    name: Doc Site
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: olafurpg/setup-scala@v10
-      - name: Cache Coursier
-        uses: actions/cache@v1
-        with:
-          path: ~/.cache/coursier
-          key: sbt-coursier-cache
-      - name: Cache SBT
-        uses: actions/cache@v2
-        with:
-          path: ~/.sbt
-          key: sbt-${{ hashFiles('**/build.sbt') }}
-      - name: Set up Ruby 2.6
-        uses: actions/setup-ruby@v1
-        with:
-          ruby-version: 2.6
-      - name: Install Jekyll
-        run: |
-          gem install bundler
-          bundle install --gemfile=site/Gemfile
-      - name: Build project site
-        run: sbt ++$SCALA_VERSION site/makeMicrosite
+      # - name: Scaladoc
+      #   run: sbt ++$SCALA_VERSION doc
+  # docs:
+  #   name: Doc Site
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - uses: olafurpg/setup-scala@v10
+  #     - name: Cache Coursier
+  #       uses: actions/cache@v1
+  #       with:
+  #         path: ~/.cache/coursier
+  #         key: sbt-coursier-cache
+  #     - name: Cache SBT
+  #       uses: actions/cache@v2
+  #       with:
+  #         path: ~/.sbt
+  #         key: sbt-${{ hashFiles('**/build.sbt') }}
+  #     - name: Set up Ruby 2.6
+  #       uses: actions/setup-ruby@v1
+  #       with:
+  #         ruby-version: 2.6
+  #     - name: Install Jekyll
+  #       run: |
+  #         gem install bundler
+  #         bundle install --gemfile=site/Gemfile
+  #     - name: Build project site
+  #       run: sbt ++$SCALA_VERSION site/makeMicrosite
