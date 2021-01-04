@@ -24,6 +24,8 @@ import cats.implicits._
 import cats.effect.Sync
 import com.sksamuel.avro4s.SchemaFor
 import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
+import io.confluent.kafka.schemaregistry.ParsedSchema
+
 import scala.jdk.CollectionConverters._
 import scala.util.control.NoStackTrace
 
@@ -31,14 +33,36 @@ trait SchemaRegistryApi[F[_]] {
   import SchemaRegistryApi._
 
   def getAllSubjects: F[Iterable[String]]
+
+  @deprecated("Use getSchemaById instead.", "3.0.0-M24")
   def getById(id: Int): F[Schema]
+
+  @deprecated("Use getSchemaBySubjectAndId instead.", "3.0.0-M24")
+  def getSchemaById(id: Int): F[ParsedSchema]
+
+  @deprecated("Use getSchemaBySubjectAndId instead.", "3.0.0-M24")
   def getBySubjectAndId(subject: String, id: Int): F[Schema]
+
+  def getSchemaBySubjectAndId(subject: String, id: Int): F[ParsedSchema]
   def getCompatibility(subject: String): F[CompatibilityLevel]
   def getLatestSchemaMetadata(subject: String): F[SchemaMetadata]
   def getSchemaMetadata(subject: String, version: Int): F[SchemaMetadata]
+
+  @deprecated("Use getVersion(String,ParsedSchema) instead.", "3.0.0-M24")
   def getVersion(subject: String, schema: Schema): F[Int]
+
+  def getVersion(subject: String, schema: ParsedSchema): F[Int]
+
+  @deprecated("Use register(String,ParsedSchema) instead.", "3.0.0-M24")
   def register(subject: String, schema: Schema): F[Int]
+
+  def register(subject: String, schema: ParsedSchema): F[Int]
+
+  @deprecated("Use testCompatibility(String,ParsedSchema) instead.", "3.0.0-M24")
   def testCompatibility(subject: String, schema: Schema): F[Boolean]
+
+  def testCompatibility(subject: String, schema: ParsedSchema): F[Boolean]
+
   def updateCompatibility(subject: String, compatibility: CompatibilityLevel): F[String]
 }
 

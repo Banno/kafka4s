@@ -12,7 +12,7 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
 
   broker:
-    image: confluentinc/cp-enterprise-kafka:5.5.0
+    image: confluentinc/cp-enterprise-kafka:5.5.3
     hostname: broker
     container_name: broker
     depends_on:
@@ -42,13 +42,13 @@ services:
       - zookeeper
       - broker
     ports:
-      - "8081:8081"
+      - "8091:8081"
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: 'zookeeper:2181'
 
   rest-proxy:
-    image: confluentinc/cp-kafka-rest:5.5.0
+    image: confluentinc/cp-kafka-rest:5.5.3
     depends_on:
       - zookeeper
       - broker

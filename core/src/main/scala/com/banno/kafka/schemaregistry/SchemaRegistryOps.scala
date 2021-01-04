@@ -28,7 +28,7 @@ case class SchemaRegistryOps[F[_]](registry: SchemaRegistryApi[F]) {
   def valueSubject(topic: String): String = topic + "-value"
 
   def register[A](subject: String)(implicit SF: SchemaFor[A]): F[Int] =
-    registry.register(subject, SF.schema(DefaultFieldMapper))
+    registry.register(subject, SF.schema(DefaultFieldMapper).asParsedSchema)
 
   def registerKey[K: SchemaFor](topic: String): F[Int] =
     register[K](keySubject(topic))
@@ -43,7 +43,7 @@ case class SchemaRegistryOps[F[_]](registry: SchemaRegistryApi[F]) {
     } yield (k, v)
 
   def isCompatible(subject: String, schema: Schema): F[Boolean] =
-    registry.testCompatibility(subject, schema)
+    registry.testCompatibility(subject, schema.asParsedSchema)
 
   def isCompatible[A](subject: String)(implicit SF: SchemaFor[A]): F[Boolean] =
     isCompatible(subject, SF.schema(DefaultFieldMapper))
