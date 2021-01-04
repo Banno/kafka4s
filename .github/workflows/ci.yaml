@@ -44,6 +44,8 @@ jobs:
         run: sbt ++$SCALA_VERSION test:compile
       - name: Check compatibility
         run: sbt ++$SCALA_VERSION mimaReportBinaryIssues
+      - name: Start docker-compose
+        run: docker-compose up -d
       - name: Test
         run: sbt ++$SCALA_VERSION test
       # - name: Scaladoc
