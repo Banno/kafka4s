@@ -68,7 +68,7 @@ val topicName = topic.name
 Now we can register our topic key and topic value schemas:
 
 ```scala mdoc
-val schemaRegistryUri = "http://localhost:8081" // Change as needed
+val schemaRegistryUri = "http://localhost:8091" // Change as needed
 
 SchemaRegistryApi.register[IO, CustomerId, Customer](
   schemaRegistryUri, topicName
