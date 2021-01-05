@@ -58,4 +58,4 @@ Stream.resource(
 
 ## Learning more
 
-To learn more about kafka4s, start with our [Getting Started Guide](./docs/index.md), play with some [example apps](https://github.com/Banno/kafka4s/tree/master/examples/src/main/scala), and check out the [kafka4s Scaladoc](https://www.javadoc.io/doc/com.banno/kafka4s_2.13) for more info.
+To learn more about kafka4s, start with our [Getting Started Guide](/kafka4s/docs/), play with some [example apps](https://github.com/Banno/kafka4s/tree/master/examples/src/main/scala), and check out the [kafka4s Scaladoc](https://www.javadoc.io/doc/com.banno/kafka4s_2.13) for more info.
