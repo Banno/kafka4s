@@ -32,14 +32,13 @@
 <p>Polling Kafka for records is also an effect, and we can obtain a stream of records from a topic. We can print the even random integers from the above topic using:</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Stream</span><span class="o">.</span><span class="py">resource</span><span class="o">(</span>
-   <span class="nc">ConsumerApi</span>
-      <span class="o">.</span><span class="py">resource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Int</span>, <span class="kt">Int</span><span class="o">](</span>
-        <span class="nc">BootstrapServers</span><span class="o">(</span><span class="n">kafkaBootstrapServers</span><span class="o">),</span>
-        <span class="nc">GroupId</span><span class="o">(</span><span class="s">"example3"</span><span class="o">),</span>
-        <span class="nv">AutoOffsetReset</span><span class="o">.</span><span class="py">earliest</span><span class="o">,</span>
-        <span class="nc">EnableAutoCommit</span><span class="o">(</span><span class="kc">true</span><span class="o">)</span>
-      <span class="o">)</span>
+  <span class="nv">ConsumerApi</span><span class="o">.</span><span class="py">resource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Int</span>, <span class="kt">Int</span><span class="o">](</span>
+    <span class="nc">BootstrapServers</span><span class="o">(</span><span class="n">kafkaBootstrapServers</span><span class="o">),</span>
+    <span class="nc">GroupId</span><span class="o">(</span><span class="s">"example3"</span><span class="o">),</span>
+    <span class="nv">AutoOffsetReset</span><span class="o">.</span><span class="py">earliest</span><span class="o">,</span>
+    <span class="nc">EnableAutoCommit</span><span class="o">(</span><span class="kc">true</span><span class="o">)</span>
   <span class="o">)</span>
+<span class="o">)</span>
   <span class="o">.</span><span class="py">evalTap</span><span class="o">(</span><span class="nv">_</span><span class="o">.</span><span class="py">subscribe</span><span class="o">(</span><span class="nv">topic</span><span class="o">.</span><span class="py">name</span><span class="o">))</span>
   <span class="o">.</span><span class="py">flatMap</span><span class="o">(</span>
     <span class="nv">_</span><span class="o">.</span><span class="py">recordStream</span><span class="o">(</span><span class="mf">1.</span><span class="n">second</span><span class="o">)</span>
