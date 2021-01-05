@@ -17,7 +17,7 @@ libraryDependencies ++= Seq(
 # Some quick examples
 
 First, some initial imports:
-```scala mdoc
+```scala mdoc:compile-only
 import cats._, cats.effect._, cats.implicits._, scala.concurrent.duration._
 ```
 
@@ -25,7 +25,7 @@ import cats._, cats.effect._, cats.implicits._, scala.concurrent.duration._
 
 We'll define a toy message type for data we want to store in our Kafka topic.
 
-```scala mdoc
+```scala mdoc:compile-only
 case class Customer(name: String, address: String)
 case class CustomerId(id: String)
 ```
@@ -36,14 +36,14 @@ Now we'll tell Kafka to create a topic that we'll write our Kafka records to.
 
 First, let's bring some types and implicits into scope:
 
-```scala mdoc
+```scala mdoc:compile-only
 import com.banno.kafka._, com.banno.kafka.admin._
 import org.apache.kafka.clients.admin.NewTopic
 ```
 
 Now we can create a topic named `customers.v1` with 1 partition and 1 replica:
 
-```scala mdoc
+```scala mdoc:compile-only
 val topic = new NewTopic("customers.v1", 1, 1.toShort)
 val kafkaBootstrapServers = "localhost:9092" // Change as needed
 AdminApi.createTopicsIdempotent[IO](kafkaBootstrapServers, topic :: Nil).unsafeRunSync
@@ -55,19 +55,19 @@ Let's register a schema for our topic with the schema registry!
 
 First, we bring types and implicits into scope:
 
-```scala mdoc
+```scala mdoc:compile-only
 import com.banno.kafka.schemaregistry._
 ```
 
 We'll use the name of the topic we created above:
 
-```scala mdoc
+```scala mdoc:compile-only
 val topicName = topic.name
 ```
 
 Now we can register our topic key and topic value schemas:
 
-```scala mdoc
+```scala mdoc:compile-only
 val schemaRegistryUri = "http://localhost:8091" // Change as needed
 
 SchemaRegistryApi.register[IO, CustomerId, Customer](
@@ -81,13 +81,13 @@ Now let's create a producer and send some records to our Kafka topic!
 
 We first bring our Kafka producer utils into scope:
 
-```scala mdoc
+```scala mdoc:compile-only
 import com.banno.kafka.producer._
 ```
 
 Now we can create our producer instance:
 
-```scala mdoc
+```scala mdoc:compile-only
 val producer = ProducerApi.Avro.Generic.resource[IO](
   BootstrapServers(kafkaBootstrapServers),
   SchemaRegistryUrl(schemaRegistryUri),
@@ -97,14 +97,14 @@ val producer = ProducerApi.Avro.Generic.resource[IO](
 
 And we'll define some customer records to be written:
 
-```scala mdoc
+```scala mdoc:compile-only
 import org.apache.kafka.clients.producer.ProducerRecord
 val recordsToBeWritten = (1 to 10).map(a => new ProducerRecord(topicName, CustomerId(a.toString), Customer(s"name-${a}", s"address-${a}"))).toVector
 ```
 
 And now we can (attempt to) write our records to Kafka:
 
-```scala mdoc:fail
+```scala mdoc:compile-only:fail
 producer.use(p => recordsToBeWritten.traverse_(p.sendSync))
 ```
 
@@ -117,7 +117,7 @@ topic. For this, we can use Kafka4s' `avro4s` integration!
 
 Turning a generic producer into a typed producer is simple. We first ensure that `com.sksamuel.avro4s.RecordFormat` instances for our data are in scope:
 
-```scala mdoc
+```scala mdoc:compile-only
 implicit val CustomerRecordFormat = com.sksamuel.avro4s.RecordFormat[Customer]
 implicit val CustomerIdRecordFormat = com.sksamuel.avro4s.RecordFormat[CustomerId]
 
@@ -125,13 +125,13 @@ implicit val CustomerIdRecordFormat = com.sksamuel.avro4s.RecordFormat[CustomerI
 
 And with those implicits in scope, we can create our producer:
 
-```scala mdoc
+```scala mdoc:compile-only
 val avro4sProducer = producer.map(_.toAvro4s[CustomerId, Customer])
 ```
 
 We can now write our typed customer records successfully!
 
-```scala mdoc
+```scala mdoc:compile-only
 avro4sProducer.use(p => recordsToBeWritten.traverse_(r => p.sendSync(r).flatMap(rmd => IO(println(s"Wrote record to ${rmd}"))))).unsafeRunSync
 ```
 
@@ -140,7 +140,7 @@ avro4sProducer.use(p => recordsToBeWritten.traverse_(r => p.sendSync(r).flatMap(
 Now that we've stored some records in Kafka, let's read them as an `fs2.Stream`!
 
 We first import our Kafka consumer utilities:
-```scala mdoc
+```scala mdoc:compile-only
 import com.banno.kafka.consumer._
 ```
 
@@ -150,14 +150,14 @@ By default, kafka4s consumers shift blocking calls to a dedicated `ExecutionCont
 
 Here's our `ContextShift`:
 
-```scala mdoc
+```scala mdoc:compile-only
 import scala.concurrent.ExecutionContext
 implicit val CS = IO.contextShift(ExecutionContext.global)
 ```
 
 And here's our consumer, which is using Avro4s to deserialize the records:
 
-```scala mdoc
+```scala mdoc:compile-only
 val consumer = ConsumerApi.Avro4s.resource[IO, CustomerId, Customer](
   BootstrapServers(kafkaBootstrapServers), 
   SchemaRegistryUrl(schemaRegistryUri),
@@ -167,7 +167,7 @@ val consumer = ConsumerApi.Avro4s.resource[IO, CustomerId, Customer](
 ```
 
 With our Kafka consumer in hand, we'll assign to our consumer our topic partition, with no offsets, so that it starts reading from the first record, and read a stream of records from our Kafka topic:
-```scala mdoc
+```scala mdoc:compile-only
 import org.apache.kafka.common.TopicPartition
 val initialOffsets = Map.empty[TopicPartition, Long] // Start from beginning
 val messages = consumer.use(c => c.assign(topicName, initialOffsets) *> c.recordStream(1.second).take(5).compile.toVector).unsafeRunSync
