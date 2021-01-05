@@ -72,10 +72,12 @@ lazy val examples = project
   .dependsOn(core)
 
 lazy val docs = project
+  .in(file("site"))
   .settings(publish / skip := true)
   .disablePlugins(MimaPlugin)
   .enablePlugins(MicrositesPlugin)
-  .enablePlugins(TutPlugin)
+  .enablePlugins(MdocPlugin)
+  .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
   .dependsOn(core)
   .settings {

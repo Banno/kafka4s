@@ -74,5 +74,5 @@ jobs:
         run: |
           gem install bundler
           bundle install --gemfile=site/Gemfile
-      # - name: Build project site
-      #   run: sbt ++$SCALA_VERSION site/makeMicrosite
+      - name: Build project site
+        run: sbt ++$SCALA_VERSION site/makeMicrosite
