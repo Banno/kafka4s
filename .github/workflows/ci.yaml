@@ -74,5 +74,7 @@ jobs:
         run: |
           gem install bundler
           bundle install --gemfile=site/Gemfile
+      - name: Start docker-compose
+        run: docker-compose up -d
       - name: Build project site
         run: sbt ++$SCALA_VERSION site/makeMicrosite
