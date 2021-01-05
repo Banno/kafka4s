@@ -9,7 +9,7 @@ val V = new {
   val confluent = "5.5.3"
   val curator = "5.1.0"
   val discipline = "2.0.1"
-  val fs2 = "2.4.6"
+  val fs2 = "2.5.0"
   val github4s = "0.27.1"
   val junit = "4.13"
   val kafka = "2.6.0"
@@ -67,7 +67,7 @@ lazy val core = project
 lazy val examples = project
   .settings(publish / skip := true)
   .settings(commonSettings)
-  .settings(libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.1.4.1")
+  .settings(libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.2.0.1")
   .disablePlugins(MimaPlugin)
   .dependsOn(core)
 
