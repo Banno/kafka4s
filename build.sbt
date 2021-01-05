@@ -17,8 +17,8 @@ val V = new {
   val log4cats = "1.1.1"
   val log4j = "1.7.30"
   val logback = "1.2.3"
-  val scalacheck = "1.14.3"
-  val scalacheckMagnolia = "0.5.1"
+  val scalacheck = "1.15.2"
+  val scalacheckMagnolia = "0.6.0"
   val scalatest = "3.2.3"
   val scalatestPlus = "3.1.0.0-RC2"
   val simpleClient = "0.9.0"
@@ -47,7 +47,7 @@ lazy val core = project
   )
   .settings(
     libraryDependencies ++= Seq(
-      "org.scala-lang.modules" %% "scala-collection-compat" % "2.2.0",
+      "org.scala-lang.modules" %% "scala-collection-compat" % "2.3.2",
       "org.apache.curator" % "curator-test" % V.curator % "test",
       ("org.apache.kafka" %% "kafka" % V.kafka % "test").classifier("test"),
       ("org.apache.kafka" % "kafka-clients" % V.kafka % "test").classifier("test"),
