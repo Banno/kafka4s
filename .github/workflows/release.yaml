@@ -44,8 +44,8 @@ jobs:
         run: |
           gem install bundler
           bundle install --gemfile=site/Gemfile
-      # - name: Publish microsite
-      #   run: |
-      #     sbt ++$SCALA_VERSION site/publishMicrosite
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.SITE_TOKEN }}
+      - name: Publish microsite
+        run: |
+          sbt ++$SCALA_VERSION site/publishMicrosite
+        env:
+          GITHUB_TOKEN: ${{ secrets.SITE_TOKEN }}
