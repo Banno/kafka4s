@@ -47,8 +47,8 @@ jobs:
         run: docker-compose up -d
       - name: Test
         run: sbt ++$SCALA_VERSION test
-      # - name: Scaladoc
-      #   run: sbt ++$SCALA_VERSION doc
+      - name: Scaladoc
+        run: sbt ++$SCALA_VERSION doc
   # docs:
   #   name: Doc Site
   #   runs-on: ubuntu-latest
