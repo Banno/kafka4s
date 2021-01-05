@@ -27,11 +27,12 @@ val V = new {
 lazy val kafka4s = project
   .in(file("."))
   .settings(scalaVersion := V.scala_2_12)
-  .settings(publish / skip := true)
   .disablePlugins(MimaPlugin)
-  .aggregate(core, examples, docs)
+  .enablePlugins(NoPublishPlugin)
+  .aggregate(core, examples, site)
 
 lazy val core = project
+  .in(file("core"))
   .settings(commonSettings)
   .settings(
     name := "kafka4s",
@@ -65,15 +66,14 @@ lazy val core = project
   )
 
 lazy val examples = project
-  .settings(publish / skip := true)
+  .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
   .settings(libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.2.0.1")
   .disablePlugins(MimaPlugin)
   .dependsOn(core)
 
-lazy val docs = project
+lazy val site = project
   .in(file("site"))
-  .settings(publish / skip := true)
   .disablePlugins(MimaPlugin)
   .enablePlugins(MicrositesPlugin)
   .enablePlugins(MdocPlugin)
