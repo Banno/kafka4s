@@ -104,7 +104,7 @@ val recordsToBeWritten = (1 to 10).map(a => new ProducerRecord(topicName, Custom
 
 And now we can (attempt to) write our records to Kafka:
 
-```scala mdoc:compile-only:fail
+```scala mdoc:fail
 producer.use(p => recordsToBeWritten.traverse_(p.sendSync))
 ```
 
