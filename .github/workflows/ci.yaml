@@ -11,8 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # java: [adopt@1.8.0-272, adopt@1.11.0-9, adopt@1.15.0-1]
-        java: [adopt@1.11.0-9]
+        java: [adopt@1.8.0-272, adopt@1.11.0-9, adopt@1.15.0-1]
         scala: [2.12.12, 2.13.4]
     env:
       SCALA_VERSION: ${{ matrix.scala }}
