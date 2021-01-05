@@ -40,10 +40,10 @@ jobs:
         uses: actions/setup-ruby@v1
         with:
           ruby-version: 2.6
-      # - name: Install Jekyll
-      #   run: |
-      #     gem install bundler
-      #     bundle install --gemfile=site/Gemfile
+      - name: Install Jekyll
+        run: |
+          gem install bundler
+          bundle install --gemfile=site/Gemfile
       # - name: Publish microsite
       #   run: |
       #     sbt ++$SCALA_VERSION site/publishMicrosite
