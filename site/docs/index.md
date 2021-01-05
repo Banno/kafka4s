@@ -40,14 +40,13 @@ Polling Kafka for records is also an effect, and we can obtain a stream of recor
 
 ```scala
 Stream.resource(
-   ConsumerApi
-      .resource[F, Int, Int](
-        BootstrapServers(kafkaBootstrapServers),
-        GroupId("example3"),
-        AutoOffsetReset.earliest,
-        EnableAutoCommit(true)
-      )
+  ConsumerApi.resource[F, Int, Int](
+    BootstrapServers(kafkaBootstrapServers),
+    GroupId("example3"),
+    AutoOffsetReset.earliest,
+    EnableAutoCommit(true)
   )
+)
   .evalTap(_.subscribe(topic.name))
   .flatMap(
     _.recordStream(1.second)
