@@ -1,24 +1,24 @@
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
 val V = new {
-  val scala_2_13 = "2.13.3"
-  val scala_2_12 = "2.12.11"
+  val scala_2_13 = "2.13.4"
+  val scala_2_12 = "2.12.12"
   val avro4s = "4.0.4"
   val betterMonadicFor = "0.3.1"
-  val cats = "2.2.0"
-  val confluent = "5.5.3"
+  val cats = "2.3.1"
+  val confluent = "6.0.1"
   val curator = "5.1.0"
   val discipline = "2.0.1"
   val fs2 = "2.5.0"
   val github4s = "0.27.1"
   val junit = "4.13"
-  val kafka = "2.6.0"
-  val kindProjector = "0.11.2"
+  val kafka = "2.7.0"
+  val kindProjector = "0.11.3"
   val log4cats = "1.1.1"
   val log4j = "1.7.30"
   val logback = "1.2.3"
-  val scalacheck = "1.14.3"
-  val scalacheckMagnolia = "0.5.1"
+  val scalacheck = "1.15.2"
+  val scalacheckMagnolia = "0.6.0"
   val scalatest = "3.2.3"
   val scalatestPlus = "3.1.0.0-RC2"
   val simpleClient = "0.9.0"
@@ -27,11 +27,12 @@ val V = new {
 lazy val kafka4s = project
   .in(file("."))
   .settings(scalaVersion := V.scala_2_12)
-  .settings(publish / skip := true)
   .disablePlugins(MimaPlugin)
-  .aggregate(core, examples, docs)
+  .enablePlugins(NoPublishPlugin)
+  .aggregate(core, examples, site)
 
 lazy val core = project
+  .in(file("core"))
   .settings(commonSettings)
   .settings(
     name := "kafka4s",
@@ -47,7 +48,7 @@ lazy val core = project
   )
   .settings(
     libraryDependencies ++= Seq(
-      "org.scala-lang.modules" %% "scala-collection-compat" % "2.2.0",
+      "org.scala-lang.modules" %% "scala-collection-compat" % "2.3.2",
       "org.apache.curator" % "curator-test" % V.curator % "test",
       ("org.apache.kafka" %% "kafka" % V.kafka % "test").classifier("test"),
       ("org.apache.kafka" % "kafka-clients" % V.kafka % "test").classifier("test"),
@@ -65,17 +66,18 @@ lazy val core = project
   )
 
 lazy val examples = project
-  .settings(publish / skip := true)
+  .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
   .settings(libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.2.0.1")
   .disablePlugins(MimaPlugin)
   .dependsOn(core)
 
-lazy val docs = project
-  .settings(publish / skip := true)
+lazy val site = project
+  .in(file("site"))
   .disablePlugins(MimaPlugin)
   .enablePlugins(MicrositesPlugin)
-  .enablePlugins(TutPlugin)
+  .enablePlugins(MdocPlugin)
+  .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
   .dependsOn(core)
   .settings {
@@ -100,15 +102,6 @@ lazy val docs = project
         "gray-light" -> "#E5E5E6",
         "gray-lighter" -> "#F4F3F4",
         "white-color" -> "#FFFFFF",
-      ),
-      fork in tut := true,
-      scalacOptions in Tut --= Seq(
-        "-Xfatal-warnings",
-        "-Ywarn-unused-import",
-        "-Ywarn-numeric-widen",
-        "-Ywarn-dead-code",
-        "-Ywarn-unused:imports",
-        "-Xlint:-missing-interpolator,_",
       ),
       libraryDependencies += "com.47deg" %% "github4s" % V.github4s,
       micrositePushSiteWith := GitHub4s,

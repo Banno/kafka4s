@@ -1,4 +1,10 @@
-# kafka4s - Functional programming with Kafka and Scala [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.banno/kafka4s_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.banno/kafka4s_2.13) ![Code of Conduct](https://img.shields.io/badge/Code%20of%20Conduct-Scala-blue.svg)
+# kafka4s - Functional programming with Kafka and Scala
+
+![CI](https://github.com/Banno/kafka4s/workflows/CI/badge.svg) 
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.banno/kafka4s_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.banno/kafka4s_2.13) 
+[![Javadocs](https://www.javadoc.io/badge/com.banno/kafka4s_2.13.svg?color=red&label=scaladoc)](https://www.javadoc.io/doc/com.banno/kafka4s_2.13/latest/com/banno/kafka/index.html)
+[![License](http://img.shields.io/:license-Apache%202-green.svg)](http://www.apache.org/licenses/LICENSE-2.0.txt)
+![Code of Conduct](https://img.shields.io/badge/Code%20of%20Conduct-Scala-blue.svg)
 
 kafka4s provides pure, referentially transparent functions for working with Kafka, and integrates with FP libraries such as [cats-effect](https://typelevel.org/cats-effect) and [fs2](https://fs2.io).
 
@@ -57,3 +63,4 @@ Stream.resource(
 ## Learning more
 
 To learn more about kafka4s, start with our [Getting Started Guide](https://banno.github.io/kafka4s/docs/), play with some [example apps](https://github.com/Banno/kafka4s/tree/master/examples/src/main/scala), and check out the [kafka4s Scaladoc](https://www.javadoc.io/doc/com.banno/kafka4s_2.12) for more info.
+

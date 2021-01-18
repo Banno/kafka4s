@@ -11,7 +11,8 @@ env:
 jobs:
   release:
     name: Release
-    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'skip ci') && !contains(github.event.head_commit.message, 'ci skip')"
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v1
         with:
@@ -35,16 +36,16 @@ jobs:
           PGP_SECRET: ${{ secrets.PGP_SECRET }}
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
-      # - name: Set up Ruby 2.6
-      #   uses: actions/setup-ruby@v1
-      #   with:
-      #     ruby-version: 2.6
-      # - name: Install Jekyll
-      #   run: |
-      #     gem install bundler
-      #     bundle install --gemfile=site/Gemfile
-      # - name: Publish microsite
-      #   run: |
-      #     sbt ++$SCALA_VERSION site/publishMicrosite
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.SITE_TOKEN }}
+      - name: Set up Ruby 2.6
+        uses: actions/setup-ruby@v1
+        with:
+          ruby-version: 2.6
+      - name: Install Jekyll
+        run: |
+          gem install bundler
+          bundle install --gemfile=site/Gemfile
+      - name: Publish microsite
+        run: |
+          sbt ++$SCALA_VERSION site/publishMicrosite
+        env:
+          GITHUB_TOKEN: ${{ secrets.SITE_TOKEN }}

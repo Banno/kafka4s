@@ -40,14 +40,13 @@ Polling Kafka for records is also an effect, and we can obtain a stream of recor
 
 ```scala
 Stream.resource(
-   ConsumerApi
-      .resource[F, Int, Int](
-        BootstrapServers(kafkaBootstrapServers),
-        GroupId("example3"),
-        AutoOffsetReset.earliest,
-        EnableAutoCommit(true)
-      )
+  ConsumerApi.resource[F, Int, Int](
+    BootstrapServers(kafkaBootstrapServers),
+    GroupId("example3"),
+    AutoOffsetReset.earliest,
+    EnableAutoCommit(true)
   )
+)
   .evalTap(_.subscribe(topic.name))
   .flatMap(
     _.recordStream(1.second)
@@ -59,4 +58,4 @@ Stream.resource(
 
 ## Learning more
 
-To learn more about kafka4s, start with our [Getting Started Guide](/kafka4s/docs/), play with some [example apps](https://github.com/Banno/kafka4s/tree/master/examples/src/main/scala), and check out the [kafka4s Scaladoc](https://www.javadoc.io/doc/com.banno/kafka4s_2.12) for more info.
+To learn more about kafka4s, start with our [Getting Started Guide](/kafka4s/docs/), play with some [example apps](https://github.com/Banno/kafka4s/tree/master/examples/src/main/scala), and check out the [kafka4s Scaladoc](https://www.javadoc.io/doc/com.banno/kafka4s_2.13) for more info.
