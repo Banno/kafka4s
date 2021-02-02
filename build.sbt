@@ -48,7 +48,7 @@ lazy val core = project
   )
   .settings(
     libraryDependencies ++= Seq(
-      "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.0",
+      "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.1",
       "org.apache.curator" % "curator-test" % V.curator % "test",
       ("org.apache.kafka" %% "kafka" % V.kafka % "test").classifier("test"),
       ("org.apache.kafka" % "kafka-clients" % V.kafka % "test").classifier("test"),
