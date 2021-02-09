@@ -2,35 +2,44 @@ package com.banno.kafka
 
 import com.banno.kafka.admin._
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
+import munit.CatsEffectSuite
 import org.apache.kafka.clients.admin._
+import org.scalacheck.Gen
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+
+import java.util
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-class AdminApiSpec extends AnyFlatSpec with Matchers with InMemoryKafka {
-  implicit val defaultTimer = IO.timer(ExecutionContext.global)
+class AdminApiSpec extends CatsEffectSuite {
+  def randomId(): String = Gen.listOfN(10, Gen.alphaChar).map(_.mkString).sample.get
+  def genGroupId(): String = randomId
+  def genTopic(): String = randomId
 
-  //Probably don't need to test every single AdminClient operation; this is just a sanity check that it is all wired up properly
 
-  "Admin API" should "create topics idempotently" in {
-    val topicName = genTopic
-    def program[F[_]: Timer](admin: AdminApi[F])(implicit F: Sync[F]) =
-      for {
-        ltr1 <- admin.listTopics
-        ns1 <- F.delay(ltr1.names().get())
-        _ <- admin.createTopicsIdempotent(List(new NewTopic(topicName, 1, 1.toShort)))
-        _ <- admin.createTopicsIdempotent(List(new NewTopic(topicName, 1, 1.toShort)))
-        _ <- Timer[F].sleep(1.second) // TODO: Better fix
-        ltr2 <- admin.listTopics
-        ns2 <- F.delay(ltr2.names.get())
-      } yield (ns1, ns2)
+  val cp = ResourceFixture(ConfluentContainers.resource[IO])
 
-    val (before, after) =
-      AdminApi.resource[IO](BootstrapServers(bootstrapServer)).use(program[IO]).unsafeRunSync()
-    before should not contain (topicName)
-    after should contain(topicName)
+  def program[F[_] : Sync : Timer](topicName: String)(admin: AdminApi[F]): F[(util.Set[String], util.Set[String])] =
+    for {
+      ltr1 <- admin.listTopics
+      ns1 <- Sync[F].delay(ltr1.names().get())
+      _ <- admin.createTopicsIdempotent(List(new NewTopic(topicName, 1, 1.toShort)))
+      _ <- admin.createTopicsIdempotent(List(new NewTopic(topicName, 1, 1.toShort)))
+      _ <- Timer[F].sleep(1.second) // TODO: Better fix
+      ltr2 <- admin.listTopics
+      ns2 <- Sync[F].delay(ltr2.names.get())
+    } yield (ns1, ns2)
+
+  cp.test("Admin API creates topics idempotently") { cp =>
+    val a = for {
+      topicName <- Sync[IO].delay(genTopic)
+      bs <- cp.bootstrapServers
+      (before, after) <- AdminApi.resource[IO](BootstrapServers(bs)).use(program[IO](topicName))
+    } yield (before.contains(topicName), after.contains(topicName))
+
+    a.assertEquals((false, true))
+
   }
-
 }

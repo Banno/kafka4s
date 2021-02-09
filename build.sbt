@@ -17,11 +17,14 @@ val V = new {
   val log4cats = "1.1.1"
   val log4j = "1.7.30"
   val logback = "1.2.3"
+  val munit = "0.7.21"
+  val munitCatsEffect2 = "0.13.0"
   val scalacheck = "1.15.2"
   val scalacheckMagnolia = "0.6.0"
   val scalatest = "3.2.3"
   val scalatestPlus = "3.1.0.0-RC2"
   val simpleClient = "0.9.0"
+  val testcontainers = "0.39.0"
 }
 
 lazy val kafka4s = project
@@ -62,6 +65,10 @@ lazy val core = project
       "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % "test",
       "org.typelevel" %% "cats-laws" % V.cats % "test",
       "org.typelevel" %% "discipline-scalatest" % V.discipline % "test",
+      "org.scalameta" %% "munit-scalacheck" % V.munit % Test,
+      "org.typelevel" %% "munit-cats-effect-2" % V.munitCatsEffect2 % Test,
+      "com.dimafeng" %% "testcontainers-scala-munit" % V.testcontainers % Test,
+      "com.dimafeng" %% "testcontainers-scala-kafka" % V.testcontainers % Test,
     )
   )
 
@@ -145,6 +152,7 @@ lazy val commonSettings = Seq(
   sourceGenerators in Test += (avroScalaGenerate in Test).taskValue,
   watchSources ++= ((avroSourceDirectories in Test).value ** "*.avdl").get,
   testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oS"),
+  testFrameworks += new TestFramework("munit.Framework"),
 )
 
 lazy val contributors = Seq(
