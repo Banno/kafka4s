@@ -12,16 +12,14 @@ import org.scalatest.matchers.should.Matchers
 import java.util
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+import com.banno.kafka.test.{utils => TestUtils} // TODO
 
 class AdminApiSpec extends CatsEffectSuite {
-  def randomId(): String = Gen.listOfN(10, Gen.alphaChar).map(_.mkString).sample.get
-  def genGroupId(): String = randomId
-  def genTopic(): String = randomId
-
-
   val cp = ResourceFixture(ConfluentContainers.resource[IO])
 
-  def program[F[_] : Sync : Timer](topicName: String)(admin: AdminApi[F]): F[(util.Set[String], util.Set[String])] =
+  def program[F[_]: Sync: Timer](
+      topicName: String
+  )(admin: AdminApi[F]): F[(util.Set[String], util.Set[String])] =
     for {
       ltr1 <- admin.listTopics
       ns1 <- Sync[F].delay(ltr1.names().get())
@@ -34,7 +32,7 @@ class AdminApiSpec extends CatsEffectSuite {
 
   cp.test("Admin API creates topics idempotently") { cp =>
     val a = for {
-      topicName <- Sync[IO].delay(genTopic)
+      topicName <- Sync[IO].delay(TestUtils.genTopic())
       bs <- cp.bootstrapServers
       (before, after) <- AdminApi.resource[IO](BootstrapServers(bs)).use(program[IO](topicName))
     } yield (before.contains(topicName), after.contains(topicName))

@@ -32,7 +32,11 @@ lazy val kafka4s = project
   .settings(scalaVersion := V.scala_2_12)
   .disablePlugins(MimaPlugin)
   .enablePlugins(NoPublishPlugin)
-  .aggregate(core, examples, site)
+  .aggregate(
+    core,
+    site,
+//    examples,
+  )
 
 lazy val core = project
   .in(file("core"))
