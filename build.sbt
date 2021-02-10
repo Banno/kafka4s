@@ -5,12 +5,12 @@ val V = new {
   val scala_2_12 = "2.12.12"
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
-  val cats = "2.3.1"
+  val cats = "2.4.0"
   val confluent = "6.0.1"
   val curator = "5.1.0"
   val discipline = "2.0.1"
   val fs2 = "2.5.0"
-  val github4s = "0.27.1"
+  val github4s = "0.28.2"
   val junit = "4.13"
   val kafka = "2.7.0"
   val kindProjector = "0.11.3"
@@ -20,8 +20,8 @@ val V = new {
   val scalacheck = "1.15.2"
   val scalacheckMagnolia = "0.6.0"
   val scalatest = "3.2.3"
-  val scalatestPlus = "3.1.0.0-RC2"
-  val simpleClient = "0.10.0"
+  val scalatestPlus = "3.2.3.0"
+  val simpleClient = "0.9.0"
 }
 
 lazy val kafka4s = project
@@ -48,7 +48,7 @@ lazy val core = project
   )
   .settings(
     libraryDependencies ++= Seq(
-      "org.scala-lang.modules" %% "scala-collection-compat" % "2.3.2",
+      "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.1",
       "org.apache.curator" % "curator-test" % V.curator % "test",
       ("org.apache.kafka" %% "kafka" % V.kafka % "test").classifier("test"),
       ("org.apache.kafka" % "kafka-clients" % V.kafka % "test").classifier("test"),
@@ -58,7 +58,7 @@ lazy val core = project
       "org.slf4j" % "log4j-over-slf4j" % V.log4j % "test",
       "org.scalacheck" %% "scalacheck" % V.scalacheck % "test",
       "org.scalatest" %% "scalatest" % V.scalatest % "test",
-      "org.scalatestplus" %% "scalatestplus-scalacheck" % V.scalatestPlus % "test",
+      "org.scalatestplus" %% "scalacheck-1-15" % "3.2.3.0" % Test,
       "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % "test",
       "org.typelevel" %% "cats-laws" % V.cats % "test",
       "org.typelevel" %% "discipline-scalatest" % V.discipline % "test",
