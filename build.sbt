@@ -20,7 +20,7 @@ val V = new {
   val scalacheck = "1.15.2"
   val scalacheckMagnolia = "0.6.0"
   val scalatest = "3.2.3"
-  val scalatestPlus = "3.1.0.0-RC2"
+  val scalatestPlus = "3.2.3.0"
   val simpleClient = "0.9.0"
 }
 
@@ -58,7 +58,7 @@ lazy val core = project
       "org.slf4j" % "log4j-over-slf4j" % V.log4j % "test",
       "org.scalacheck" %% "scalacheck" % V.scalacheck % "test",
       "org.scalatest" %% "scalatest" % V.scalatest % "test",
-      "org.scalatestplus" %% "scalatestplus-scalacheck" % V.scalatestPlus % "test",
+      "org.scalatestplus" %% "scalacheck-1-15" % "3.2.3.0" % Test,
       "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % "test",
       "org.typelevel" %% "cats-laws" % V.cats % "test",
       "org.typelevel" %% "discipline-scalatest" % V.discipline % "test",
