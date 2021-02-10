@@ -44,10 +44,10 @@ jobs:
         run: sbt ++$SCALA_VERSION test:compile
       - name: Check compatibility
         run: sbt ++$SCALA_VERSION mimaReportBinaryIssues
-      - name: Start docker-compose
-        run: docker-compose up -d
+      # - name: Start docker-compose
+      #   run: docker-compose up -d
       - name: Test
-        run: sbt ++$SCALA_VERSION test
+        run: sbt ++$SCALA_VERSION core/testOnly com.banno.kafka.AdminApiSpec
       - name: Scaladoc
         run: sbt ++$SCALA_VERSION doc
   docs:
