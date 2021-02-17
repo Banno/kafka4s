@@ -185,7 +185,9 @@ package object kafka {
       fab.bimap(f, g)
   }
 
-  implicit class Record[F[_, _], A, B](r: F[A, B])(implicit F: Bifunctor[F]) {
+  implicit class BifunctorToOptionExtension[F[_, _], A, B](
+    r: F[A, B]
+  )(implicit F: Bifunctor[F]) {
     def toOption: F[Option[A], Option[B]] = F.bimap(r)(Option.apply, Option.apply)
   }
 
