@@ -1,8 +1,8 @@
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
 val V = new {
-  val scala_2_13 = "2.13.4"
-  val scala_2_12 = "2.12.12"
+  val scala_2_13 = "2.13.5"
+  val scala_2_12 = "2.12.13"
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
   val cats = "2.4.2"
