@@ -58,7 +58,7 @@ lazy val core = project
       "org.slf4j" % "log4j-over-slf4j" % V.log4j % "test",
       "org.scalacheck" %% "scalacheck" % V.scalacheck % "test",
       "org.scalatest" %% "scalatest" % V.scalatest % "test",
-      "org.scalatestplus" %% "scalacheck-1-15" % "3.2.5.0" % Test,
+      "org.scalatestplus" %% "scalacheck-1-15" % "3.2.6.0" % Test,
       "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % "test",
       "org.typelevel" %% "cats-laws" % V.cats % "test",
       "org.typelevel" %% "discipline-scalatest" % V.discipline % "test",
