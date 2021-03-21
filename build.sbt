@@ -1,8 +1,10 @@
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
 val V = new {
+  val scala_3_0 = "3.0.0-RC1"
   val scala_2_13 = "2.13.5"
   val scala_2_12 = "2.12.13"
+  val scalaVersion :: crossScalaVersions = List(scala_3_0, scala_2_13, scala_2_12)
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
   val cats = "2.4.2"
@@ -26,7 +28,7 @@ val V = new {
 
 lazy val kafka4s = project
   .in(file("."))
-  .settings(scalaVersion := V.scala_2_12)
+  .settings(scalaVersion := V.scalaVersion)
   .disablePlugins(MimaPlugin)
   .enablePlugins(NoPublishPlugin)
   .aggregate(core, examples, site)
@@ -127,8 +129,8 @@ lazy val site = project
   }
 
 lazy val commonSettings = Seq(
-  scalaVersion := V.scala_2_12,
-  crossScalaVersions := Seq(scalaVersion.value, V.scala_2_13),
+  scalaVersion := V.scalaVersion,
+  crossScalaVersions := V.crossScalaVersions,
   resolvers += "confluent".at("https://packages.confluent.io/maven/"),
   addCompilerPlugin(
     ("org.typelevel" %% "kind-projector" % V.kindProjector).cross(CrossVersion.full),
