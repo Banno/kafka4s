@@ -109,15 +109,21 @@ final class ExampleApp[F[_]: Async: ContextShift] {
 }
 
 object ExampleApp {
-  implicit def customerIdRecordFormat = RecordFormat[CustomerId]
-  implicit def customerRecordFormat = RecordFormat[Customer]
-  implicit def priorityRecordFormat = RecordFormat[Priority]
-
   def apply[F[_]: Async: ContextShift] = new ExampleApp[F]
 }
 
-case class CustomerId(id: String)
+final case class CustomerId(id: String)
+object CustomerId {
+  implicit val customerIdRecordFormat = RecordFormat[CustomerId]
+}
 sealed trait Priority
+object Priority {
 case object Platinum extends Priority
 case object Gold extends Priority
-case class Customer(name: String, address: String, priority: Option[Priority] = None)
+
+  implicit val priorityRecordFormat = RecordFormat[Priority]
+}
+final case class Customer(name: String, address: String, priority: Option[Priority] = None)
+object Customer {
+  implicit val customerRecordFormat = RecordFormat[Customer]
+}
