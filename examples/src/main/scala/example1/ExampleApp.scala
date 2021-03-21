@@ -23,14 +23,12 @@ import com.banno.kafka.admin._
 import com.banno.kafka.schemaregistry._
 import com.banno.kafka.consumer._
 import com.banno.kafka.producer._
-import com.sksamuel.avro4s.RecordFormat
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.producer.ProducerRecord
 import scala.concurrent.duration._
 import org.apache.kafka.common.TopicPartition
 
 final class ExampleApp[F[_]: Async: ContextShift] {
-  import ExampleApp._
 
   // Change these for your environment as needed
   val topic = new NewTopic(s"example1.customers.v1", 1, 3.toShort)
@@ -107,10 +105,5 @@ final class ExampleApp[F[_]: Async: ContextShift] {
 }
 
 object ExampleApp {
-  case class CustomerId(id: String)
-  case class Customer(name: String, address: String)
-  implicit def customerIdRecordFormat = RecordFormat[CustomerId]
-  implicit def customerRecordFormat = RecordFormat[Customer]
-
   def apply[F[_]: Async: ContextShift] = new ExampleApp[F]
 }
