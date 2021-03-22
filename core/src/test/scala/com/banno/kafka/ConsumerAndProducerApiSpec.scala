@@ -48,7 +48,7 @@ class ConsumerAndProducerApiSpec
   def producerRecord[K, V](topic: String)(p: (K, V)): ProducerRecord[K, V] =
     new ProducerRecord[K, V](topic, p._1, p._2)
 
-  def writeAndRead[F[_]: Effect, K, V](
+  def writeAndRead[F[_], K, V](
       producer: ProducerApi[F, K, V],
       consumer: ConsumerApi[F, K, V],
       topic: String,

@@ -16,7 +16,7 @@
 
 package com.banno.kafka.producer
 
-import cats.effect.{Async, ContextShift}
+import cats.effect._
 import java.util.concurrent.{Future => JFuture}
 
 import scala.concurrent.duration._
@@ -26,7 +26,7 @@ import org.apache.kafka.clients.producer._
 
 import scala.concurrent.ExecutionContext
 
-case class ShiftingProducerImpl[F[_]: Async, K, V](
+case class ShiftingProducerImpl[F[_], K, V](
     p: ProducerApi[F, K, V],
     blockingContext: ExecutionContext
 )(implicit CS: ContextShift[F])

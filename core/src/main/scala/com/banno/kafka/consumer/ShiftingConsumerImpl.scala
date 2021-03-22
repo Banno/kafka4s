@@ -16,7 +16,7 @@
 
 package com.banno.kafka.consumer
 
-import cats.effect.{Async, ContextShift}
+import cats.effect._
 import java.util.regex.Pattern
 
 import scala.concurrent.duration._
@@ -25,7 +25,7 @@ import org.apache.kafka.clients.consumer._
 
 import scala.concurrent.ExecutionContext
 
-case class ShiftingConsumerImpl[F[_]: Async, K, V](
+case class ShiftingConsumerImpl[F[_], K, V](
     c: ConsumerApi[F, K, V],
     blockingContext: ExecutionContext
 )(implicit CS: ContextShift[F])
@@ -107,7 +107,7 @@ case class ShiftingConsumerImpl[F[_]: Async, K, V](
 
 object ShiftingConsumerImpl {
   //returns the type expected when creating a Resource
-  def create[F[_]: Async: ContextShift, K, V](
+  def create[F[_]: ContextShift, K, V](
       c: ConsumerApi[F, K, V],
       e: ExecutionContext
   ): ConsumerApi[F, K, V] =
