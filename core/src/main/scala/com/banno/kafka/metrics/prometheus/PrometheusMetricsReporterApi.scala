@@ -66,6 +66,9 @@ object PrometheusMetricsReporterApi {
     def value: F[Double] =
       F.delay(metric.metricValue.toString.toDouble).recover { case _ => 0 } //TODO can probably do better than this...
 
+    def matches(other: KafkaMetric): Boolean =
+      metric.metricName() === other.metricName()
+
     def createGauge(registry: CollectorRegistry): F[Gauge] =
       F.delay(Gauge.build().name(name).help(help).labelNames(labelNames: _*).register(registry))
     def createCounter(registry: CollectorRegistry): F[Counter] =
@@ -74,39 +77,75 @@ object PrometheusMetricsReporterApi {
 
   implicit val metricNameEq: Eq[MetricName] = Eq.fromUniversalEquals
 
+  sealed trait `Removed?`[+F[_]]
+  object `Removed?` {
+    object NotThere extends `Removed?`[Nothing]
+    def notThere[F[_]]: `Removed?`[F] = NotThere
+    object LastOne extends `Removed?`[Nothing]
+    def lastOne[F[_]]: `Removed?`[F] = LastOne
+    case class Removed[F[_]](
+      updated: MetricAdapter[F]
+    ) extends `Removed?`[F]
+    def removed[F[_]](updated: MetricAdapter[F]): `Removed?`[F] =
+      Removed(updated)
+  }
+
   sealed trait MetricAdapter[F[_]] {
     def update: F[Unit]
     def add(m: MetricSource[F]): MetricAdapter[F]
     def collector: Collector
-    def isConnectedTo(metric: KafkaMetric): Boolean
+    def remove(metric: KafkaMetric): `Removed?`[F]
   }
-  case class GaugeMetricAdapter[F[_]](metrics: NonEmptyList[MetricSource[F]], gauge: Gauge)(
-      implicit F: Sync[F]
-  ) extends MetricAdapter[F] {
-    override def add(m: MetricSource[F]): MetricAdapter[F] = copy(metrics = metrics :+ m)
-    override def update: F[Unit] =
-      metrics.traverse_(m => m.value.flatMap(v => F.delay(gauge.labels(m.labels: _*).set(v))))
-    override def collector: Collector = gauge
-    override def isConnectedTo(metric: KafkaMetric): Boolean =
-      metrics.map(_.metric.metricName()).contains_(metric.metricName())
-  }
-  case class CounterMetricAdapter[F[_]](metrics: NonEmptyList[MetricSource[F]], counter: Counter)(
-      implicit F: Sync[F]
-  ) extends MetricAdapter[F] {
-    override def add(m: MetricSource[F]): MetricAdapter[F] = copy(metrics = metrics :+ m)
-    override def update: F[Unit] =
-      metrics.traverse_(
+
+  object MetricAdapter {
+    private case class Impl[F[_]: Applicative](
+      metrics: NonEmptyList[MetricSource[F]],
+      collector: Collector,
+      update1: MetricSource[F] => F[Unit]
+    ) extends MetricAdapter[F] {
+      override def add(m: MetricSource[F]): MetricAdapter[F] =
+        copy(metrics = metrics :+ m)
+
+      override def update: F[Unit] =
+        metrics.traverse_(update1)
+
+      override def remove(metric: KafkaMetric): `Removed?`[F] =
+        NonEmptyList.fromList(
+          metrics.filterNot(_.matches(metric))
+        ).fold(`Removed?`.lastOne[F])(ms =>
+          if (metrics.length === ms.length)
+          /*then*/ `Removed?`.notThere[F]
+          else `Removed?`.removed(Impl(ms, collector, update1))
+        )
+    }
+
+    def gauge[F[_]: Sync](
+      metric: MetricSource[F],
+      gauge: Gauge
+    ): MetricAdapter[F] =
+      Impl(
+        NonEmptyList.one(metric),
+        gauge,
+        m => m.value.flatMap(v => Sync[F].delay(gauge.labels(m.labels: _*).set(v)))
+      )
+
+    def counter[F[_]: Sync](
+      metric: MetricSource[F],
+      counter: Counter
+    ): MetricAdapter[F] =
+      Impl(
+        NonEmptyList.one(metric),
+        counter,
         m =>
           m.value.flatMap(
             v =>
-              F.delay(
+              Sync[F].delay(
+                // NOTE Should always be positive, but protect against negative
+                // TODO might want to log on negative?
                 counter.labels(m.labels: _*).inc(max(0, v - counter.labels(m.labels: _*).get))
               )
           )
-      ) //should always be positive, but protect against negative, TODO might want to log on negative?
-    override def collector: Collector = counter
-    override def isConnectedTo(metric: KafkaMetric): Boolean =
-      metrics.map(_.metric.metricName()).contains_(metric.metricName())
+      )
   }
 
   abstract class PrometheusMetricsReporterApi[F[_]](
@@ -120,10 +159,10 @@ object PrometheusMetricsReporterApi {
 
     override def remove(metric: KafkaMetric): F[Unit] =
       adapters.modify { adapterMap =>
-        adapterMap.find(kv => kv._2.isConnectedTo(metric))
-          .fold((adapterMap, none[Collector])){ kv =>
-            (adapterMap - kv._1, kv._2.collector.some)
-          }
+        adapterMap.collectFirst(kv => kv._2.remove(metric) match {
+          case `Removed?`.LastOne => (adapterMap - kv._1, kv._2.collector.some)
+          case `Removed?`.Removed(updated) => (adapterMap.updated(kv._1, updated), none)
+        }).getOrElse((adapterMap, none[Collector]))
       }.flatMap(_.traverse_(c => F.delay(collectorRegistry.unregister(c))))
 
     def updateMetricsPeriodically(implicit T: Timer[F]): Stream[F, Unit] =
@@ -197,7 +236,7 @@ object PrometheusMetricsReporterApi {
             metric,
             name,
             Map.empty,
-            source => source.createGauge(registry).map(GaugeMetricAdapter(NonEmptyList.one(source), _))
+            source => source.createGauge(registry).map(MetricAdapter.gauge(source, _))
           )
 
         def counter(name: String): F[Unit] =
@@ -205,7 +244,7 @@ object PrometheusMetricsReporterApi {
             metric,
             name,
             Map.empty,
-            source => source.createCounter(registry).map(CounterMetricAdapter(NonEmptyList.one(source), _))
+            source => source.createCounter(registry).map(MetricAdapter.counter(source, _))
           )
 
         MetricId(metric) match {
@@ -436,7 +475,7 @@ object PrometheusMetricsReporterApi {
             metric,
             name,
             additionalTags,
-            source => source.createGauge(registry).map(GaugeMetricAdapter(NonEmptyList.one(source), _))
+            source => source.createGauge(registry).map(MetricAdapter.gauge(source, _))
           )
 
         def counter(name: String): F[Unit] =
@@ -444,7 +483,7 @@ object PrometheusMetricsReporterApi {
             metric,
             name,
             Map.empty,
-            source => source.createCounter(registry).map(CounterMetricAdapter(NonEmptyList.one(source), _))
+            source => source.createCounter(registry).map(MetricAdapter.counter(source, _))
           )
 
         MetricId(metric) match {
