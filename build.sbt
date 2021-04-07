@@ -16,7 +16,7 @@ val V = new {
   val junit = "4.13"
   val kafka = "2.7.0"
   val kindProjector = "0.11.3"
-  val log4cats = "1.1.1"
+  val log4cats = "1.2.0"
   val log4j = "1.7.30"
   val logback = "1.2.3"
   val scalacheck = "1.15.3"
@@ -142,7 +142,7 @@ lazy val commonSettings = Seq(
     "io.confluent" % "kafka-avro-serializer" % V.confluent,
     "com.sksamuel.avro4s" %% "avro4s-core" % V.avro4s,
     "io.prometheus" % "simpleclient" % V.simpleClient,
-    "io.chrisdavenport" %% "log4cats-slf4j" % V.log4cats,
+    "org.typelevel" %% "log4cats-slf4j" % V.log4cats,
   ),
   sourceGenerators in Test += (avroScalaGenerate in Test).taskValue,
   watchSources ++= ((avroSourceDirectories in Test).value ** "*.avdl").get,
