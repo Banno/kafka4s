@@ -22,7 +22,7 @@ class PrometheusMetricsReporterApiSpec extends AnyFlatSpec with Matchers with In
   implicit val defaultTimer = IO.timer(ExecutionContext.global)
 
   //when kafka clients change their metrics, this test will help identify the changes we need to make
-  "Prometheus reporter" should "register Prometheus collectors for all known Kafka metrics" in {
+  "Prometheus reporter" should "register Prometheus collectors for all known Kafka metrics and unregister on close" in {
     val topic = createTopic(2)
     val records =
       List(new ProducerRecord(topic, 0, "a", "a"), new ProducerRecord(topic, 1, "b", "b"))
@@ -61,9 +61,6 @@ class PrometheusMetricsReporterApiSpec extends AnyFlatSpec with Matchers with In
                         _ <- c2.poll(1 second)
 
                         _ <- IO.sleep(PrometheusMetricsReporterApi.defaultUpdatePeriod + (1 second))
-                        _ <- p.close
-                        _ <- c1.close
-                        _ <- c2.close
                       } yield {
                         val registry = CollectorRegistry.defaultRegistry
                         registry.metricFamilySamples.asScala
@@ -85,6 +82,9 @@ class PrometheusMetricsReporterApiSpec extends AnyFlatSpec with Matchers with In
             )
       )
       .unsafeRunSync()
+      CollectorRegistry.defaultRegistry
+        .metricFamilySamples.asScala
+        .count(_.name.startsWith("kafka_producer")) should ===(0)
   }
 
 }
