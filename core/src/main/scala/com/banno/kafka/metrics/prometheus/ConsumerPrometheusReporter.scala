@@ -21,10 +21,16 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 
 object ConsumerPrometheusReporter {
-  // TODO use Dispatcher instead?
+  // Chris Davenport: "You have walked into horrible territory. Like, the worst
+  // territory I have ever seen." Given that, this is the right thing to do.
+  // However, there is also a potentially different way to shim in this
+  // impurity, but it would require a redesign.
   implicit val runtime: IORuntime = IORuntime.global
-  /** The single instance used by all ConsumerPrometheusReporter instances. This allows multiple Kafka consumers in the same JVM to each instantiate ConsumerPrometheusReporter,
-    * while all still using the same Prometheus collectors and registry properly. Metrics from multiple consumers are distinguished by the `client_id` label. */
+  /** The single instance used by all ConsumerPrometheusReporter instances. This
+    * allows multiple Kafka consumers in the same JVM to each instantiate
+    * ConsumerPrometheusReporter, while all still using the same Prometheus
+    * collectors and registry properly. Metrics from multiple consumers are
+    * distinguished by the `client_id` label. */
   val reporter: MetricsReporterApi[IO] =
     PrometheusMetricsReporterApi.consumer[IO]().unsafeRunSync()
 }

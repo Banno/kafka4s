@@ -28,7 +28,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import scala.concurrent.duration._
 import scala.util.Random
 
-final class ExampleApp[F[_]: Concurrent] {
+final class ExampleApp[F[_]: Async] {
 
   // Change these for your environment as needed
   val topic = new NewTopic(s"example3", 1, 3.toShort)
@@ -79,5 +79,5 @@ final class ExampleApp[F[_]: Concurrent] {
 }
 
 object ExampleApp {
-  def apply[F[_]: Concurrent] = new ExampleApp[F]
+  def apply[F[_]: Async] = new ExampleApp[F]
 }
