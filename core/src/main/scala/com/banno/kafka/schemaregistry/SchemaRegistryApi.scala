@@ -19,10 +19,10 @@ package com.banno.kafka.schemaregistry
 import org.apache.avro.Schema
 import io.confluent.kafka.schemaregistry.client.{CachedSchemaRegistryClient, SchemaMetadata}
 import io.confluent.kafka.schemaregistry.client.rest.RestService
-import cats.implicits._
+import cats.syntax.all._
 import cats.effect.Sync
 import com.sksamuel.avro4s.SchemaFor
-import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import io.confluent.kafka.schemaregistry.ParsedSchema
 
 import scala.jdk.CollectionConverters._

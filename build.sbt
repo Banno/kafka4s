@@ -6,15 +6,16 @@ val V = new {
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
   val cats = "2.6.0"
+  val catsEffect = "3.1.0"
   val confluent = "6.0.2"
   val curator = "5.1.0"
   val discipline = "2.1.4"
-  val fs2 = "2.5.5"
+  val fs2 = "3.0.2"
   val github4s = "0.28.4"
   val junit = "4.13"
   val kafka = "2.7.0"
   val kindProjector = "0.11.3"
-  val log4cats = "1.1.1"
+  val log4cats = "2.1.0"
   val log4j = "1.7.30"
   val logback = "1.2.3"
   val scalacheck = "1.15.4"
@@ -55,6 +56,7 @@ lazy val core = project
       "org.scalatest" %% "scalatest" % V.scalatest % "test",
       "org.scalatestplus" %% "scalacheck-1-15" % "3.2.8.0" % Test,
       "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % "test",
+      "org.typelevel" %% "cats-effect" % V.catsEffect,
       "org.typelevel" %% "cats-laws" % V.cats % "test",
       "org.typelevel" %% "discipline-scalatest" % V.discipline % "test",
     )
@@ -63,7 +65,7 @@ lazy val core = project
 lazy val examples = project
   .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
-  .settings(libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.4.1.0")
+  .settings(libraryDependencies += "dev.zio" %% "zio-interop-cats" % "3.0.2")
   .disablePlugins(MimaPlugin)
   .dependsOn(core)
 
@@ -136,7 +138,7 @@ lazy val commonSettings = Seq(
     "io.confluent" % "kafka-avro-serializer" % V.confluent,
     "com.sksamuel.avro4s" %% "avro4s-core" % V.avro4s,
     "io.prometheus" % "simpleclient" % V.simpleClient,
-    "io.chrisdavenport" %% "log4cats-slf4j" % V.log4cats,
+    "org.typelevel" %% "log4cats-slf4j" % V.log4cats,
   ),
   Test / sourceGenerators += (Test / avroScalaGenerate).taskValue,
   watchSources ++= ((Test / avroSourceDirectories).value ** "*.avdl").get,

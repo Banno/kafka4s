@@ -16,7 +16,7 @@
 
 package com.banno.kafka.producer
 
-import cats.implicits._
+import cats.syntax.all._
 import cats.effect.{Async, Resource, Sync}
 import java.util.concurrent.{Future => JFuture}
 import scala.jdk.CollectionConverters._

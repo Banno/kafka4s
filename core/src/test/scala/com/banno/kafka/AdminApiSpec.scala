@@ -2,7 +2,7 @@ package com.banno.kafka
 
 import com.banno.kafka.admin._
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 import org.apache.kafka.clients.admin._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -16,7 +16,7 @@ class AdminApiSpec extends AnyFlatSpec with Matchers with InMemoryKafka {
 
   "Admin API" should "create topics idempotently" in {
     val topicName = genTopic
-    def program[F[_]: Timer](admin: AdminApi[F])(implicit F: Sync[F]) =
+    def program[F[_]](admin: AdminApi[F])(implicit F: Sync[F]) =
       for {
         ltr1 <- admin.listTopics
         ns1 <- F.delay(ltr1.names().get())

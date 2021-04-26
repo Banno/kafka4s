@@ -16,7 +16,7 @@
 
 package com.banno.kafka.producer
 
-import cats.implicits._
+import cats.syntax.all._
 import cats.ApplicativeError
 import org.apache.kafka.common.errors._
 

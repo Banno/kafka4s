@@ -16,7 +16,7 @@
 
 package com.banno.kafka.admin
 
-import cats.implicits._
+import cats.syntax.all._
 import cats.effect.{Resource, Sync}
 import fs2.Stream
 import org.apache.kafka.common.TopicPartitionReplica
