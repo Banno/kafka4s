@@ -7,6 +7,8 @@ target/
 # vim
 *.sw?
 
-# Ignore [ce]tags files
+# Ignore tags files
 tags
-
+GPATH
+GRTAGS
+GTAGS
