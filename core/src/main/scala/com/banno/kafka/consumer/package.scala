@@ -16,6 +16,8 @@
 
 package com.banno.kafka
 
+import cats._
+import cats.syntax.all._
 import fs2.Stream
 
 package object consumer {
@@ -23,7 +25,7 @@ package object consumer {
   implicit def consumerOps[F[_], K, V](c: ConsumerApi[F, K, V]): ConsumerOps[F, K, V] =
     ConsumerOps[F, K, V](c)
 
-  implicit def recordStreamOps[F[_], A](s: Stream[F, A]): RecordStreamOps[F, A] =
+  implicit def recordStreamOps[F[_]: ApplicativeThrow, A](s: Stream[F, A]): RecordStreamOps[F, A] =
     RecordStreamOps[F, A](s)
 
 }
