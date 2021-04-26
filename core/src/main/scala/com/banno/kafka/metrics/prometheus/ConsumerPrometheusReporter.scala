@@ -18,14 +18,11 @@ package com.banno.kafka.metrics.prometheus
 
 import com.banno.kafka.metrics._
 import cats.effect.IO
-
-import scala.concurrent.ExecutionContext
+import cats.effect.unsafe.IORuntime
 
 object ConsumerPrometheusReporter {
-  val defaultContextShift = IO.contextShift(ExecutionContext.global)
-  implicit val defaultConcurrent = IO.ioConcurrentEffect(defaultContextShift)
-  implicit val defaultTimer = IO.timer(ExecutionContext.global)
-
+  // TODO use Dispatcher instead?
+  implicit val runtime: IORuntime = IORuntime.global
   /** The single instance used by all ConsumerPrometheusReporter instances. This allows multiple Kafka consumers in the same JVM to each instantiate ConsumerPrometheusReporter,
     * while all still using the same Prometheus collectors and registry properly. Metrics from multiple consumers are distinguished by the `client_id` label. */
   val reporter: MetricsReporterApi[IO] =

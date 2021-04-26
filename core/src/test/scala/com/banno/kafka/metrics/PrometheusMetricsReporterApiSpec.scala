@@ -1,6 +1,6 @@
 package com.banno.kafka.metrics.prometheus
 
-import cats.implicits._
+import cats.syntax.all._
 import cats.effect.IO
 import com.banno.kafka._
 import com.banno.kafka.producer._

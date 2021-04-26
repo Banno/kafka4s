@@ -29,8 +29,7 @@ import scala.concurrent.ExecutionContext
 case class ShiftingProducerImpl[F[_], K, V](
     p: ProducerApi[F, K, V],
     blockingContext: ExecutionContext
-)(implicit CS: ContextShift[F])
-    extends ProducerApi[F, K, V] {
+) extends ProducerApi[F, K, V] {
   def abortTransaction: F[Unit] = CS.evalOn(blockingContext)(p.abortTransaction)
   def beginTransaction: F[Unit] = CS.evalOn(blockingContext)(p.beginTransaction)
   def close: F[Unit] = CS.evalOn(blockingContext)(p.close)

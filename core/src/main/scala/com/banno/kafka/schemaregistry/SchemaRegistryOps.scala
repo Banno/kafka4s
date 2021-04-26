@@ -19,7 +19,7 @@ package com.banno.kafka.schemaregistry
 import org.apache.avro.Schema
 import com.sksamuel.avro4s.{DefaultFieldMapper, SchemaFor}
 import cats.FlatMap
-import cats.implicits._
+import cats.syntax.all._
 
 case class SchemaRegistryOps[F[_]](registry: SchemaRegistryApi[F]) {
 

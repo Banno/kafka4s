@@ -16,7 +16,7 @@
 
 package com.banno.kafka.admin
 
-import cats.implicits._
+import cats.syntax.all._
 import cats.effect.Sync
 import org.apache.kafka.clients.admin._
 
