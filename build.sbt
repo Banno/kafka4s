@@ -7,11 +7,11 @@ val V = new {
   val scalaVersion :: crossScalaVersions = List(scala_3_0, scala_2_13, scala_2_12)
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
-  val cats = "2.5.0"
-  val confluent = "6.1.1"
+  val cats = "2.6.0"
+  val confluent = "6.0.2"
   val curator = "5.1.0"
-  val discipline = "2.1.3"
-  val fs2 = "2.5.3"
+  val discipline = "2.1.4"
+  val fs2 = "2.5.5"
   val github4s = "0.28.3"
   val junit = "4.13"
   val kafka = "2.7.0"
@@ -21,7 +21,7 @@ val V = new {
   val logback = "1.2.3"
   val scalacheck = "1.15.3"
   val scalacheckMagnolia = "0.6.0"
-  val scalatest = "3.2.7"
+  val scalatest = "3.2.8"
   val scalatestPlus = "3.2.3.0"
   val simpleClient = "0.9.0"
 }
@@ -60,7 +60,7 @@ lazy val core = project
       "org.slf4j" % "log4j-over-slf4j" % V.log4j % "test",
       "org.scalacheck" %% "scalacheck" % V.scalacheck % "test",
       "org.scalatest" %% "scalatest" % V.scalatest % "test",
-      "org.scalatestplus" %% "scalacheck-1-15" % "3.2.7.0" % Test,
+      "org.scalatestplus" %% "scalacheck-1-15" % "3.2.8.0" % Test,
       "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % "test",
       "org.typelevel" %% "cats-laws" % V.cats % "test",
       "org.typelevel" %% "discipline-scalatest" % V.discipline % "test",
@@ -70,7 +70,7 @@ lazy val core = project
 lazy val examples = project
   .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
-  .settings(libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.4.0.0")
+  .settings(libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.4.1.0")
   .disablePlugins(MimaPlugin)
   .dependsOn(core)
 
