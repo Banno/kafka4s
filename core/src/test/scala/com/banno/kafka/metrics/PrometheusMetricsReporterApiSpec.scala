@@ -16,9 +16,8 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 class PrometheusMetricsReporterApiSpec extends AnyFlatSpec with Matchers with InMemoryKafka {
-  implicit val defaultContextShift = IO.contextShift(ExecutionContext.global)
-  implicit val defaultConcurrent = IO.ioConcurrentEffect(defaultContextShift)
-  implicit val defaultTimer = IO.timer(ExecutionContext.global)
+  // TODO switch to MUnit with CE3 integration?
+  import cats.effect.unsafe.implicits.global
 
   //when kafka clients change their metrics, this test will help identify the changes we need to make
   "Prometheus reporter" should "register Prometheus collectors for all known Kafka metrics and unregister on close" in {

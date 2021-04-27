@@ -11,7 +11,6 @@ import com.banno.kafka.consumer._
 import fs2._
 
 import scala.concurrent.ExecutionContext
-import cats.effect.concurrent.Ref
 
 import scala.util.Random
 import org.scalacheck.magnolia._
@@ -33,10 +32,8 @@ class ConsumerAndProducerApiSpec
     with Matchers
     with EitherValues
     with InMemoryKafka {
-
-  implicit val defaultContextShift = IO.contextShift(ExecutionContext.global)
-  implicit val defaultConcurrent = IO.ioConcurrentEffect(defaultContextShift)
-  implicit val defaultTimer = IO.timer(ExecutionContext.global)
+  // TODO switch to MUnit with CE3 integration?
+  import cats.effect.unsafe.implicits.global
 
   implicit def noShrink[T]: Shrink[T] = Shrink.shrinkAny
 
@@ -95,7 +92,7 @@ class ConsumerAndProducerApiSpec
           for {
             _ <- c.assign(topic, Map.empty[TopicPartition, Long])
             f <- Concurrent[IO].start(c.poll(1 second))
-            e <- Timer[IO].sleep(100 millis) *> c.close.attempt
+            e <- Temporal[IO].sleep(100 millis) *> c.close.attempt
             _ <- f.join
           } yield {
             e.left.value shouldBe a[ConcurrentModificationException]
@@ -113,7 +110,7 @@ class ConsumerAndProducerApiSpec
         c =>
           for {
             _ <- c.assign(topic, Map.empty[TopicPartition, Long])
-            _ <- Concurrent[IO].start(Timer[IO].sleep(100 millis) *> c.wakeup)
+            _ <- Concurrent[IO].start(Temporal[IO].sleep(100 millis) *> c.wakeup)
             e <- c.poll(1 second).attempt
           } yield {
             e.left.value shouldBe a[WakeupException]
@@ -122,7 +119,9 @@ class ConsumerAndProducerApiSpec
       .unsafeRunSync()
   }
 
-  //If we recover from close failing with CME by calling wakeup, and recover from poll failing with WE by calling close, we can call poll and close concurrently
+  // If we recover from close failing with CME by calling wakeup, and recover
+  // from poll failing with WE by calling close, we can call poll and close
+  // concurrently
   property("Simple consumer close while polling") {
     val topic = createTopic()
     ConsumerApi.NonShifting
@@ -133,17 +132,24 @@ class ConsumerAndProducerApiSpec
           for {
             _ <- c.assign(topic, Map.empty[TopicPartition, Long])
             f <- Concurrent[IO].start(c.pollAndRecoverWakeupWithClose(1 second))
-            e1 <- Timer[IO].sleep(100 millis) *> c.closeAndRecoverConcurrentModificationWithWakeup.attempt
-            e2 <- f.join.attempt
+            () <- Temporal[IO].sleep(100 millis)
+            e1 <- c.closeAndRecoverConcurrentModificationWithWakeup.attempt
+            outcome <- f.join
+            e2 <- outcome match {
+              case Outcome.Succeeded(fa) => fa
+              case _ => IO.raiseError(new Exception("Failed!"))
+            }
           } yield {
             e1.toOption.get should ===(())
-            e2.toOption.get.count should ===(0)
+            e2.count should ===(0)
           }
       }
       .unsafeRunSync()
   }
 
-  //If we shift all operations onto a singleton thread pool then they become sequential, so we can safely call poll and close concurrently without requiring recovery & wakeup
+  // If we shift all operations onto a singleton thread pool then they become
+  // sequential, so we can safely call poll and close concurrently without
+  // requiring recovery & wakeup
   property("Singleton shifting consumer close while polling") {
     val topic = createTopic()
     ConsumerApi
@@ -154,7 +160,7 @@ class ConsumerAndProducerApiSpec
           for {
             _ <- c.assign(topic, Map.empty[TopicPartition, Long])
             _ <- Concurrent[IO].start(c.poll(1 second))
-            e <- Timer[IO].sleep(100 millis) *> close.attempt
+            e <- Temporal[IO].sleep(100 millis) *> close.attempt
           } yield {
             e.toOption.get should ===(())
           }
@@ -171,7 +177,7 @@ class ConsumerAndProducerApiSpec
         c =>
           for {
             _ <- c.assign(topic, Map.empty[TopicPartition, Long])
-            _ <- Concurrent[IO].start(Timer[IO].sleep(100 millis) *> c.wakeup)
+            _ <- Concurrent[IO].start(Temporal[IO].sleep(100 millis) *> c.wakeup)
             e <- c.poll(1 second).attempt
           } yield {
             e.left.value shouldBe a[WakeupException]
