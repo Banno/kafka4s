@@ -9,7 +9,7 @@ val V = new {
   val catsEffect = "3.1.0"
   val confluent = "6.0.2"
   val curator = "5.1.0"
-  val discipline = "2.1.4"
+  val disciplineMunit = "1.0.8"
   val fs2 = "3.0.2"
   val junit = "4.13"
   val kafka = "2.7.0"
@@ -19,8 +19,8 @@ val V = new {
   val logback = "1.2.3"
   val scalacheck = "1.15.3"
   val scalacheckMagnolia = "0.6.0"
-  val scalatest = "3.2.8"
-  val scalatestPlus = "3.2.3.0"
+  val munit = "0.7.25"
+  val munitCE3 = "1.0.2"
   val simpleClient = "0.9.0"
 }
 
@@ -43,6 +43,7 @@ lazy val core = project
     },
   )
   .settings(
+    testFrameworks += new TestFramework("munit.Framework"),
     libraryDependencies ++= Seq(
       "org.apache.curator" % "curator-test" % V.curator % "test",
       ("org.apache.kafka" %% "kafka" % V.kafka % "test").classifier("test"),
@@ -52,12 +53,16 @@ lazy val core = project
       "ch.qos.logback" % "logback-classic" % V.logback % "test",
       "org.slf4j" % "log4j-over-slf4j" % V.log4j % "test",
       "org.scalacheck" %% "scalacheck" % V.scalacheck % "test",
-      "org.scalatest" %% "scalatest" % V.scalatest % "test",
+      "org.scalameta" %% "munit" % V.munit % "test",
+      "org.scalameta" %% "munit-scalacheck" % V.munit % "test",
+      "org.typelevel" %% "munit-cats-effect-3" % V.munitCE3 % "test",
+      "org.scalatest" %% "scalatest" % "3.2.8" % "test",
       "org.scalatestplus" %% "scalacheck-1-15" % "3.2.8.0" % Test,
       "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % "test",
       "org.typelevel" %% "cats-effect" % V.catsEffect,
       "org.typelevel" %% "cats-laws" % V.cats % "test",
-      "org.typelevel" %% "discipline-scalatest" % V.discipline % "test",
+      "org.typelevel" %% "discipline-scalatest" % "2.1.4" % "test",
+      "org.typelevel" %% "discipline-munit" % V.disciplineMunit % "test",
     )
   )
 
