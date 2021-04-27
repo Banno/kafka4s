@@ -106,6 +106,8 @@ lazy val site = project
         "white-color" -> "#FFFFFF",
       ),
       libraryDependencies += "com.47deg" %% "github4s" % V.github4s,
+      scalacOptions += "--no-warnings",
+      mdocExtraArguments += "--no-link-hygiene",
       micrositePushSiteWith := GitHub4s,
       micrositeGithubToken := sys.env.get("GITHUB_TOKEN"),
       micrositeExtraMdFiles := Map(
