@@ -3,7 +3,7 @@ on: [push, pull_request]
 env:
   CI: true
   CI_SNAPSHOT_RELEASE: +publishSigned
-  SCALA_VERSION: 2.12.12
+  SCALA_VERSION: 2.13.4
 jobs:
   validate:
     name: Scala ${{ matrix.scala }}, Java ${{ matrix.java }}
