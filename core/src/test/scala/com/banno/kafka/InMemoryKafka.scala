@@ -8,6 +8,8 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.apache.kafka.clients.admin.NewTopic
 
 trait InMemoryKafka extends BeforeAndAfterAll { this: Suite =>
+  // TODO switch to MUnit with CE3 integration?
+  import cats.effect.unsafe.implicits.global
 
   val log = Slf4jLogger.getLoggerFromClass[IO](this.getClass)
 
