@@ -105,7 +105,6 @@ lazy val site = project
         "gray-lighter" -> "#F4F3F4",
         "white-color" -> "#FFFFFF",
       ),
-      libraryDependencies += "com.47deg" %% "github4s" % V.github4s,
       scalacOptions += "-Wconf:cat=deprecation:i",
       mdocExtraArguments += "--no-link-hygiene",
       micrositePushSiteWith := GitHub4s,
