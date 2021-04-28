@@ -61,7 +61,7 @@ class ConsumerAndProducerApiSpec
         .take(values.size.toLong)
 
   property("Producer API sends records and produces metadata") {
-    val topic = createTopic()
+    val topic = createTopic[IO]().unsafeRunSync()
 
     forAll { strings: Vector[String] =>
       //TODO what does sendAsyncBatch actually do?
@@ -84,7 +84,7 @@ class ConsumerAndProducerApiSpec
 
   //KafkaConsumer is not thread-safe; if one thread is calling poll while another concurrently calls close, close will throw ConcurrentModificationException
   property("Simple consumer close fails with ConcurrentModificationException while polling") {
-    val topic = createTopic()
+    val topic = createTopic[IO]().unsafeRunSync()
     ConsumerApi.NonShifting
       .resource[IO, String, String](BootstrapServers(bootstrapServer))
       .use(
@@ -103,7 +103,7 @@ class ConsumerAndProducerApiSpec
 
   //Calling KafkaConsumer.wakeup will cause any other concurrent operation to throw WakeupException
   property("Simple consumer poll fails with WakeupException on wakeup") {
-    val topic = createTopic()
+    val topic = createTopic[IO]().unsafeRunSync()
     ConsumerApi.NonShifting
       .resource[IO, String, String](BootstrapServers(bootstrapServer))
       .use(
@@ -123,7 +123,7 @@ class ConsumerAndProducerApiSpec
   // from poll failing with WE by calling close, we can call poll and close
   // concurrently
   property("Simple consumer close while polling") {
-    val topic = createTopic()
+    val topic = createTopic[IO]().unsafeRunSync()
     ConsumerApi.NonShifting
       .resource[IO, String, String](BootstrapServers(bootstrapServer))
       .allocated
@@ -151,7 +151,7 @@ class ConsumerAndProducerApiSpec
   // sequential, so we can safely call poll and close concurrently without
   // requiring recovery & wakeup
   property("Singleton shifting consumer close while polling") {
-    val topic = createTopic()
+    val topic = createTopic[IO]().unsafeRunSync()
     ConsumerApi
       .resource[IO, String, String](BootstrapServers(bootstrapServer))
       .allocated
@@ -170,7 +170,7 @@ class ConsumerAndProducerApiSpec
 
   //wakeup is the one thread-safe operation, so we don't need to shift it
   property("Singleton shifting consumer poll fails with WakeupException on wakeup") {
-    val topic = createTopic()
+    val topic = createTopic[IO]().unsafeRunSync()
     ConsumerApi
       .resource[IO, String, String](BootstrapServers(bootstrapServer))
       .use(
@@ -189,7 +189,7 @@ class ConsumerAndProducerApiSpec
   property("Producer and Consumer APIs should write and read records") {
     val groupId = genGroupId
     println(s"2 groupId=$groupId")
-    val topic = createTopic()
+    val topic = createTopic[IO]().unsafeRunSync()
 
     forAll { values: Vector[(String, String)] =>
       val actual = (for {
@@ -210,7 +210,7 @@ class ConsumerAndProducerApiSpec
   }
 
   property("read through final offsets") {
-    val topic = createTopic(3)
+    val topic = createTopic[IO](3).unsafeRunSync()
 
     val data = Map(
       0 -> List("0-0", "0-1"),
@@ -264,7 +264,7 @@ class ConsumerAndProducerApiSpec
   property("readProcessCommit only commits offsets for successfully processed records") {
     val groupId = genGroupId
     println(s"4 groupId=$groupId")
-    val topic = createTopic()
+    val topic = createTopic[IO]().unsafeRunSync()
 
     //simulates some effect that might fail, e.g. HTTP POST, DB write, etc
     def storeOrFail(values: Ref[IO, Vector[String]], s: String): IO[String] =
@@ -308,7 +308,7 @@ class ConsumerAndProducerApiSpec
   property("Avro serdes") {
     val groupId = genGroupId
     println(s"5 groupId=$groupId")
-    val topic = createTopic()
+    val topic = createTopic[IO]().unsafeRunSync()
 
     forAll { values: Vector[(String, Person)] =>
       val actual = (for {
@@ -341,7 +341,7 @@ class ConsumerAndProducerApiSpec
   property("avro4s") {
     val groupId = genGroupId
     println(s"6 groupId=$groupId")
-    val topic = createTopic()
+    val topic = createTopic[IO]().unsafeRunSync()
 
     forAll { values: Vector[(PersonId, Person2)] =>
       val actual = (for {

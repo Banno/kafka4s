@@ -21,7 +21,7 @@ class PrometheusMetricsReporterApiSpec extends AnyFlatSpec with Matchers with In
 
   //when kafka clients change their metrics, this test will help identify the changes we need to make
   "Prometheus reporter" should "register Prometheus collectors for all known Kafka metrics and unregister on close" in {
-    val topic = createTopic(2)
+    val topic = createTopic[IO](2).unsafeRunSync()
     val records =
       List(new ProducerRecord(topic, 0, "a", "a"), new ProducerRecord(topic, 1, "b", "b"))
     ProducerApi
