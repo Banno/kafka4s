@@ -16,7 +16,6 @@
 
 package com.banno.kafka.metrics
 
-import scala.collection.compat._
 import org.apache.kafka.common.metrics.KafkaMetric
 
 /** So we can write pure code to report Kafka client metrics. */

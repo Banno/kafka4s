@@ -28,7 +28,7 @@ import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
 import io.prometheus.client._
 import org.apache.kafka.common.MetricName
 import org.apache.kafka.common.metrics.KafkaMetric
-import scala.collection.compat._
+
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.math.max

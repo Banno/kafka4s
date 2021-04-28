@@ -17,7 +17,6 @@
 package com.banno.kafka.consumer
 
 import cats._
-import cats.syntax.all._
 import fs2.Stream
 import org.apache.kafka.common.errors.WakeupException
 

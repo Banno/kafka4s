@@ -1,11 +1,8 @@
 package com.banno.kafka
 
-import scala.collection.compat._
 import org.scalacheck._
 import cats.implicits._
 import cats.effect._
-import consumer._
-import producer._
 import org.apache.kafka.clients.producer.ProducerRecord
 
 import scala.concurrent.duration._

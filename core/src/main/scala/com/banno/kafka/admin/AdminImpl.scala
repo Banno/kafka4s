@@ -16,7 +16,6 @@
 
 package com.banno.kafka.admin
 
-import scala.collection.compat._
 import cats.effect.Sync
 import org.apache.kafka.common.TopicPartitionReplica
 import org.apache.kafka.common.config.ConfigResource

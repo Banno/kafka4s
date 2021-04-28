@@ -18,7 +18,6 @@ package com.banno.kafka.producer
 
 import cats.implicits._
 import cats.ApplicativeError
-import org.apache.kafka.clients.producer._
 import org.apache.kafka.common.errors._
 
 /** Represents the types of failures during Kafka transactional writes. */

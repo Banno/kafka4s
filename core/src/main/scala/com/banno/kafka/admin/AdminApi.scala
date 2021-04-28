@@ -16,7 +16,6 @@
 
 package com.banno.kafka.admin
 
-import scala.collection.compat._
 import cats.implicits._
 import cats.effect.{Resource, Sync}
 import fs2.Stream

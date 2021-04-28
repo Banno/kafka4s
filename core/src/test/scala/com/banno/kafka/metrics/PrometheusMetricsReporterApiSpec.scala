@@ -1,6 +1,5 @@
 package com.banno.kafka.metrics.prometheus
 
-import scala.collection.compat._
 import cats.implicits._
 import cats.effect.IO
 import com.banno.kafka._

@@ -16,7 +16,6 @@
 
 package com.banno.kafka.consumer
 
-import scala.collection.compat._
 import cats.implicits._
 import cats.effect.Sync
 import java.util.regex.Pattern

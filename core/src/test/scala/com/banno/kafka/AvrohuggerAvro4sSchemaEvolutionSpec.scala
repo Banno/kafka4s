@@ -1,6 +1,5 @@
 package com.banno.kafka
 
-import scala.collection.compat._
 import org.scalatestplus.scalacheck._
 import io.confluent.kafka.serializers._
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient

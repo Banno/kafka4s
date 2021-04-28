@@ -16,7 +16,6 @@
 
 package com.banno.kafka.schemaregistry
 
-import scala.collection.compat._
 import org.apache.avro.Schema
 import com.sksamuel.avro4s.{DefaultFieldMapper, SchemaFor}
 import cats.FlatMap
