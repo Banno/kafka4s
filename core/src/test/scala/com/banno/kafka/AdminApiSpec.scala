@@ -17,7 +17,7 @@ class AdminApiSpec extends AnyFlatSpec with Matchers with DockerizedKafka {
   // just a sanity check that it is all wired up properly
 
   "Admin API" should "create topics idempotently" in {
-    val topicName = genTopic
+    val topicName = randomId
     def program[F[_]](admin: AdminApi[F])(implicit F: Async[F]) =
       for {
         ltr1 <- admin.listTopics

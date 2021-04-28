@@ -15,12 +15,8 @@ trait DockerizedKafka {
 
   def randomId: String = Gen.listOfN(10, Gen.alphaChar).map(_.mkString).sample.get
 
-  def genGroupId: String = randomId
-
-  def genTopic: String = randomId
-
   def createTopic[F[_]: Sync](partitionCount: Int = 1): F[String] = {
-    val topic = genTopic
+    val topic = randomId
     AdminApi
       .createTopicsIdempotent[F](
         bootstrapServer,

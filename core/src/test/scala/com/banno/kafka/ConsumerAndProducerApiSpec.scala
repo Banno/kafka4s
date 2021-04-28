@@ -187,7 +187,7 @@ class ConsumerAndProducerApiSpec
   }
 
   property("Producer and Consumer APIs should write and read records") {
-    val groupId = genGroupId
+    val groupId = randomId
     println(s"2 groupId=$groupId")
     val topic = createTopic[IO]().unsafeRunSync()
 
@@ -262,7 +262,7 @@ class ConsumerAndProducerApiSpec
   }
 
   property("readProcessCommit only commits offsets for successfully processed records") {
-    val groupId = genGroupId
+    val groupId = randomId
     println(s"4 groupId=$groupId")
     val topic = createTopic[IO]().unsafeRunSync()
 
@@ -306,7 +306,7 @@ class ConsumerAndProducerApiSpec
   }
 
   property("Avro serdes") {
-    val groupId = genGroupId
+    val groupId = randomId
     println(s"5 groupId=$groupId")
     val topic = createTopic[IO]().unsafeRunSync()
 
@@ -339,7 +339,7 @@ class ConsumerAndProducerApiSpec
   implicit def person2RecordFormat = RecordFormat[Person2]
 
   property("avro4s") {
-    val groupId = genGroupId
+    val groupId = randomId
     println(s"6 groupId=$groupId")
     val topic = createTopic[IO]().unsafeRunSync()
 
