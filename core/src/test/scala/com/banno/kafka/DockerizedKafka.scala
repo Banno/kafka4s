@@ -13,15 +13,16 @@ trait DockerizedKafka {
   val bootstrapServer = "localhost:9092"
   val schemaRegistryUrl = "http://localhost:8091"
 
-  def randomId: String = Gen.listOfN(10, Gen.alphaChar).map(_.mkString).sample.get
+  def unsafeRandomId: String =
+    Gen.listOfN(10, Gen.alphaChar).map(_.mkString).sample.get
 
-  def createTopic[F[_]: Sync](partitionCount: Int = 1): F[String] = {
-    val topic = randomId
-    AdminApi
-      .createTopicsIdempotent[F](
+  def createTopic[F[_]: Sync](partitionCount: Int = 1): F[String] =
+    for {
+      topic <- Sync[F].delay(unsafeRandomId)
+      _ <- AdminApi.createTopicsIdempotent[F](
         bootstrapServer,
         List(new NewTopic(topic, partitionCount, 1.toShort))
-      ).as(topic)
-  }
+      )
+    } yield topic
 
 }
