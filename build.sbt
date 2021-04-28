@@ -18,6 +18,7 @@ val V = new {
   val log4j = "1.7.30"
   val logback = "1.2.3"
   val scalacheck = "1.15.3"
+  val scalacheckEffect = "0.6.0"
   val scalacheckMagnolia = "0.6.0"
   val munit = "0.7.25"
   val munitCE3 = "1.0.2"
@@ -55,6 +56,7 @@ lazy val core = project
       "org.scalacheck" %% "scalacheck" % V.scalacheck % "test",
       "org.scalameta" %% "munit" % V.munit % "test",
       "org.scalameta" %% "munit-scalacheck" % V.munit % "test",
+      "org.typelevel" %% "scalacheck-effect-munit" % V.scalacheckEffect,
       "org.typelevel" %% "munit-cats-effect-3" % V.munitCE3 % "test",
       "org.scalatest" %% "scalatest" % "3.2.8" % "test",
       "org.scalatestplus" %% "scalacheck-1-15" % "3.2.8.0" % Test,
