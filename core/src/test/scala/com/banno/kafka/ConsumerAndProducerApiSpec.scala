@@ -31,7 +31,7 @@ class ConsumerAndProducerApiSpec
     with ScalaCheckDrivenPropertyChecks
     with Matchers
     with EitherValues
-    with InMemoryKafka {
+    with DockerizedKafka {
   // TODO switch to MUnit with CE3 integration?
   import cats.effect.unsafe.implicits.global
 

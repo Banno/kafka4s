@@ -14,7 +14,7 @@ import scala.jdk.CollectionConverters._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-class PrometheusMetricsReporterApiSpec extends CatsEffectSuite with InMemoryKafka {
+class PrometheusMetricsReporterApiSpec extends CatsEffectSuite with DockerizedKafka {
   // When Kafka clients change their metrics, this test will help identify the
   // changes we need to make
   test("Prometheus reporter should register Prometheus collectors for all known Kafka metrics and unregister on close") {
