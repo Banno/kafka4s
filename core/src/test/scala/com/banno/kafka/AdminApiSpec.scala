@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-class AdminApiSpec extends AnyFlatSpec with Matchers with InMemoryKafka {
+class AdminApiSpec extends AnyFlatSpec with Matchers with DockerizedKafka {
   // TODO switch to MUnit with CE3 integration?
   import cats.effect.unsafe.implicits.global
 

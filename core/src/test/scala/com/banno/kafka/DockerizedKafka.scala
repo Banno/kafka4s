@@ -9,7 +9,7 @@ import cats.effect.IO
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.apache.kafka.clients.admin.NewTopic
 
-trait InMemoryKafka {
+trait DockerizedKafka {
   val bootstrapServer = "localhost:9092"
   val schemaRegistryUrl = "http://localhost:8091"
 
