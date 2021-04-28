@@ -12,9 +12,9 @@ class AdminApiSpec extends CatsEffectSuite with DockerizedKafka {
   // Probably don't need to test every single AdminClient operation; this is
   // just a sanity check that it is all wired up properly
   test("Admin API should create topics idempotently") {
-    val topicName = randomId
     def program[F[_]: Async](admin: AdminApi[F]) =
       for {
+        topicName <- Sync[F].delay(unsafeRandomId)
         ltr1 <- admin.listTopics
         ns1 <- Sync[F].delay(ltr1.names().get())
         _ <- admin.createTopicsIdempotent(List(new NewTopic(topicName, 1, 1.toShort)))
@@ -22,12 +22,12 @@ class AdminApiSpec extends CatsEffectSuite with DockerizedKafka {
         _ <- Temporal[F].sleep(1.second) // TODO: Better fix
         ltr2 <- admin.listTopics
         ns2 <- Sync[F].delay(ltr2.names.get())
-      } yield (ns1, ns2)
+      } yield (topicName, ns1, ns2)
 
     AdminApi.resource[IO](BootstrapServers(bootstrapServer))
       .use(program[IO])
-      .map { beforeAndAfter =>
-        val (before, after) = beforeAndAfter
+      .map { tuple =>
+        val (topicName, before, after) = tuple
         !before.contains(topicName) && after.contains(topicName)
       }.assert
   }
