@@ -2,7 +2,6 @@ package com.banno.kafka
 
 import cats.effect._
 import cats.syntax.all._
-import org.scalatest.{BeforeAndAfterAll, Suite}
 import org.scalacheck.Gen
 import com.banno.kafka.admin.AdminApi
 import cats.effect.IO

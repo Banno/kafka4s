@@ -16,7 +16,6 @@ import scala.util.Random
 import org.scalacheck.magnolia._
 import com.sksamuel.avro4s.RecordFormat
 import org.apache.kafka.common.TopicPartition
-import org.scalatestplus.scalacheck._
 
 import scala.jdk.CollectionConverters._
 import java.util.ConcurrentModificationException
