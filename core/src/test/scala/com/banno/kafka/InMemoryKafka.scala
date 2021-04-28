@@ -1,5 +1,7 @@
 package com.banno.kafka
 
+import cats.effect._
+import cats.syntax.all._
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import org.scalacheck.Gen
 import com.banno.kafka.admin.AdminApi
@@ -7,33 +9,23 @@ import cats.effect.IO
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.apache.kafka.clients.admin.NewTopic
 
-trait InMemoryKafka extends BeforeAndAfterAll { this: Suite =>
-  // TODO switch to MUnit with CE3 integration?
-  import cats.effect.unsafe.implicits.global
-
-  val log = Slf4jLogger.getLoggerFromClass[IO](this.getClass)
-
+trait InMemoryKafka {
   val bootstrapServer = "localhost:9092"
   val schemaRegistryUrl = "http://localhost:8091"
 
-  override def beforeAll(): Unit =
-    log.info(s"Using docker-machine Kafka cluster for ${getClass.getName}").unsafeRunSync()
-
-  override def afterAll(): Unit =
-    log.info(s"Used docker-machine Kafka cluster for ${getClass.getName}").unsafeRunSync()
-
   def randomId: String = Gen.listOfN(10, Gen.alphaChar).map(_.mkString).sample.get
+
   def genGroupId: String = randomId
+
   def genTopic: String = randomId
-  def createTopic(partitionCount: Int = 1): String = {
+
+  def createTopic[F[_]: Sync](partitionCount: Int = 1): F[String] = {
     val topic = genTopic
     AdminApi
-      .createTopicsIdempotent[IO](
+      .createTopicsIdempotent[F](
         bootstrapServer,
         List(new NewTopic(topic, partitionCount, 1.toShort))
-      )
-      .unsafeRunSync()
-    topic
+      ).as(topic)
   }
 
 }
