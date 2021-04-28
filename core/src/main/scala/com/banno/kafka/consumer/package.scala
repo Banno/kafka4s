@@ -17,7 +17,6 @@
 package com.banno.kafka
 
 import cats._
-import cats.syntax.all._
 import fs2.Stream
 
 package object consumer {

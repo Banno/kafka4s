@@ -1,7 +1,7 @@
 # kafka4s - Functional programming with Kafka and Scala
 
-![CI](https://github.com/Banno/kafka4s/workflows/CI/badge.svg) 
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.banno/kafka4s_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.banno/kafka4s_2.13) 
+![CI](https://github.com/Banno/kafka4s/workflows/CI/badge.svg)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.banno/kafka4s_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.banno/kafka4s_2.13)
 [![Javadocs](https://www.javadoc.io/badge/com.banno/kafka4s_2.13.svg?color=red&label=scaladoc)](https://www.javadoc.io/doc/com.banno/kafka4s_2.13/latest/com/banno/kafka/index.html)
 [![License](http://img.shields.io/:license-Apache%202-green.svg)](http://www.apache.org/licenses/LICENSE-2.0.txt)
 ![Code of Conduct](https://img.shields.io/badge/Code%20of%20Conduct-Scala-blue.svg)
@@ -12,7 +12,7 @@ kafka4s provides pure, referentially transparent functions for working with Kafk
 
 ## Quick Start
 
-To use kafka4s in an existing SBT project with Scala 2.12 or a later version, add the following dependencies to your
+To use `kafka4s` in an existing SBT project with Scala 2.13 or a later version, add the following dependencies to your
 `build.sbt` depending on your needs:
 
 ```scala
@@ -62,5 +62,4 @@ Stream.resource(
 
 ## Learning more
 
-To learn more about kafka4s, start with our [Getting Started Guide](https://banno.github.io/kafka4s/docs/), play with some [example apps](https://github.com/Banno/kafka4s/tree/master/examples/src/main/scala), and check out the [kafka4s Scaladoc](https://www.javadoc.io/doc/com.banno/kafka4s_2.12) for more info.
-
+To learn more about kafka4s, start with our [Getting Started Guide](https://banno.github.io/kafka4s/docs/), play with some [example apps](https://github.com/Banno/kafka4s/tree/master/examples/src/main/scala), and check out the [kafka4s Scaladoc](https://www.javadoc.io/doc/com.banno/kafka4s_2.13) for more info.

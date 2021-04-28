@@ -16,7 +16,6 @@
 
 package com.banno.kafka.consumer
 
-import scala.collection.compat._
 import fs2.Stream
 import cats.effect._
 import cats.implicits._

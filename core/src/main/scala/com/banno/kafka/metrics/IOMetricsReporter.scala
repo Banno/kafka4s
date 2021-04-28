@@ -16,7 +16,6 @@
 
 package com.banno.kafka.metrics
 
-import scala.collection.compat._
 import org.apache.kafka.common.metrics.{KafkaMetric, MetricsReporter}
 import cats.effect.IO
 import java.util.{Map => JMap, List => JList}

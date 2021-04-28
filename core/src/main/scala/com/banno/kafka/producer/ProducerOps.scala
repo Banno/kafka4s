@@ -20,7 +20,6 @@ import cats.{Applicative, Foldable, MonadError, Traverse}
 import cats.implicits._
 import fs2._
 import org.apache.kafka.common._
-import org.apache.kafka.common.errors._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.clients.producer._
 
