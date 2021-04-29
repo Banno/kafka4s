@@ -21,7 +21,10 @@ import cats.effect.IO
 import cats.effect.unsafe.IORuntime
 
 object ProducerPrometheusReporter {
-  // TODO use Dispatcher instead?
+  // Chris Davenport: "You have walked into horrible territory. Like, the worst
+  // territory I have ever seen." Given that, this is the right thing to do.
+  // However, there is also a potentially different way to shim in this
+  // impurity, but it would require a redesign.
   implicit val runtime: IORuntime = IORuntime.global
 
   /** The single instance used by all ProducerPrometheusReporter instances. This

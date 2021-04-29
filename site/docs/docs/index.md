@@ -156,16 +156,12 @@ import com.banno.kafka.consumer._
 
 Now we can create our consumer instance.
 
-**TODO**: Rethink for CE3
-
-By default, kafka4s consumers shift blocking calls to a dedicated `ExecutionContext` backed by a singleton thread pool, to avoid blocking the main work pool's (typically `ExecutionContext.global`) threads, and as a simple synchronization mechanism because the underlying Java client `KafkaConsumer` is not thread-safe. After receiving records, work is then shifted back to the work pool. We'll want an implicit `ContextShift` instance in scope to manage this thread shifting for us.
-
-Here's our `ContextShift`:
-
-```scala mdoc
-//import scala.concurrent.ExecutionContext
-//implicit val CS = IO.contextShift(ExecutionContext.global)
-```
+By default, `kafka4s` consumers shift blocking calls to a dedicated
+`ExecutionContext` backed by a singleton thread pool, to avoid blocking the main
+work pool's (typically `ExecutionContext.global`) threads, and as a simple
+synchronization mechanism because the underlying Java client `KafkaConsumer` is
+not thread-safe. After receiving records, work is then shifted back to the work
+pool.
 
 And here's our consumer, which is using Avro4s to deserialize the records:
 

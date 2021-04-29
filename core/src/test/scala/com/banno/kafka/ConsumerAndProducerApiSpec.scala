@@ -103,7 +103,8 @@ class ConsumerAndProducerApiSpec
       )
   }
 
-  //Calling KafkaConsumer.wakeup will cause any other concurrent operation to throw WakeupException
+  // Calling KafkaConsumer.wakeup will cause any other concurrent operation to
+  // throw WakeupException
   test("Simple consumer poll fails with WakeupException on wakeup".flaky) {
     val topic = createTopic[IO]().unsafeRunSync()
     ConsumerApi.NonShifting

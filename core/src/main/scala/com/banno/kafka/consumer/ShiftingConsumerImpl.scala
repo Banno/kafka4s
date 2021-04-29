@@ -27,7 +27,6 @@ import scala.concurrent.ExecutionContext
 
 case class ShiftingConsumerImpl[F[_]: Async, K, V](
     c: ConsumerApi[F, K, V],
-    // TODO use Sync[F].blocking instead of passing explicit EC?
     blockingContext: ExecutionContext
 ) extends ConsumerApi[F, K, V] {
   def assign(partitions: Iterable[TopicPartition]): F[Unit] =
