@@ -14,6 +14,11 @@ import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
 
 class PrometheusMetricsReporterApiSpec extends CatsEffectSuite with DockerizedKafka {
+  // This test allocates a lot of consumers. It was timing out in the GitHub
+  // Actions build with the default amount of 30 seconds. That build seems to
+  // have throttled resources compared to our development machines.
+  override val munitTimeout = Duration(1, MINUTES)
+
   // When Kafka clients change their metrics, this test will help identify the
   // changes we need to make
   test("Prometheus reporter should register Prometheus collectors for all known Kafka metrics and unregister on close") {
