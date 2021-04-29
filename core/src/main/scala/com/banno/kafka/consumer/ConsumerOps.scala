@@ -19,7 +19,6 @@ package com.banno.kafka.consumer
 import cats._
 import cats.implicits._
 import fs2._
-import fs2.concurrent.Signal
 import java.util.ConcurrentModificationException
 
 import cats.effect._

@@ -1,7 +1,6 @@
 package com.banno
 package kafka
 
-import org.scalatestplus.scalacheck._
 import io.confluent.kafka.serializers._
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
 import org.apache.avro._

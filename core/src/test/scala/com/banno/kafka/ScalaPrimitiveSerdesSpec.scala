@@ -3,7 +3,6 @@ package com.banno.kafka
 import cats.syntax.all._
 import munit._
 import org.apache.kafka.common.serialization._
-import org.scalacheck._
 import org.scalacheck.Prop._
 
 class ScalaPrimitiveSerdesSpec extends ScalaCheckSuite {

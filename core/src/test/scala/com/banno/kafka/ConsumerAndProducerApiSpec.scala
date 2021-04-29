@@ -1,6 +1,5 @@
 package com.banno.kafka
 
-import org.scalacheck._
 import cats.syntax.all._
 import cats.effect._
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -9,8 +8,6 @@ import scala.concurrent.duration._
 import com.banno.kafka.producer._
 import com.banno.kafka.consumer._
 import fs2._
-
-import scala.concurrent.ExecutionContext
 
 import scala.util.Random
 import org.scalacheck.magnolia._

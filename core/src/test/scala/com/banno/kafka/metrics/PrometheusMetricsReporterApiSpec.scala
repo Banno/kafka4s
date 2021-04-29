@@ -11,7 +11,6 @@ import io.prometheus.client.CollectorRegistry
 import munit._
 
 import scala.jdk.CollectionConverters._
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 class PrometheusMetricsReporterApiSpec extends CatsEffectSuite with DockerizedKafka {

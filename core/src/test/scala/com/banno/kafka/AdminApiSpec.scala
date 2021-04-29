@@ -5,7 +5,6 @@ import cats.effect._
 import cats.syntax.all._
 import org.apache.kafka.clients.admin._
 import munit._
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 class AdminApiSpec extends CatsEffectSuite with DockerizedKafka {

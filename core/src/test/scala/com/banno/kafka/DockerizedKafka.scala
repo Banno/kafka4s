@@ -4,8 +4,6 @@ import cats.effect._
 import cats.syntax.all._
 import org.scalacheck.Gen
 import com.banno.kafka.admin.AdminApi
-import cats.effect.IO
-import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.apache.kafka.clients.admin.NewTopic
 
 trait DockerizedKafka {
