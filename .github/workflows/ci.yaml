@@ -4,6 +4,7 @@ env:
   CI: true
   CI_SNAPSHOT_RELEASE: +publishSigned
   SCALA_VERSION: 2.13.5
+  MUNIT_FLAKY_OK: true
 jobs:
   validate:
     name: Scala ${{ matrix.scala }}, Java ${{ matrix.java }}

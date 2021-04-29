@@ -88,7 +88,7 @@ class ConsumerAndProducerApiSpec
   // `KafkaConsumer` is not thread-safe; if one thread is calling poll while
   // another concurrently calls close, close will throw
   // `ConcurrentModificationException`
-  test("Simple consumer close fails with ConcurrentModificationException while polling") {
+  test("Simple consumer close fails with ConcurrentModificationException while polling".flaky) {
     val topic = createTopic[IO]().unsafeRunSync()
     ConsumerApi.NonShifting
       .resource[IO, String, String](BootstrapServers(bootstrapServer))
@@ -104,7 +104,7 @@ class ConsumerAndProducerApiSpec
   }
 
   //Calling KafkaConsumer.wakeup will cause any other concurrent operation to throw WakeupException
-  test("Simple consumer poll fails with WakeupException on wakeup") {
+  test("Simple consumer poll fails with WakeupException on wakeup".flaky) {
     val topic = createTopic[IO]().unsafeRunSync()
     ConsumerApi.NonShifting
       .resource[IO, String, String](BootstrapServers(bootstrapServer))
