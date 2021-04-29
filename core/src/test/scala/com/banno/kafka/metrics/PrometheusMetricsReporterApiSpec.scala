@@ -17,7 +17,7 @@ class PrometheusMetricsReporterApiSpec extends CatsEffectSuite with DockerizedKa
   // This test allocates a lot of consumers. It was timing out in the GitHub
   // Actions build with the default amount of 30 seconds. That build seems to
   // have throttled resources compared to our development machines.
-  override val munitTimeout = Duration(1, MINUTES)
+  override val munitTimeout = Duration(2, MINUTES)
 
   // When Kafka clients change their metrics, this test will help identify the
   // changes we need to make
