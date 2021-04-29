@@ -26,6 +26,7 @@ object ConsumerPrometheusReporter {
   // However, there is also a potentially different way to shim in this
   // impurity, but it would require a redesign.
   implicit val runtime: IORuntime = IORuntime.global
+
   /** The single instance used by all ConsumerPrometheusReporter instances. This
     * allows multiple Kafka consumers in the same JVM to each instantiate
     * ConsumerPrometheusReporter, while all still using the same Prometheus

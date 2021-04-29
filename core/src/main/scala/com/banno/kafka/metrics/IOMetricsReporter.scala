@@ -26,7 +26,10 @@ import scala.jdk.CollectionConverters._
   * end of the universe for metrics reporters. Actual reporters should extend
   * this, so Kafka client can instantiate it via reflection. */
 abstract class IOMetricsReporter(reporter: MetricsReporterApi[IO]) extends MetricsReporter {
-  // TODO use Dispatcher instead?
+  // Chris Davenport: "You have walked into horrible territory. Like, the worst
+  // territory I have ever seen." Given that, this is the right thing to do.
+  // However, there is also a potentially different way to shim in this
+  // impurity, but it would require a redesign.
   implicit val runtime: IORuntime = IORuntime.global
 
   override def configure(configs: JMap[String, _]): Unit =
