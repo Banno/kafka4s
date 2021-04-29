@@ -38,7 +38,7 @@ jobs:
         if: matrix.java == 'adopt@1.8.0-272'
         run: sbt ++$SCALA_VERSION headerCheck
       - name: Compile
-        run: sbt ++$SCALA_VERSION test:compile
+        run: sbt ++$SCALA_VERSION test/compile
       - name: Check compatibility
         run: sbt ++$SCALA_VERSION mimaReportBinaryIssues
       - name: Start docker-compose
