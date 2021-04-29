@@ -329,6 +329,11 @@ class ConsumerAndProducerApiSpec
   implicit def personIdRecordFormat = RecordFormat[PersonId]
   implicit def person2RecordFormat = RecordFormat[Person2]
 
+  // The avro4s property takes a long time because it is creating and destroying
+  // a producer and a consumer in every run of the property. If the CI builds
+  // try to kill it because of timeout, they hang.
+  override val munitTimeout = Duration(1, MINUTES)
+
   property("avro4s") {
     val groupId = unsafeRandomId
     println(s"6 groupId=$groupId")
