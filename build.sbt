@@ -143,8 +143,8 @@ lazy val commonSettings = Seq(
     "io.prometheus" % "simpleclient" % V.simpleClient,
     "org.typelevel" %% "log4cats-slf4j" % V.log4cats,
   ),
-  sourceGenerators in Test += (avroScalaGenerate in Test).taskValue,
-  watchSources ++= ((avroSourceDirectories in Test).value ** "*.avdl").get,
+  Test / sourceGenerators += (Test / avroScalaGenerate).taskValue,
+  watchSources ++= ((Test / avroSourceDirectories).value ** "*.avdl").get,
 )
 
 lazy val contributors = Seq(
