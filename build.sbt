@@ -138,9 +138,9 @@ lazy val commonSettings = Seq(
     "io.prometheus" % "simpleclient" % V.simpleClient,
     "io.chrisdavenport" %% "log4cats-slf4j" % V.log4cats,
   ),
-  sourceGenerators in Test += (avroScalaGenerate in Test).taskValue,
-  watchSources ++= ((avroSourceDirectories in Test).value ** "*.avdl").get,
-  testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oS"),
+  Test / sourceGenerators += (Test / avroScalaGenerate).taskValue,
+  watchSources ++= ((Test / avroSourceDirectories).value ** "*.avdl").get,
+  Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oS"),
 )
 
 lazy val contributors = Seq(
