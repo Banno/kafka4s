@@ -20,7 +20,6 @@ import java.util.ConcurrentModificationException
 import org.apache.kafka.common.errors.WakeupException
 import munit._
 import org.scalacheck._
-import org.scalacheck.Prop._
 import org.scalacheck.effect.PropF._
 
 class ConsumerAndProducerApiSpec
@@ -329,13 +328,18 @@ class ConsumerAndProducerApiSpec
   implicit def personIdRecordFormat = RecordFormat[PersonId]
   implicit def person2RecordFormat = RecordFormat[Person2]
 
-  property("avro4s") {
+  // The avro4s property takes a long time because it is creating and destroying
+  // a producer and a consumer in every run of the property. If the CI builds
+  // try to kill it because of timeout, they hang.
+  override val munitTimeout = Duration(1, MINUTES)
+
+  test("avro4s") {
     val groupId = unsafeRandomId
     println(s"6 groupId=$groupId")
     val topic = createTopic[IO]().unsafeRunSync()
 
-    forAll { values: Vector[(PersonId, Person2)] =>
-      val actual = (for {
+    forAllF { values: Vector[(PersonId, Person2)] =>
+      val fa = for {
         p <- Stream.resource(
           ProducerApi.Avro4s.resource[IO, PersonId, Person2](
             BootstrapServers(bootstrapServer),
@@ -351,9 +355,8 @@ class ConsumerAndProducerApiSpec
           )
         )
         v <- writeAndRead(p, c, topic, values)
-      } yield v).compile.toVector.unsafeRunSync()
-      assertEquals(actual, values)
+      } yield v
+      fa.compile.toVector.map(assertEquals(_, values))
     }
   }
-
 }
