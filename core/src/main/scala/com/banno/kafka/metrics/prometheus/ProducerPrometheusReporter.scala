@@ -18,20 +18,25 @@ package com.banno.kafka.metrics.prometheus
 
 import com.banno.kafka.metrics._
 import cats.effect.IO
-
-import scala.concurrent.ExecutionContext
+import cats.effect.unsafe.IORuntime
 
 object ProducerPrometheusReporter {
-  val defaultContextShift = IO.contextShift(ExecutionContext.global)
-  implicit val defaultConcurrent = IO.ioConcurrentEffect(defaultContextShift)
-  implicit val defaultTimer = IO.timer(ExecutionContext.global)
+  // Chris Davenport: "You have walked into horrible territory. Like, the worst
+  // territory I have ever seen." Given that, this is the right thing to do.
+  // However, there is also a potentially different way to shim in this
+  // impurity, but it would require a redesign.
+  implicit val runtime: IORuntime = IORuntime.global
 
-  /** The single instance used by all ProducerPrometheusReporter instances. This allows multiple Kafka producers in the same JVM to each instantiate ProducerPrometheusReporter,
-    * while all still using the same Prometheus collectors and registry properly. Metrics from multiple producers are distinguished by the `client_id` label. */
+  /** The single instance used by all ProducerPrometheusReporter instances. This
+    * allows multiple Kafka producers in the same JVM to each instantiate
+    * ProducerPrometheusReporter, while all still using the same Prometheus
+    * collectors and registry properly. Metrics from multiple producers are
+    * distinguished by the `client_id` label. */
   val reporter: MetricsReporterApi[IO] =
     PrometheusMetricsReporterApi.producer[IO]().unsafeRunSync()
 }
 
 /** Kafka producer will instantiate this class via reflection.
-  * Specify this producer config: metric.reporters=com.banno.kafka.metrics.prometheus.ProducerPrometheusReporter. */
+  * Specify this producer config:
+  * metric.reporters=com.banno.kafka.metrics.prometheus.ProducerPrometheusReporter. */
 class ProducerPrometheusReporter extends IOMetricsReporter(ProducerPrometheusReporter.reporter)

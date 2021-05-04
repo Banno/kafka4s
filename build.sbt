@@ -6,21 +6,22 @@ val V = new {
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
   val cats = "2.6.0"
+  val catsEffect = "3.1.0"
   val confluent = "6.0.2"
   val curator = "5.1.0"
-  val discipline = "2.1.4"
-  val fs2 = "2.5.5"
-  val github4s = "0.28.4"
+  val disciplineMunit = "1.0.8"
+  val fs2 = "3.0.2"
   val junit = "4.13"
   val kafka = "2.7.0"
   val kindProjector = "0.11.3"
-  val log4cats = "1.1.1"
+  val log4cats = "2.1.0"
   val log4j = "1.7.30"
   val logback = "1.2.3"
   val scalacheck = "1.15.4"
+  val scalacheckEffect = "0.6.0"
   val scalacheckMagnolia = "0.6.0"
-  val scalatest = "3.2.8"
-  val scalatestPlus = "3.2.3.0"
+  val munit = "0.7.25"
+  val munitCE3 = "1.0.2"
   val simpleClient = "0.9.0"
 }
 
@@ -43,6 +44,7 @@ lazy val core = project
     },
   )
   .settings(
+    testFrameworks += new TestFramework("munit.Framework"),
     libraryDependencies ++= Seq(
       "org.apache.curator" % "curator-test" % V.curator % "test",
       ("org.apache.kafka" %% "kafka" % V.kafka % "test").classifier("test"),
@@ -52,18 +54,21 @@ lazy val core = project
       "ch.qos.logback" % "logback-classic" % V.logback % "test",
       "org.slf4j" % "log4j-over-slf4j" % V.log4j % "test",
       "org.scalacheck" %% "scalacheck" % V.scalacheck % "test",
-      "org.scalatest" %% "scalatest" % V.scalatest % "test",
-      "org.scalatestplus" %% "scalacheck-1-15" % "3.2.8.0" % Test,
+      "org.scalameta" %% "munit" % V.munit % "test",
+      "org.scalameta" %% "munit-scalacheck" % V.munit % "test",
+      "org.typelevel" %% "scalacheck-effect-munit" % V.scalacheckEffect,
+      "org.typelevel" %% "munit-cats-effect-3" % V.munitCE3 % "test",
       "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % "test",
+      "org.typelevel" %% "cats-effect" % V.catsEffect,
       "org.typelevel" %% "cats-laws" % V.cats % "test",
-      "org.typelevel" %% "discipline-scalatest" % V.discipline % "test",
+      "org.typelevel" %% "discipline-munit" % V.disciplineMunit % "test",
     )
   )
 
 lazy val examples = project
   .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
-  .settings(libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.4.1.0")
+  .settings(libraryDependencies += "dev.zio" %% "zio-interop-cats" % "3.0.2.0")
   .disablePlugins(MimaPlugin)
   .dependsOn(core)
 
@@ -136,11 +141,10 @@ lazy val commonSettings = Seq(
     "io.confluent" % "kafka-avro-serializer" % V.confluent,
     "com.sksamuel.avro4s" %% "avro4s-core" % V.avro4s,
     "io.prometheus" % "simpleclient" % V.simpleClient,
-    "io.chrisdavenport" %% "log4cats-slf4j" % V.log4cats,
+    "org.typelevel" %% "log4cats-slf4j" % V.log4cats,
   ),
   Test / sourceGenerators += (Test / avroScalaGenerate).taskValue,
   watchSources ++= ((Test / avroSourceDirectories).value ** "*.avdl").get,
-  Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oS"),
 )
 
 lazy val contributors = Seq(

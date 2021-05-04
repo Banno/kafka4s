@@ -18,14 +18,19 @@ package com.banno.kafka.metrics
 
 import org.apache.kafka.common.metrics.{KafkaMetric, MetricsReporter}
 import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import java.util.{Map => JMap, List => JList}
 import scala.jdk.CollectionConverters._
 
-/** Adapts our pure MetricsReporterApi to Kafka's impure MetricsReporter. The end of the universe for metrics reporters.
-  * Actual reporters should extend this, so Kafka client can instantiate it via reflection. */
+/** Adapts our pure MetricsReporterApi to Kafka's impure MetricsReporter. The
+  * end of the universe for metrics reporters. Actual reporters should extend
+  * this, so Kafka client can instantiate it via reflection. */
 abstract class IOMetricsReporter(reporter: MetricsReporterApi[IO]) extends MetricsReporter {
-
-  //TODO probably should run these a bit safer, like attempt, log non-fatal, etc
+  // Chris Davenport: "You have walked into horrible territory. Like, the worst
+  // territory I have ever seen." Given that, this is the right thing to do.
+  // However, there is also a potentially different way to shim in this
+  // impurity, but it would require a redesign.
+  implicit val runtime: IORuntime = IORuntime.global
 
   override def configure(configs: JMap[String, _]): Unit =
     reporter.configure(configs.asScala.toMap).unsafeRunSync()

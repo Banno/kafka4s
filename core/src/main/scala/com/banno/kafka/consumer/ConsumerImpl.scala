@@ -16,11 +16,11 @@
 
 package com.banno.kafka.consumer
 
-import cats.implicits._
+import cats.syntax.all._
 import cats.effect.Sync
 import java.util.regex.Pattern
 
-import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._

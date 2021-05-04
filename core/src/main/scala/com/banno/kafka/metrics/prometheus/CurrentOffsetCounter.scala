@@ -17,7 +17,7 @@
 package com.banno.kafka.metrics.prometheus
 
 import cats.effect.Sync
-import cats.implicits._
+import cats.syntax.all._
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import io.prometheus.client._
 import scala.math.max

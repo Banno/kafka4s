@@ -16,7 +16,7 @@
 
 package com.banno.kafka.consumer
 
-import cats.implicits._
+import cats.syntax.all._
 import java.util.regex.Pattern
 
 import scala.concurrent.duration._

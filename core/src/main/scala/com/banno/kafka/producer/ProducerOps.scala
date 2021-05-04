@@ -17,7 +17,7 @@
 package com.banno.kafka.producer
 
 import cats.{Applicative, Foldable, MonadError, Traverse}
-import cats.implicits._
+import cats.syntax.all._
 import fs2._
 import org.apache.kafka.common._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata

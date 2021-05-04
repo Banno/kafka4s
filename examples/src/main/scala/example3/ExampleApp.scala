@@ -17,7 +17,7 @@
 package example3
 
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 import fs2.Stream
 import com.banno.kafka._
 import com.banno.kafka.admin._
@@ -28,7 +28,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import scala.concurrent.duration._
 import scala.util.Random
 
-final class ExampleApp[F[_]: Concurrent: ContextShift: Timer] {
+final class ExampleApp[F[_]: Async] {
 
   // Change these for your environment as needed
   val topic = new NewTopic(s"example3", 1, 3.toShort)
@@ -79,5 +79,5 @@ final class ExampleApp[F[_]: Concurrent: ContextShift: Timer] {
 }
 
 object ExampleApp {
-  def apply[F[_]: Concurrent: ContextShift: Timer] = new ExampleApp[F]
+  def apply[F[_]: Async] = new ExampleApp[F]
 }
