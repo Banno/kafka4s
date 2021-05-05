@@ -16,21 +16,21 @@
 
 package com.banno.kafka.metrics.prometheus
 
-import scala.collection.compat._
-import cats.effect.concurrent.Ref
+import cats._
+import cats.data._
+import cats.effect._
+import cats.syntax.all._
 import com.banno.kafka.metrics.MetricsReporterApi
-import cats.implicits._
-import cats.effect.{Concurrent, Sync, Timer}
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
-
-import scala.jdk.CollectionConverters._
+import org.typelevel.log4cats.slf4j.Slf4jLogger
+import io.prometheus.client._
+import org.apache.kafka.common.MetricName
 import org.apache.kafka.common.metrics.KafkaMetric
-import io.prometheus.client.{CollectorRegistry, Counter, Gauge}
 
-import scala.math.max
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
+import scala.math.max
 
 object PrometheusMetricsReporterApi {
 
@@ -65,51 +65,105 @@ object PrometheusMetricsReporterApi {
     def value: F[Double] =
       F.delay(metric.metricValue.toString.toDouble).recover { case _ => 0 } //TODO can probably do better than this...
 
+    def matches(other: KafkaMetric): Boolean =
+      metric.metricName() === other.metricName()
+
     def createGauge(registry: CollectorRegistry): F[Gauge] =
       F.delay(Gauge.build().name(name).help(help).labelNames(labelNames: _*).register(registry))
     def createCounter(registry: CollectorRegistry): F[Counter] =
       F.delay(Counter.build().name(name).help(help).labelNames(labelNames: _*).register(registry))
   }
 
+  implicit val metricNameEq: Eq[MetricName] = Eq.fromUniversalEquals
+
+  sealed trait `Removed?`[+F[_]]
+  object `Removed?` {
+    object NotThere extends `Removed?`[Nothing]
+    def notThere[F[_]]: `Removed?`[F] = NotThere
+    object LastOne extends `Removed?`[Nothing]
+    def lastOne[F[_]]: `Removed?`[F] = LastOne
+    case class Removed[F[_]](
+      updated: MetricAdapter[F]
+    ) extends `Removed?`[F]
+    def removed[F[_]](updated: MetricAdapter[F]): `Removed?`[F] =
+      Removed(updated)
+  }
+
   sealed trait MetricAdapter[F[_]] {
     def update: F[Unit]
     def add(m: MetricSource[F]): MetricAdapter[F]
+    def collector: Collector
+    def remove(metric: KafkaMetric): `Removed?`[F]
   }
-  case class GaugeMetricAdapter[F[_]](metrics: List[MetricSource[F]], gauge: Gauge)(
-      implicit F: Sync[F]
-  ) extends MetricAdapter[F] {
-    def add(m: MetricSource[F]): MetricAdapter[F] = copy(metrics = metrics :+ m)
-    def update: F[Unit] =
-      metrics.traverse_(m => m.value.flatMap(v => F.delay(gauge.labels(m.labels: _*).set(v))))
-  }
-  case class CounterMetricAdapter[F[_]](metrics: List[MetricSource[F]], counter: Counter)(
-      implicit F: Sync[F]
-  ) extends MetricAdapter[F] {
-    def add(m: MetricSource[F]): MetricAdapter[F] = copy(metrics = metrics :+ m)
-    def update: F[Unit] =
-      metrics.traverse_(
+
+  object MetricAdapter {
+    private case class Impl[F[_]: Applicative](
+      metrics: NonEmptyList[MetricSource[F]],
+      collector: Collector,
+      update1: MetricSource[F] => F[Unit]
+    ) extends MetricAdapter[F] {
+      override def add(m: MetricSource[F]): MetricAdapter[F] =
+        copy(metrics = metrics :+ m)
+
+      override def update: F[Unit] =
+        metrics.traverse_(update1)
+
+      override def remove(metric: KafkaMetric): `Removed?`[F] =
+        NonEmptyList.fromList(
+          metrics.filterNot(_.matches(metric))
+        ).fold(`Removed?`.lastOne[F])(ms =>
+          if (metrics.length === ms.length)
+          /*then*/ `Removed?`.notThere[F]
+          else `Removed?`.removed(Impl(ms, collector, update1))
+        )
+    }
+
+    def gauge[F[_]: Sync](
+      metric: MetricSource[F],
+      gauge: Gauge
+    ): MetricAdapter[F] =
+      Impl(
+        NonEmptyList.one(metric),
+        gauge,
+        m => m.value.flatMap(v => Sync[F].delay(gauge.labels(m.labels: _*).set(v)))
+      )
+
+    def counter[F[_]: Sync](
+      metric: MetricSource[F],
+      counter: Counter
+    ): MetricAdapter[F] =
+      Impl(
+        NonEmptyList.one(metric),
+        counter,
         m =>
           m.value.flatMap(
             v =>
-              F.delay(
+              Sync[F].delay(
+                // NOTE Should always be positive, but protect against negative
+                // TODO might want to log on negative?
                 counter.labels(m.labels: _*).inc(max(0, v - counter.labels(m.labels: _*).get))
               )
           )
-      ) //should always be positive, but protect against negative, TODO might want to log on negative?
+      )
   }
 
-  abstract class PrometheusMetricsReporterApi[F[_]](
+  abstract class PrometheusMetricsReporterApi[F[_]: Async](
       protected val prefix: String,
       protected val adapters: Ref[F, Map[String, MetricAdapter[F]]],
       protected val updating: SignallingRef[F, Boolean],
-      protected val updatePeriod: FiniteDuration
-  )(implicit F: Concurrent[F], T: Timer[F])
-      extends MetricsReporterApi[F] {
+      protected val updatePeriod: FiniteDuration,
+      private val collectorRegistry: CollectorRegistry,
+  ) extends MetricsReporterApi[F] {
 
     override def remove(metric: KafkaMetric): F[Unit] =
-      F.unit //F.delay(log.warn(s"remove is not implemented, but called for ${metric.prometheusName(prefix)}"))
+      adapters.modify { adapterMap =>
+        adapterMap.collectFirst(kv => kv._2.remove(metric) match {
+          case `Removed?`.LastOne => (adapterMap - kv._1, kv._2.collector.some)
+          case `Removed?`.Removed(updated) => (adapterMap.updated(kv._1, updated), none)
+        }).getOrElse((adapterMap, none[Collector]))
+      }.flatMap(_.traverse_(c => Sync[F].delay(collectorRegistry.unregister(c))))
 
-    def updateMetricsPeriodically(implicit T: Timer[F]): Stream[F, Unit] =
+    def updateMetricsPeriodically: Stream[F, Unit] =
       for {
         _ <- Stream.eval(updating.set(true))
         _ <- Stream.eval(log.debug(s"Updating ${prefix} Prometheus metrics every ${updatePeriod}"))
@@ -121,13 +175,17 @@ object PrometheusMetricsReporterApi {
       } yield ()
 
     override def init(metrics: List[KafkaMetric]): F[Unit] =
-      metrics.traverse_(add) *> F.start(updateMetricsPeriodically.compile.drain).void
+      metrics.traverse_(add) *> Spawn[F].start(updateMetricsPeriodically.compile.drain).void
 
-    override def configure(configs: Map[String, Any]): F[Unit] = F.unit
+    override def configure(configs: Map[String, Any]): F[Unit] = Applicative[F].unit
 
-    override def close: F[Unit] = updating.set(false)
+    override def close: F[Unit] =
+      adapters.modify { adapterMap =>
+        (Map.empty, adapterMap.values.map(_.collector).toList)
+      }.flatMap(_.traverse_(c => Sync[F].delay(collectorRegistry.unregister(c)))) *>
+      updating.set(false)
 
-    val ignore = F.unit
+    val ignore = Applicative[F].unit
 
     def tryAdapter(
         metric: KafkaMetric,
@@ -166,8 +224,8 @@ object PrometheusMetricsReporterApi {
       updating: SignallingRef[F, Boolean],
       registry: CollectorRegistry,
       updatePeriod: FiniteDuration
-  )(implicit F: Concurrent[F], T: Timer[F]): MetricsReporterApi[F] =
-    new PrometheusMetricsReporterApi[F]("kafka_producer", adapters, updating, updatePeriod) {
+  )(implicit F: Async[F]): MetricsReporterApi[F] =
+    new PrometheusMetricsReporterApi[F]("kafka_producer", adapters, updating, updatePeriod, registry) {
 
       override def add(metric: KafkaMetric): F[Unit] = {
 
@@ -176,7 +234,7 @@ object PrometheusMetricsReporterApi {
             metric,
             name,
             Map.empty,
-            source => source.createGauge(registry).map(GaugeMetricAdapter(List(source), _))
+            source => source.createGauge(registry).map(MetricAdapter.gauge(source, _))
           )
 
         def counter(name: String): F[Unit] =
@@ -184,7 +242,7 @@ object PrometheusMetricsReporterApi {
             metric,
             name,
             Map.empty,
-            source => source.createCounter(registry).map(CounterMetricAdapter(List(source), _))
+            source => source.createCounter(registry).map(MetricAdapter.counter(source, _))
           )
 
         MetricId(metric) match {
@@ -405,8 +463,8 @@ object PrometheusMetricsReporterApi {
       updating: SignallingRef[F, Boolean],
       registry: CollectorRegistry,
       updatePeriod: FiniteDuration
-  )(implicit F: Concurrent[F], T: Timer[F]): MetricsReporterApi[F] =
-    new PrometheusMetricsReporterApi[F]("kafka_consumer", adapters, updating, updatePeriod) {
+  )(implicit F: Async[F]): MetricsReporterApi[F] =
+    new PrometheusMetricsReporterApi[F]("kafka_consumer", adapters, updating, updatePeriod, registry) {
 
       override def add(metric: KafkaMetric): F[Unit] = {
 
@@ -415,7 +473,7 @@ object PrometheusMetricsReporterApi {
             metric,
             name,
             additionalTags,
-            source => source.createGauge(registry).map(GaugeMetricAdapter(List(source), _))
+            source => source.createGauge(registry).map(MetricAdapter.gauge(source, _))
           )
 
         def counter(name: String): F[Unit] =
@@ -423,7 +481,7 @@ object PrometheusMetricsReporterApi {
             metric,
             name,
             Map.empty,
-            source => source.createCounter(registry).map(CounterMetricAdapter(List(source), _))
+            source => source.createCounter(registry).map(MetricAdapter.counter(source, _))
           )
 
         MetricId(metric) match {
@@ -836,7 +894,7 @@ object PrometheusMetricsReporterApi {
 
   val defaultUpdatePeriod = 10 seconds
 
-  def producer[F[_]: Concurrent: Timer](
+  def producer[F[_]: Async](
       registry: CollectorRegistry = CollectorRegistry.defaultRegistry,
       updatePeriod: FiniteDuration = defaultUpdatePeriod
   ): F[MetricsReporterApi[F]] =
@@ -845,7 +903,7 @@ object PrometheusMetricsReporterApi {
       updating <- SignallingRef[F, Boolean](false)
     } yield producer[F](adapters, updating, registry, updatePeriod)
 
-  def consumer[F[_]: Concurrent: Timer](
+  def consumer[F[_]: Async](
       registry: CollectorRegistry = CollectorRegistry.defaultRegistry,
       updatePeriod: FiniteDuration = defaultUpdatePeriod
   ): F[MetricsReporterApi[F]] =

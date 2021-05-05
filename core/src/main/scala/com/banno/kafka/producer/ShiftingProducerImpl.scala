@@ -16,7 +16,7 @@
 
 package com.banno.kafka.producer
 
-import cats.effect.{Async, ContextShift}
+import cats.effect._
 import java.util.concurrent.{Future => JFuture}
 
 import scala.concurrent.duration._
@@ -29,23 +29,22 @@ import scala.concurrent.ExecutionContext
 case class ShiftingProducerImpl[F[_]: Async, K, V](
     p: ProducerApi[F, K, V],
     blockingContext: ExecutionContext
-)(implicit CS: ContextShift[F])
-    extends ProducerApi[F, K, V] {
-  def abortTransaction: F[Unit] = CS.evalOn(blockingContext)(p.abortTransaction)
-  def beginTransaction: F[Unit] = CS.evalOn(blockingContext)(p.beginTransaction)
-  def close: F[Unit] = CS.evalOn(blockingContext)(p.close)
-  def close(timeout: FiniteDuration): F[Unit] = CS.evalOn(blockingContext)(p.close(timeout))
-  def commitTransaction: F[Unit] = CS.evalOn(blockingContext)(p.commitTransaction)
-  def flush: F[Unit] = CS.evalOn(blockingContext)(p.flush)
-  def initTransactions: F[Unit] = CS.evalOn(blockingContext)(p.initTransactions)
-  def metrics: F[Map[MetricName, Metric]] = CS.evalOn(blockingContext)(p.metrics)
+) extends ProducerApi[F, K, V] {
+  def abortTransaction: F[Unit] = Async[F].evalOn(p.abortTransaction, blockingContext)
+  def beginTransaction: F[Unit] = Async[F].evalOn(p.beginTransaction, blockingContext)
+  def close: F[Unit] = Async[F].evalOn(p.close, blockingContext)
+  def close(timeout: FiniteDuration): F[Unit] = Async[F].evalOn(p.close(timeout), blockingContext)
+  def commitTransaction: F[Unit] = Async[F].evalOn(p.commitTransaction, blockingContext)
+  def flush: F[Unit] = Async[F].evalOn(p.flush, blockingContext)
+  def initTransactions: F[Unit] = Async[F].evalOn(p.initTransactions, blockingContext)
+  def metrics: F[Map[MetricName, Metric]] = Async[F].evalOn(p.metrics, blockingContext)
   def partitionsFor(topic: String): F[Seq[PartitionInfo]] =
-    CS.evalOn(blockingContext)(p.partitionsFor(topic))
+    Async[F].evalOn(p.partitionsFor(topic), blockingContext)
   def sendOffsetsToTransaction(
       offsets: Map[TopicPartition, OffsetAndMetadata],
       consumerGroupId: String
   ): F[Unit] =
-    CS.evalOn(blockingContext)(p.sendOffsetsToTransaction(offsets, consumerGroupId))
+    Async[F].evalOn(p.sendOffsetsToTransaction(offsets, consumerGroupId), blockingContext)
 
   private[producer] def sendRaw(record: ProducerRecord[K, V]): JFuture[RecordMetadata] =
     p.sendRaw(record)
@@ -59,9 +58,9 @@ case class ShiftingProducerImpl[F[_]: Async, K, V](
   ): Unit = p.sendRaw(record, callback)
 
   def sendAndForget(record: ProducerRecord[K, V]): F[Unit] =
-    CS.evalOn(blockingContext)(p.sendAndForget(record))
+    Async[F].evalOn(p.sendAndForget(record), blockingContext)
   def sendSync(record: ProducerRecord[K, V]): F[RecordMetadata] =
-    CS.evalOn(blockingContext)(p.sendSync(record))
+    Async[F].evalOn(p.sendSync(record), blockingContext)
   def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata] =
-    CS.evalOn(blockingContext)(p.sendAsync(record))
+    Async[F].evalOn(p.sendAsync(record), blockingContext)
 }
