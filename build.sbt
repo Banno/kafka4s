@@ -22,7 +22,7 @@ val V = new {
   val scalacheckMagnolia = "0.6.0"
   val munit = "0.7.25"
   val munitCE3 = "1.0.2"
-  val simpleClient = "0.9.0"
+  val simpleClient = "0.10.0"
 }
 
 lazy val kafka4s = project
