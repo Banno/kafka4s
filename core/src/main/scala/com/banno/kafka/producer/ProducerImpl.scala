@@ -16,8 +16,7 @@
 
 package com.banno.kafka.producer
 
-import scala.collection.compat._
-import cats.implicits._
+import cats.syntax.all._
 import cats.effect.Async
 import java.util.concurrent.{Future => JFuture}
 import scala.jdk.CollectionConverters._
@@ -88,7 +87,7 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
   /** Similar to sendSync, except the returned F[_] is completed asynchronously, usually on the producer's I/O thread.
     * TODO does this have different blocking semantics than sendSync? */
   def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata] =
-    F.async(sendRaw(record, _))
+    F.async_(sendRaw(record, _))
 }
 
 object ProducerImpl {

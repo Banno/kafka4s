@@ -17,7 +17,7 @@
 package example2
 
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 import com.banno.kafka._
 import com.banno.kafka.admin._
 import com.banno.kafka.schemaregistry._
@@ -28,7 +28,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import scala.concurrent.duration._
 import org.apache.kafka.common.TopicPartition
 
-final class ExampleApp[F[_]: Async: ContextShift] {
+final class ExampleApp[F[_]: Async] {
 
   // Change these for your environment as needed
   val topic = new NewTopic(s"example1.customers.v1", 1, 3.toShort)
@@ -107,5 +107,5 @@ final class ExampleApp[F[_]: Async: ContextShift] {
 }
 
 object ExampleApp {
-  def apply[F[_]: Async: ContextShift] = new ExampleApp[F]
+  def apply[F[_]: Async] = new ExampleApp[F]
 }

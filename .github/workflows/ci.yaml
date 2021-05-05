@@ -3,7 +3,8 @@ on: [push, pull_request]
 env:
   CI: true
   CI_SNAPSHOT_RELEASE: +publishSigned
-  SCALA_VERSION: 2.12.12
+  SCALA_VERSION: 2.13.5
+  MUNIT_FLAKY_OK: true
 jobs:
   validate:
     name: Scala ${{ matrix.scala }}, Java ${{ matrix.java }}
@@ -14,7 +15,7 @@ jobs:
       matrix:
         # java: [adopt@1.8.0-272, adopt@1.11.0-9, adopt@1.15.0-1]
         java: [adopt@1.11.0-9]
-        scala: [2.12.12, 2.13.4]
+        scala: [2.13.5]
     env:
       SCALA_VERSION: ${{ matrix.scala }}
     steps:
@@ -34,9 +35,6 @@ jobs:
         with:
           path: ~/.sbt
           key: sbt-${{ hashFiles('**/build.sbt') }}
-      - name: Check formatting
-        if: startsWith(matrix.scala, '2.12.') && (matrix.java == 'adopt@1.8.0-272')
-        run: sbt ++$SCALA_VERSION scalafmtCheckAll
       - name: Check copyright headers
         if: matrix.java == 'adopt@1.8.0-272'
         run: sbt ++$SCALA_VERSION headerCheck

@@ -18,17 +18,16 @@ package com.banno.kafka.metrics.prometheus
 
 import cats._
 import cats.data._
-import cats.effect.concurrent.Ref
 import cats.effect._
 import cats.syntax.all._
 import com.banno.kafka.metrics.MetricsReporterApi
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import io.prometheus.client._
 import org.apache.kafka.common.MetricName
 import org.apache.kafka.common.metrics.KafkaMetric
-import scala.collection.compat._
+
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.math.max
@@ -148,14 +147,13 @@ object PrometheusMetricsReporterApi {
       )
   }
 
-  abstract class PrometheusMetricsReporterApi[F[_]](
+  abstract class PrometheusMetricsReporterApi[F[_]: Async](
       protected val prefix: String,
       protected val adapters: Ref[F, Map[String, MetricAdapter[F]]],
       protected val updating: SignallingRef[F, Boolean],
       protected val updatePeriod: FiniteDuration,
       private val collectorRegistry: CollectorRegistry,
-  )(implicit F: Concurrent[F], T: Timer[F])
-      extends MetricsReporterApi[F] {
+  ) extends MetricsReporterApi[F] {
 
     override def remove(metric: KafkaMetric): F[Unit] =
       adapters.modify { adapterMap =>
@@ -163,9 +161,9 @@ object PrometheusMetricsReporterApi {
           case `Removed?`.LastOne => (adapterMap - kv._1, kv._2.collector.some)
           case `Removed?`.Removed(updated) => (adapterMap.updated(kv._1, updated), none)
         }).getOrElse((adapterMap, none[Collector]))
-      }.flatMap(_.traverse_(c => F.delay(collectorRegistry.unregister(c))))
+      }.flatMap(_.traverse_(c => Sync[F].delay(collectorRegistry.unregister(c))))
 
-    def updateMetricsPeriodically(implicit T: Timer[F]): Stream[F, Unit] =
+    def updateMetricsPeriodically: Stream[F, Unit] =
       for {
         _ <- Stream.eval(updating.set(true))
         _ <- Stream.eval(log.debug(s"Updating ${prefix} Prometheus metrics every ${updatePeriod}"))
@@ -177,17 +175,17 @@ object PrometheusMetricsReporterApi {
       } yield ()
 
     override def init(metrics: List[KafkaMetric]): F[Unit] =
-      metrics.traverse_(add) *> F.start(updateMetricsPeriodically.compile.drain).void
+      metrics.traverse_(add) *> Spawn[F].start(updateMetricsPeriodically.compile.drain).void
 
-    override def configure(configs: Map[String, Any]): F[Unit] = F.unit
+    override def configure(configs: Map[String, Any]): F[Unit] = Applicative[F].unit
 
     override def close: F[Unit] =
       adapters.modify { adapterMap =>
         (Map.empty, adapterMap.values.map(_.collector).toList)
-      }.flatMap(_.traverse_(c => F.delay(collectorRegistry.unregister(c)))) *>
+      }.flatMap(_.traverse_(c => Sync[F].delay(collectorRegistry.unregister(c)))) *>
       updating.set(false)
 
-    val ignore = F.unit
+    val ignore = Applicative[F].unit
 
     def tryAdapter(
         metric: KafkaMetric,
@@ -226,7 +224,7 @@ object PrometheusMetricsReporterApi {
       updating: SignallingRef[F, Boolean],
       registry: CollectorRegistry,
       updatePeriod: FiniteDuration
-  )(implicit F: Concurrent[F], T: Timer[F]): MetricsReporterApi[F] =
+  )(implicit F: Async[F]): MetricsReporterApi[F] =
     new PrometheusMetricsReporterApi[F]("kafka_producer", adapters, updating, updatePeriod, registry) {
 
       override def add(metric: KafkaMetric): F[Unit] = {
@@ -465,7 +463,7 @@ object PrometheusMetricsReporterApi {
       updating: SignallingRef[F, Boolean],
       registry: CollectorRegistry,
       updatePeriod: FiniteDuration
-  )(implicit F: Concurrent[F], T: Timer[F]): MetricsReporterApi[F] =
+  )(implicit F: Async[F]): MetricsReporterApi[F] =
     new PrometheusMetricsReporterApi[F]("kafka_consumer", adapters, updating, updatePeriod, registry) {
 
       override def add(metric: KafkaMetric): F[Unit] = {
@@ -896,7 +894,7 @@ object PrometheusMetricsReporterApi {
 
   val defaultUpdatePeriod = 10 seconds
 
-  def producer[F[_]: Concurrent: Timer](
+  def producer[F[_]: Async](
       registry: CollectorRegistry = CollectorRegistry.defaultRegistry,
       updatePeriod: FiniteDuration = defaultUpdatePeriod
   ): F[MetricsReporterApi[F]] =
@@ -905,7 +903,7 @@ object PrometheusMetricsReporterApi {
       updating <- SignallingRef[F, Boolean](false)
     } yield producer[F](adapters, updating, registry, updatePeriod)
 
-  def consumer[F[_]: Concurrent: Timer](
+  def consumer[F[_]: Async](
       registry: CollectorRegistry = CollectorRegistry.defaultRegistry,
       updatePeriod: FiniteDuration = defaultUpdatePeriod
   ): F[MetricsReporterApi[F]] =

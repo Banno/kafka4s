@@ -16,10 +16,9 @@
 
 package com.banno.kafka.consumer
 
-import scala.collection.compat._
 import fs2.Stream
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 import java.util.regex.Pattern
 import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
@@ -117,7 +116,7 @@ object ConsumerApi {
       )(a => Sync[F].delay(a.shutdown()))
   }
 
-  def resource[F[_]: Async: ContextShift, K, V](
+  def resource[F[_]: Async, K, V](
       keyDeserializer: Deserializer[K],
       valueDeserializer: Deserializer[V],
       configs: (String, AnyRef)*
@@ -130,13 +129,13 @@ object ConsumerApi {
         )(_.close)
     )
 
-  def resource[F[_]: Async: ContextShift, K: Deserializer, V: Deserializer](
+  def resource[F[_]: Async, K: Deserializer, V: Deserializer](
       configs: (String, AnyRef)*
   ): Resource[F, ConsumerApi[F, K, V]] =
     resource[F, K, V](implicitly[Deserializer[K]], implicitly[Deserializer[V]], configs: _*)
 
   object ByteArray {
-    def resource[F[_]: Async: ContextShift](
+    def resource[F[_]: Async](
         configs: (String, AnyRef)*
     ): Resource[F, ConsumerApi[F, Array[Byte], Array[Byte]]] =
       ConsumerApi.resource[F, Array[Byte], Array[Byte]](configs: _*)
@@ -144,7 +143,7 @@ object ConsumerApi {
 
   object Avro {
 
-    def resource[F[_]: Async: ContextShift, K, V](
+    def resource[F[_]: Async, K, V](
         configs: (String, AnyRef)*
     ): Resource[F, ConsumerApi[F, K, V]] =
       BlockingContext.resource.flatMap(
@@ -162,12 +161,12 @@ object ConsumerApi {
 
     object Generic {
 
-      def resource[F[_]: Async: ContextShift](
+      def resource[F[_]: Async](
           configs: (String, AnyRef)*
       ): Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] =
         ConsumerApi.Avro.resource[F, GenericRecord, GenericRecord](configs: _*)
 
-      def stream[F[_]: Async: ContextShift](
+      def stream[F[_]: Async](
           configs: (String, AnyRef)*
       ): Stream[F, ConsumerApi[F, GenericRecord, GenericRecord]] =
         Stream.resource(resource[F](configs: _*))
@@ -175,7 +174,7 @@ object ConsumerApi {
 
     object Specific {
 
-      def resource[F[_]: Async: ContextShift, K, V](
+      def resource[F[_]: Async, K, V](
           configs: (String, AnyRef)*
       ): Resource[F, ConsumerApi[F, K, V]] =
         ConsumerApi.Avro.resource[F, K, V]((configs.toMap + SpecificAvroReader(true)).toSeq: _*)
@@ -184,7 +183,7 @@ object ConsumerApi {
 
   object Avro4s {
 
-    def resource[F[_]: Async: ContextShift, K: FromRecord, V: FromRecord](
+    def resource[F[_]: Async, K: FromRecord, V: FromRecord](
         configs: (String, AnyRef)*
     ): Resource[F, ConsumerApi[F, K, V]] =
       ConsumerApi.Avro.Generic.resource[F](configs: _*).map(Avro4sConsumerImpl(_))

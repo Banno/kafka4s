@@ -5,7 +5,7 @@ title: Getting Started
 
 # Getting dependency
 
-To use kafka4s in an existing SBT project with Scala 2.12 or a later version, add the following dependencies to your
+To use kafka4s in an existing SBT project with Scala 2.13 or a later version, add the following dependencies to your
 `build.sbt` depending on your needs:
 
 ```scala
@@ -49,10 +49,11 @@ val kafkaBootstrapServers = "localhost:9092" // Change as needed
 ```
 
 ```scala mdoc:compile-only
-AdminApi.createTopicsIdempotent[IO](kafkaBootstrapServers, topic :: Nil).unsafeRunSync
+import cats.effect.unsafe.implicits.global
+AdminApi.createTopicsIdempotent[IO](kafkaBootstrapServers, topic :: Nil).unsafeRunSync()
 ```
 
-### Register our topic schema 
+### Register our topic schema
 
 Let's register a schema for our topic with the schema registry!
 
@@ -75,6 +76,7 @@ val schemaRegistryUri = "http://localhost:8091" // Change as needed
 ```
 
 ```scala mdoc:compile-only
+import cats.effect.unsafe.implicits.global
 SchemaRegistryApi.register[IO, CustomerId, Customer](
   schemaRegistryUri, topicName
 ).unsafeRunSync()
@@ -137,7 +139,10 @@ val avro4sProducer = producer.map(_.toAvro4s[CustomerId, Customer])
 We can now write our typed customer records successfully!
 
 ```scala mdoc:compile-only
-avro4sProducer.use(p => recordsToBeWritten.traverse_(r => p.sendSync(r).flatMap(rmd => IO(println(s"Wrote record to ${rmd}"))))).unsafeRunSync
+import cats.effect.unsafe.implicits.global
+avro4sProducer.use(p =>
+  recordsToBeWritten.traverse_(r => p.sendSync(r).flatMap(rmd => IO(println(s"Wrote record to ${rmd}"))))
+).unsafeRunSync()
 ```
 
 ### Read our records from Kafka
@@ -151,20 +156,18 @@ import com.banno.kafka.consumer._
 
 Now we can create our consumer instance.
 
-By default, kafka4s consumers shift blocking calls to a dedicated `ExecutionContext` backed by a singleton thread pool, to avoid blocking the main work pool's (typically `ExecutionContext.global`) threads, and as a simple synchronization mechanism because the underlying Java client `KafkaConsumer` is not thread-safe. After receiving records, work is then shifted back to the work pool. We'll want an implicit `ContextShift` instance in scope to manage this thread shifting for us.
-
-Here's our `ContextShift`:
-
-```scala mdoc
-import scala.concurrent.ExecutionContext
-implicit val CS = IO.contextShift(ExecutionContext.global)
-```
+By default, `kafka4s` consumers shift blocking calls to a dedicated
+`ExecutionContext` backed by a singleton thread pool, to avoid blocking the main
+work pool's (typically `ExecutionContext.global`) threads, and as a simple
+synchronization mechanism because the underlying Java client `KafkaConsumer` is
+not thread-safe. After receiving records, work is then shifted back to the work
+pool.
 
 And here's our consumer, which is using Avro4s to deserialize the records:
 
 ```scala mdoc
 val consumer = ConsumerApi.Avro4s.resource[IO, CustomerId, Customer](
-  BootstrapServers(kafkaBootstrapServers), 
+  BootstrapServers(kafkaBootstrapServers),
   SchemaRegistryUrl(schemaRegistryUri),
   ClientId("consumer-example"),
   GroupId("consumer-example-group")
@@ -178,7 +181,10 @@ val initialOffsets = Map.empty[TopicPartition, Long] // Start from beginning
 ```
 
 ```scala mdoc:compile-only
-val messages = consumer.use(c => c.assign(topicName, initialOffsets) *> c.recordStream(1.second).take(5).compile.toVector).unsafeRunSync
+import cats.effect.unsafe.implicits.global
+val messages = consumer.use(c =>
+  c.assign(topicName, initialOffsets) *> c.recordStream(1.second).take(5).compile.toVector
+).unsafeRunSync()
 ```
 
 Because the producer and consumer above were created within a `Resource` context, everything was closed and shut down properly.

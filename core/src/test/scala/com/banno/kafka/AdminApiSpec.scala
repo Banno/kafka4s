@@ -2,35 +2,33 @@ package com.banno.kafka
 
 import com.banno.kafka.admin._
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 import org.apache.kafka.clients.admin._
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import scala.concurrent.ExecutionContext
+import munit._
 import scala.concurrent.duration._
 
-class AdminApiSpec extends AnyFlatSpec with Matchers with InMemoryKafka {
-  implicit val defaultTimer = IO.timer(ExecutionContext.global)
-
-  //Probably don't need to test every single AdminClient operation; this is just a sanity check that it is all wired up properly
-
-  "Admin API" should "create topics idempotently" in {
-    val topicName = genTopic
-    def program[F[_]: Timer](admin: AdminApi[F])(implicit F: Sync[F]) =
+class AdminApiSpec extends CatsEffectSuite with DockerizedKafka {
+  // Probably don't need to test every single AdminClient operation; this is
+  // just a sanity check that it is all wired up properly
+  test("Admin API should create topics idempotently") {
+    def program[F[_]: Async](admin: AdminApi[F]) =
       for {
+        topicName <- Sync[F].delay(unsafeRandomId)
         ltr1 <- admin.listTopics
-        ns1 <- F.delay(ltr1.names().get())
+        ns1 <- Sync[F].delay(ltr1.names().get())
         _ <- admin.createTopicsIdempotent(List(new NewTopic(topicName, 1, 1.toShort)))
         _ <- admin.createTopicsIdempotent(List(new NewTopic(topicName, 1, 1.toShort)))
-        _ <- Timer[F].sleep(1.second) // TODO: Better fix
+        _ <- Temporal[F].sleep(1.second) // TODO: Better fix
         ltr2 <- admin.listTopics
-        ns2 <- F.delay(ltr2.names.get())
-      } yield (ns1, ns2)
+        ns2 <- Sync[F].delay(ltr2.names.get())
+      } yield (topicName, ns1, ns2)
 
-    val (before, after) =
-      AdminApi.resource[IO](BootstrapServers(bootstrapServer)).use(program[IO]).unsafeRunSync()
-    before should not contain (topicName)
-    after should contain(topicName)
+    AdminApi.resource[IO](BootstrapServers(bootstrapServer))
+      .use(program[IO])
+      .map { tuple =>
+        val (topicName, before, after) = tuple
+        !before.contains(topicName) && after.contains(topicName)
+      }.assert
   }
 
 }

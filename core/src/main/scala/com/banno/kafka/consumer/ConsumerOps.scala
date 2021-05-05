@@ -16,14 +16,12 @@
 
 package com.banno.kafka.consumer
 
-import scala.collection.compat._
 import cats._
 import cats.implicits._
 import fs2._
 import java.util.ConcurrentModificationException
 
-import cats.effect.Sync
-import cats.effect.concurrent.Ref
+import cats.effect._
 
 import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
@@ -32,7 +30,7 @@ import org.apache.kafka.common.errors.WakeupException
 import org.apache.kafka.clients.consumer._
 import com.banno.kafka._
 import fs2.concurrent.{Signal, SignallingRef}
-import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 sealed trait SeekTo {
   def apply[F[_]](consumer: ConsumerApi[F, _, _], partitions: Iterable[TopicPartition]): F[Unit]
@@ -103,7 +101,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
     consumer.assignment.flatMap(ps => lastOffsets(ps, commitMarkerAdjustment))
 
   def createCaughtUpSignal(lastOffsets: Map[TopicPartition, Long])(
-      implicit F: cats.effect.Concurrent[F]
+      implicit F: Async[F]
   ): F[(Signal[F, Boolean], ConsumerRecord[K, V] => F[Unit])] =
     consumer.assignmentPositions.map(_.view.mapValues(_ - 1).toMap).flatMap { currentOffsets => //position is next offset consumer will read
       val initiallyCaughtUp = lastOffsets.forall {
@@ -148,8 +146,8 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
     }
 
   def createCaughtUpSignal(commitMarkerAdjustment: Boolean = false)(
-      implicit F: cats.effect.ConcurrentEffect[F]
-  ): F[(fs2.concurrent.Signal[F, Boolean], ConsumerRecord[K, V] => F[Unit])] =
+      implicit F: Async[F]
+  ): F[(Signal[F, Boolean], ConsumerRecord[K, V] => F[Unit])] =
     consumer.assignmentLastOffsets(commitMarkerAdjustment).flatMap(los => createCaughtUpSignal(los))
 
   def closeAndRecoverConcurrentModificationWithWakeup(
