@@ -20,7 +20,7 @@ val V = new {
   val scalacheck = "1.15.4"
   val scalacheckEffect = "0.6.0"
   val scalacheckMagnolia = "0.6.0"
-  val munit = "0.7.25"
+  val munit = "0.7.26"
   val munitCE3 = "1.0.2"
   val simpleClient = "0.9.0"
 }
