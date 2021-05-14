@@ -21,7 +21,7 @@ val V = new {
   val scalacheckEffect = "0.6.0"
   val scalacheckMagnolia = "0.6.0"
   val munit = "0.7.25"
-  val munitCE3 = "1.0.2"
+  val munitCE3 = "1.0.3"
   val simpleClient = "0.9.0"
 }
 
