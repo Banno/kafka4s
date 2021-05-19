@@ -164,6 +164,9 @@ inThisBuild(
       },
     }.toList,
     scalacOptions ++= Seq(
+      "-Xsource:3",
+      "-Vimplicits",
+      "-Vtype-diffs",
       "-language:postfixOps",
       "-Xlog-free-terms",
       "-Xlog-free-types",
