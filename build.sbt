@@ -1,20 +1,20 @@
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
 val V = new {
-  val scalaVersion = "2.13.5"
+  val scalaVersion = "2.13.6"
   val crossScalaVersions = List()
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
-  val cats = "2.6.1"
-  val catsEffect = "3.1.0"
+  val cats = "2.6.0"
+  val catsEffect = "3.1.1"
   val confluent = "6.0.2"
   val curator = "5.1.0"
-  val disciplineMunit = "1.0.8"
+  val disciplineMunit = "1.0.9"
   val fs2 = "3.0.2"
   val junit = "4.13"
   val kafka = "2.7.0"
-  val kindProjector = "0.11.3"
-  val log4cats = "2.1.0"
+  val kindProjector = "0.13.0"
+  val log4cats = "2.1.1"
   val log4j = "1.7.30"
   val logback = "1.2.3"
   val scalacheck = "1.15.4"
