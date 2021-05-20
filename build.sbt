@@ -68,7 +68,7 @@ lazy val core = project
 lazy val examples = project
   .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
-  .settings(libraryDependencies += "dev.zio" %% "zio-interop-cats" % "3.0.2.0")
+  .settings(libraryDependencies += "dev.zio" %% "zio-interop-cats" % "3.1.1.0")
   .disablePlugins(MimaPlugin)
   .dependsOn(core)
 
