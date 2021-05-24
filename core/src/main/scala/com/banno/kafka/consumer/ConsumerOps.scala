@@ -235,6 +235,48 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       .eval(assignmentLastOffsets(commitMarkerAdjustment))
       .flatMap(recordsThroughOffsets(_, timeout))
 
+  def recordsThroughOffsetsOrZeros(
+      finalOffsets: Map[TopicPartition, Long],
+      pollTimeout: FiniteDuration,
+      maxZeroCount: Int
+  )(implicit
+      F: MonadError[F, Throwable]
+  ): Stream[F, ConsumerRecords[K, V]] =
+    //position is next offset consumer will read, assume already read up to offset before position
+    Stream.eval(consumer.assignmentPositions.map(_.view.mapValues(_ - 1).toMap)).flatMap {
+      initialOffsets =>
+        consumer
+          .recordsStream(pollTimeout)
+          .mapAccumulate((initialOffsets, 0)) {
+            case ((currentOffsets, zeroCount), records) =>
+              (
+                (
+                  currentOffsets ++ records.lastOffsets,
+                  if (records.count() == 0) zeroCount + 1 else 0
+                ),
+                records
+              )
+          }
+          .takeThrough {
+            case ((currentOffsets, zeroCount), _) =>
+              finalOffsets.exists {
+                case (tp, o) => currentOffsets.get(tp).fold(true)(_ < o)
+              } && zeroCount < maxZeroCount
+          }
+          .map(_._2)
+      //once we've read up to final offset for a partition, we could pause it, so poll would stop returning any newer records from it, and then at end we could resume all partitions
+      //not sure if pausing is really necessary, because this stream just needs to guarantee its read *up to* final offsets; reading *past* them should be fine
+    }
+
+  def recordsThroughAssignmentLastOffsetsOrZeros(
+      pollTimeout: FiniteDuration,
+      maxZeroCount: Int,
+      commitMarkerAdjustment: Boolean = false
+  )(implicit F: MonadError[F, Throwable]): Stream[F, ConsumerRecords[K, V]] =
+    Stream
+      .eval(consumer.assignmentLastOffsets(commitMarkerAdjustment))
+      .flatMap(recordsThroughOffsetsOrZeros(_, pollTimeout, maxZeroCount))
+
   /** Returns a sink that synchronously commits received offsets. */
   def commitSink: Pipe[F, Map[TopicPartition, OffsetAndMetadata], Unit] =
     _.evalMap(consumer.commitSync)
