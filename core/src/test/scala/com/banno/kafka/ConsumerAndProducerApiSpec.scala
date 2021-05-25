@@ -133,10 +133,10 @@ class ConsumerAndProducerApiSpec
             f <- Concurrent[IO].start(c.pollAndRecoverWakeupWithClose(1 second))
             () <- Temporal[IO].sleep(100 millis)
             e1 <- c.closeAndRecoverConcurrentModificationWithWakeup.attempt
-            e2 <- f.joinWithNever.attempt
+            e2 <- f.joinWithNever
           } yield {
             assertEquals(e1.toOption.get, ())
-            assertEquals(e2.toOption.get.count, 0)
+            assertEquals(e2.count, 0)
           }
       }
   }
