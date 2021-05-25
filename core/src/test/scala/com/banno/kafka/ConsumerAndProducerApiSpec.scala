@@ -96,7 +96,7 @@ class ConsumerAndProducerApiSpec
           for {
             _ <- c.assign(topic, Map.empty[TopicPartition, Long])
             f <- Concurrent[IO].start(c.poll(1 second))
-            e <- Temporal[IO].sleep(100 millis) *> c.close.attempt
+            e <- Temporal[IO].sleep(10.millis) *> c.close.attempt
             _ <- f.join
           } yield assertThrowable(e, { case _: ConcurrentModificationException => () })
       )
