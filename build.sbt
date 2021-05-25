@@ -22,6 +22,8 @@ val V = new {
   val scalacheckMagnolia = "0.6.0"
   val munit = "0.7.25"
   val munitCE3 = "1.0.2"
+  val scalatest = "3.2.8"
+  val scalatestPlus = "3.2.3.0"
   val simpleClient = "0.9.0"
 }
 
@@ -58,6 +60,8 @@ lazy val core = project
       "org.scalameta" %% "munit-scalacheck" % V.munit % "test",
       "org.typelevel" %% "scalacheck-effect-munit" % V.scalacheckEffect,
       "org.typelevel" %% "munit-cats-effect-3" % V.munitCE3 % "test",
+      "org.scalatest" %% "scalatest" % V.scalatest % "test",
+      "org.scalatestplus" %% "scalacheck-1-15" % "3.2.8.0" % Test,
       "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % "test",
       "org.typelevel" %% "cats-effect" % V.catsEffect,
       "org.typelevel" %% "cats-laws" % V.cats % "test",
@@ -146,6 +150,7 @@ lazy val commonSettings = Seq(
   ),
   Test / sourceGenerators += (Test / avroScalaGenerate).taskValue,
   watchSources ++= ((Test / avroSourceDirectories).value ** "*.avdl").get,
+  testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oS"),
 )
 
 lazy val contributors = Seq(
