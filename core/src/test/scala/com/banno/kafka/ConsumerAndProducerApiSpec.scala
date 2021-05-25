@@ -112,8 +112,9 @@ class ConsumerAndProducerApiSpec
         c =>
           for {
             _ <- c.assign(topic, Map.empty[TopicPartition, Long])
-            _ <- Concurrent[IO].start(c.wakeup)
-            e <- c.poll(1 second).attempt
+            // _ <- Concurrent[IO].start(c.wakeup)
+            _ <- c.wakeup
+            e <- c.poll(1.second).attempt
           } yield {
             e.left.value shouldBe a[WakeupException]
           }
