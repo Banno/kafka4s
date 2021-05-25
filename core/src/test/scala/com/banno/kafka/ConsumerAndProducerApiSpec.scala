@@ -97,7 +97,7 @@ class ConsumerAndProducerApiSpec
             _ <- c.assign(topic, Map.empty[TopicPartition, Long])
             f <- Concurrent[IO].start(c.poll(1 second))
             e <- Temporal[IO].sleep(10.millis) *> c.close.attempt
-            _ <- f.join
+            _ <- f.joinWithNever
           } yield assertThrowable(e, { case _: ConcurrentModificationException => () })
       )
   }
@@ -133,14 +133,10 @@ class ConsumerAndProducerApiSpec
             f <- Concurrent[IO].start(c.pollAndRecoverWakeupWithClose(1 second))
             () <- Temporal[IO].sleep(100 millis)
             e1 <- c.closeAndRecoverConcurrentModificationWithWakeup.attempt
-            outcome <- f.join
-            e2 <- outcome match {
-              case Outcome.Succeeded(fa) => fa
-              case _ => IO.raiseError(new RuntimeException("Failed!"))
-            }
+            e2 <- f.joinWithNever.attempt
           } yield {
             assertEquals(e1.toOption.get, ())
-            assertEquals(e2.count, 0)
+            assertEquals(e2.toOption.get.count, 0)
           }
       }
   }
