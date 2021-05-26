@@ -95,7 +95,7 @@ class ConsumerAndProducerApiSpec
             _ <- c.assign(topic, Map.empty[TopicPartition, Long])
             f <- Concurrent[IO].start(c.poll(1.second))
             e <- Temporal[IO].sleep(10.millis) *> c.close.attempt
-            _ <- f.joinWithNever
+            _ <- f.join
           } yield {
             e.left.value shouldBe a[ConcurrentModificationException]
           }
@@ -135,10 +135,7 @@ class ConsumerAndProducerApiSpec
             f <- Concurrent[IO].start(c.pollAndRecoverWakeupWithClose(1 second))
             e1 <- Temporal[IO].sleep(100 millis) *> c.closeAndRecoverConcurrentModificationWithWakeup.attempt
             outcome <- f.join
-            e2 <- outcome match {
-              case Outcome.Succeeded(fa) => fa
-              case _ => IO.raiseError(new RuntimeException("Failed!"))
-            }
+            e2 <- outcome.embed(IO.raiseError(new RuntimeException("Canceled pollAndRecoverWakeupWithClose")))
           } yield {
             e1.toOption.get should ===(())
             e2.count should ===(0)
