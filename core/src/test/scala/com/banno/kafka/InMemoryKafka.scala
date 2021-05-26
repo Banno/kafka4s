@@ -7,7 +7,7 @@ import cats.effect.IO
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.apache.kafka.clients.admin.NewTopic
 
-trait InMemoryKafka extends BeforeAndAfterAll { this: Suite =>
+trait DockerizedKafkaSpec extends BeforeAndAfterAll { this: Suite =>
   import cats.effect.unsafe.implicits.global
 
   val log = Slf4jLogger.getLoggerFromClass[IO](this.getClass)

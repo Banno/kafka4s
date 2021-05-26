@@ -1,7 +1,7 @@
 package com.banno.kafka
 
 import org.scalacheck._
-import cats.implicits._
+import cats.syntax.all._
 import cats.effect._
 import org.apache.kafka.clients.producer.ProducerRecord
 
@@ -30,11 +30,8 @@ class ConsumerAndProducerApiSpec
     with ScalaCheckDrivenPropertyChecks
     with Matchers
     with EitherValues
-    with InMemoryKafka {
+    with DockerizedKafkaSpec {
 
-  // implicit val defaultContextShift = IO.contextShift(ExecutionContext.global)
-  // implicit val defaultConcurrent = IO.ioConcurrentEffect(defaultContextShift)
-  // implicit val defaultTimer = IO.timer(ExecutionContext.global)
   import cats.effect.unsafe.implicits.global
 
   implicit def noShrink[T]: Shrink[T] = Shrink.shrinkAny
@@ -112,7 +109,6 @@ class ConsumerAndProducerApiSpec
         c =>
           for {
             _ <- c.assign(topic, Map.empty[TopicPartition, Long])
-            // _ <- Concurrent[IO].start(c.wakeup)
             _ <- c.wakeup
             e <- c.poll(1.second).attempt
           } yield {
