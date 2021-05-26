@@ -90,7 +90,7 @@ class ConsumerAndProducerApiSpec
         c =>
           for {
             _ <- c.assign(topic, Map.empty[TopicPartition, Long])
-            f <- Concurrent[IO].start(c.poll(1.second))
+            f <- Spawn[IO].start(c.poll(1.second))
             e <- Temporal[IO].sleep(10.millis) *> c.close.attempt
             _ <- f.join
           } yield {
@@ -128,7 +128,7 @@ class ConsumerAndProducerApiSpec
         case (c, _) =>
           for {
             _ <- c.assign(topic, Map.empty[TopicPartition, Long])
-            f <- Concurrent[IO].start(c.pollAndRecoverWakeupWithClose(1 second))
+            f <- Spawn[IO].start(c.pollAndRecoverWakeupWithClose(1 second))
             e1 <- Temporal[IO].sleep(100 millis) *> c.closeAndRecoverConcurrentModificationWithWakeup.attempt
             outcome <- f.join
             e2 <- outcome.embed(IO.raiseError(new RuntimeException("Canceled pollAndRecoverWakeupWithClose")))
@@ -150,7 +150,7 @@ class ConsumerAndProducerApiSpec
         case (c, close) =>
           for {
             _ <- c.assign(topic, Map.empty[TopicPartition, Long])
-            _ <- Concurrent[IO].start(c.poll(1 second))
+            _ <- Spawn[IO].start(c.poll(1 second))
             e <- Temporal[IO].sleep(100 millis) *> close.attempt
           } yield {
             e.toOption.get should ===(())
@@ -168,7 +168,7 @@ class ConsumerAndProducerApiSpec
         c =>
           for {
             _ <- c.assign(topic, Map.empty[TopicPartition, Long])
-            _ <- Concurrent[IO].start(Temporal[IO].sleep(100 millis) *> c.wakeup)
+            _ <- Spawn[IO].start(Temporal[IO].sleep(100 millis) *> c.wakeup)
             e <- c.poll(1 second).attempt
           } yield {
             e.left.value shouldBe a[WakeupException]
