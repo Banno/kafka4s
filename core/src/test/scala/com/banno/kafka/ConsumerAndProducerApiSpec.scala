@@ -150,8 +150,8 @@ class ConsumerAndProducerApiSpec
         case (c, close) =>
           for {
             _ <- c.assign(topic, Map.empty[TopicPartition, Long])
-            _ <- Spawn[IO].start(c.poll(1 second))
             e <- Temporal[IO].sleep(100 millis) *> close.attempt
+            _ <- Spawn[IO].start(c.poll(1 second))
           } yield {
             e.toOption.get should ===(())
           }
