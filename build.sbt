@@ -1,27 +1,29 @@
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
 val V = new {
-  val scalaVersion = "2.13.5"
+  val scalaVersion = "2.13.6"
   val crossScalaVersions = List()
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
-  val cats = "2.6.0"
-  val catsEffect = "3.1.0"
+  val cats = "2.6.1"
+  val catsEffect = "3.1.1"
   val confluent = "6.0.2"
   val curator = "5.1.0"
-  val disciplineMunit = "1.0.8"
-  val fs2 = "3.0.2"
+  val disciplineMunit = "1.0.9"
+  val fs2 = "3.0.4"
   val junit = "4.13"
   val kafka = "2.7.0"
-  val kindProjector = "0.11.3"
-  val log4cats = "2.1.0"
+  val kindProjector = "0.13.0"
+  val log4cats = "2.1.1"
   val log4j = "1.7.30"
   val logback = "1.2.3"
   val scalacheck = "1.15.4"
-  val scalacheckEffect = "0.7.1"
-  val scalacheckMagnolia = "0.7.1"
-  val munit = "0.7.25"
-  val munitCE3 = "1.0.2"
+  val scalacheckEffect = "0.6.0"
+  val scalacheckMagnolia = "0.6.0"
+  val munit = "0.7.26"
+  val munitCE3 = "1.0.3"
+  val scalatest = "3.2.9"
+  val scalatestPlus = "3.2.3.0"
   val simpleClient = "0.9.0"
 }
 
@@ -58,6 +60,8 @@ lazy val core = project
       "org.scalameta" %% "munit-scalacheck" % V.munit % "test",
       "org.typelevel" %% "scalacheck-effect-munit" % V.scalacheckEffect,
       "org.typelevel" %% "munit-cats-effect-3" % V.munitCE3 % "test",
+      "org.scalatest" %% "scalatest" % V.scalatest % "test",
+      "org.scalatestplus" %% "scalacheck-1-15" % "3.2.8.0" % Test,
       "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % "test",
       "org.typelevel" %% "cats-effect" % V.catsEffect,
       "org.typelevel" %% "cats-laws" % V.cats % "test",
@@ -104,6 +108,7 @@ lazy val site = project
         "white-color" -> "#FFFFFF",
       ),
       scalacOptions += "-Wconf:cat=deprecation:i",
+      scalacOptions -= "-Xsource:3",
       mdocExtraArguments += "--no-link-hygiene",
       micrositePushSiteWith := GitHub4s,
       micrositeGithubToken := sys.env.get("GITHUB_TOKEN"),
@@ -145,6 +150,7 @@ lazy val commonSettings = Seq(
   ),
   Test / sourceGenerators += (Test / avroScalaGenerate).taskValue,
   watchSources ++= ((Test / avroSourceDirectories).value ** "*.avdl").get,
+  testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oS"),
 )
 
 lazy val contributors = Seq(
@@ -164,6 +170,9 @@ inThisBuild(
       },
     }.toList,
     scalacOptions ++= Seq(
+      "-Xsource:3",
+      "-Vimplicits",
+      "-Vtype-diffs",
       "-language:postfixOps",
       "-Xlog-free-terms",
       "-Xlog-free-types",
