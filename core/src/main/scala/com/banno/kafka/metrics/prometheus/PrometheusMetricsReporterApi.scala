@@ -24,7 +24,7 @@ import cats.syntax.all._
 import com.banno.kafka.metrics.MetricsReporterApi
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import io.prometheus.client._
 import org.apache.kafka.common.MetricName
 import org.apache.kafka.common.metrics.KafkaMetric
