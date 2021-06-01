@@ -1,4 +1,4 @@
-addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.0")
+addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.3")
 addSbtPlugin("com.julianpeeters" % "sbt-avrohugger" % "2.0.0-RC24")
 addSbtPlugin("io.github.davidgregory084" % "sbt-tpolecat" % "0.1.19")
 addSbtPlugin("com.typesafe.sbt" % "sbt-ghpages" % "0.6.3")
