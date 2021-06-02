@@ -1,7 +1,7 @@
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
 val V = new {
-  val scalaVersion = "2.13.5"
+  val scalaVersion = "2.13.6"
   val crossScalaVersions = List()
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
@@ -9,17 +9,17 @@ val V = new {
   val confluent = "6.0.2"
   val curator = "5.1.0"
   val discipline = "2.1.4"
-  val fs2 = "2.5.5"
+  val fs2 = "2.5.6"
   val github4s = "0.28.4"
   val junit = "4.13"
   val kafka = "2.7.0"
-  val kindProjector = "0.11.3"
+  val kindProjector = "0.13.0"
   val log4cats = "1.3.1"
   val log4j = "1.7.30"
   val logback = "1.2.3"
   val scalacheck = "1.15.4"
   val scalacheckMagnolia = "0.6.0"
-  val scalatest = "3.2.8"
+  val scalatest = "3.2.9"
   val scalatestPlus = "3.2.3.0"
   val simpleClient = "0.9.0"
 }
@@ -159,6 +159,9 @@ inThisBuild(
       },
     }.toList,
     scalacOptions ++= Seq(
+      "-Xsource:3",
+      "-Vimplicits",
+      "-Vtype-diffs",
       "-language:postfixOps",
       "-Xlog-free-terms",
       "-Xlog-free-types",

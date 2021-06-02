@@ -3,7 +3,7 @@ on: [push, pull_request]
 env:
   CI: true
   CI_SNAPSHOT_RELEASE: +publishSigned
-  SCALA_VERSION: 2.13.5
+  SCALA_VERSION: 2.13.6
 jobs:
   validate:
     name: Scala ${{ matrix.scala }}, Java ${{ matrix.java }}
@@ -12,9 +12,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # java: [adopt@1.8.0-272, adopt@1.11.0-9, adopt@1.15.0-1]
         java: [adopt@1.11.0-9]
-        scala: [2.13.5]
+        scala: [2.13.6]
     env:
       SCALA_VERSION: ${{ matrix.scala }}
     steps:
