@@ -16,11 +16,16 @@
 
 package com.banno.kafka
 
-import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.clients.consumer.OffsetAndMetadata
+import cats._
 
-case class TopicPartitionOffset(topic: String, partition: Int, offset: Long)
-object TopicPartitionOffset {
-  implicit def toMap(o: TopicPartitionOffset): Map[TopicPartition, OffsetAndMetadata] =
-    Map(new TopicPartition(o.topic, o.partition) -> new OffsetAndMetadata(o.offset))
+sealed trait TopicName
+
+object TopicName {
+  private final case class Impl(name: String) extends TopicName {
+    override def toString(): String = name
+  }
+
+  def apply(name: String): TopicName = Impl(name)
+
+  implicit val showName: Show[TopicName] = Show.fromToString
 }
