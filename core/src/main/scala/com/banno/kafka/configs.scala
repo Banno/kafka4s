@@ -77,25 +77,25 @@ object EnableAutoCommit {
     ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> eac.b.toString
 }
 
-case class KeySerializerClass(c: Class[_])
+case class KeySerializerClass(c: Class[?])
 object KeySerializerClass {
   implicit def toConfig(ksc: KeySerializerClass): (String, AnyRef) =
     ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG -> ksc.c.getName
 }
 
-case class ValueSerializerClass(c: Class[_])
+case class ValueSerializerClass(c: Class[?])
 object ValueSerializerClass {
   implicit def toConfig(vsc: ValueSerializerClass): (String, AnyRef) =
     ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG -> vsc.c.getName
 }
 
-case class KeyDeserializerClass(c: Class[_])
+case class KeyDeserializerClass(c: Class[?])
 object KeyDeserializerClass {
   implicit def toConfig(kdc: KeyDeserializerClass): (String, AnyRef) =
     ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG -> kdc.c.getName
 }
 
-case class ValueDeserializerClass(c: Class[_])
+case class ValueDeserializerClass(c: Class[?])
 object ValueDeserializerClass {
   implicit def toConfig(vdc: ValueDeserializerClass): (String, AnyRef) =
     ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG -> vdc.c.getName

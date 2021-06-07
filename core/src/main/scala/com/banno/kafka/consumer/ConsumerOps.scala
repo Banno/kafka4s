@@ -34,14 +34,14 @@ import fs2.concurrent.{Signal, SignallingRef}
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 sealed trait SeekTo {
-  def apply[F[_]](consumer: ConsumerApi[F, _, _], partitions: Iterable[TopicPartition]): F[Unit]
+  def apply[F[_]](consumer: ConsumerApi[F, ?, ?], partitions: Iterable[TopicPartition]): F[Unit]
 }
 case object SeekToBeginning extends SeekTo {
-  def apply[F[_]](consumer: ConsumerApi[F, _, _], partitions: Iterable[TopicPartition]): F[Unit] =
+  def apply[F[_]](consumer: ConsumerApi[F, ?, ?], partitions: Iterable[TopicPartition]): F[Unit] =
     consumer.seekToBeginning(partitions)
 }
 case object SeekToEnd extends SeekTo {
-  def apply[F[_]](consumer: ConsumerApi[F, _, _], partitions: Iterable[TopicPartition]): F[Unit] =
+  def apply[F[_]](consumer: ConsumerApi[F, ?, ?], partitions: Iterable[TopicPartition]): F[Unit] =
     consumer.seekToEnd(partitions)
 }
 

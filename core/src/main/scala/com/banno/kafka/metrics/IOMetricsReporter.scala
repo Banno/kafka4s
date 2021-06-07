@@ -27,7 +27,7 @@ abstract class IOMetricsReporter(reporter: MetricsReporterApi[IO]) extends Metri
 
   //TODO probably should run these a bit safer, like attempt, log non-fatal, etc
 
-  override def configure(configs: JMap[String, _]): Unit =
+  override def configure(configs: JMap[String, ?]): Unit =
     reporter.configure(configs.asScala.toMap).unsafeRunSync()
 
   override def init(metrics: JList[KafkaMetric]): Unit =

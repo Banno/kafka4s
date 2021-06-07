@@ -26,7 +26,7 @@ object CurrentOffsetCounter {
 
   def apply[F[_]](cr: CollectorRegistry, prefix: String, clientId: String)(
       implicit F: Sync[F]
-  ): F[ConsumerRecord[_, _] => F[Unit]] =
+  ): F[ConsumerRecord[?, ?] => F[Unit]] =
     F.delay {
         Counter
           .build()
@@ -35,7 +35,7 @@ object CurrentOffsetCounter {
           .labelNames("client_id", "topic", "partition")
           .register(cr)
       }
-      .map { counter => (record: ConsumerRecord[_, _]) =>
+      .map { counter => (record: ConsumerRecord[?, ?]) =>
         for {
           value <- F.delay(counter.labels(clientId, record.topic, record.partition.toString).get)
           delta = max(0, record.offset.toDouble - value)
