@@ -35,7 +35,7 @@ final case class FatalError(error: Throwable)
 
 object KafkaTransactionError {
   // Exception-handling is described in the javadocs for the KafkaProducer send and commitTransaction methods.
-  def apply[F[_]](e: Throwable, p: ProducerApi[F, _, _])(
+  def apply[F[_]](e: Throwable, p: ProducerApi[F, ?, ?])(
       implicit F: ApplicativeError[F, Throwable]
   ): F[Unit] = e match {
     // This fatal exception indicates that another producer with the same transactional.id has been started. When you encounter this exception, you must close the producer instance.

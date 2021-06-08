@@ -59,7 +59,7 @@ trait PartitionQueries[F[_]] {
 
 object PartitionQueries {
   def apply[F[_]](
-      consumer: ConsumerApi[F, _, _]
+      consumer: ConsumerApi[F, ?, ?]
   ): PartitionQueries[F] =
     new PartitionQueries[F] {
       override def beginningOffsets(
