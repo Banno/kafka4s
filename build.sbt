@@ -10,6 +10,7 @@ val V = new {
   val confluent = "6.0.3"
   val curator = "5.1.0"
   val disciplineMunit = "1.0.9"
+  val epimetheus = "0.5.0-M1"
   val fs2 = "3.0.6"
   val junit = "4.13"
   val kafka = "2.7.0"
@@ -146,6 +147,7 @@ lazy val commonSettings = Seq(
     "io.confluent" % "kafka-avro-serializer" % V.confluent,
     "com.sksamuel.avro4s" %% "avro4s-core" % V.avro4s,
     "io.prometheus" % "simpleclient" % V.simpleClient,
+    "io.chrisdavenport" %% "epimetheus" % V.epimetheus,
     "org.typelevel" %% "log4cats-slf4j" % V.log4cats,
   ),
   Test / sourceGenerators += (Test / avroScalaGenerate).taskValue,
