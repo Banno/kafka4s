@@ -35,6 +35,24 @@ class PrometheusMetricsReporterApiSpec extends CatsEffectSuite with DockerizedKa
   // have throttled resources compared to our development machines.
   override val munitTimeout = Duration(1, MINUTES)
 
+  private def assertTotals(
+    registry: CollectorRegistry,
+    metric: String,
+    expected: Option[List[Double]],
+  ): Unit =
+    assertEquals(
+      registry.metricFamilySamples.asScala
+        .find(_.name == metric)
+        .map(
+          _.samples
+            .asScala
+            .filter(_.name == s"${metric}_total")
+            .map(_.value)
+            .toList
+        ),
+      expected
+    )
+
   // When Kafka clients change their metrics, this test will help identify the
   // changes we need to make
   test("Prometheus reporter should register Prometheus collectors for all known Kafka metrics and unregister on close") {
@@ -85,11 +103,10 @@ class PrometheusMetricsReporterApiSpec extends CatsEffectSuite with DockerizedKa
                             registry.metricFamilySamples.asScala.count(_.name.startsWith("kafka_producer")),
                             56
                           )
-                          () = assertEquals(
-                            registry.metricFamilySamples.asScala
-                              .find(_.name == "kafka_producer_record_send_total")
-                              .map(_.samples.asScala.toList.map(_.value)),
-                            List(2.0).some
+                          () = assertTotals(
+                            registry,
+                            "kafka_producer_record_send",
+                            List(2.0).some,
                           )
 
                           () = assertEquals(
@@ -97,17 +114,15 @@ class PrometheusMetricsReporterApiSpec extends CatsEffectSuite with DockerizedKa
                               .count(_.name.startsWith("kafka_consumer")),
                             50
                           )
-                          () = assertEquals(
-                            registry.metricFamilySamples.asScala
-                              .find(_.name == "kafka_consumer_records_consumed_total")
-                              .map(_.samples.asScala.toList.map(_.value)),
-                            List(2.0, 2.0).some
+                          () = assertTotals(
+                            registry,
+                            "kafka_consumer_records_consumed",
+                            List(2.0, 2.0).some,
                           )
-                          () = assertEquals(
-                            registry.metricFamilySamples.asScala
-                              .find(_.name == "kafka_consumer_topic_records_consumed_total")
-                              .map(_.samples.asScala.toList.map(_.value)),
-                            List(2.0, 2.0).some
+                          () = assertTotals(
+                            registry,
+                            "kafka_consumer_topic_records_consumed",
+                            List(2.0, 2.0).some,
                           )
                         } yield ()
                     )
