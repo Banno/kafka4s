@@ -7,24 +7,25 @@ val V = new {
   val betterMonadicFor = "0.3.1"
   val cats = "2.6.1"
   val catsEffect = "3.1.1"
-  val confluent = "6.0.2"
+  val confluent = "6.0.3"
   val curator = "5.1.0"
   val disciplineMunit = "1.0.9"
-  val fs2 = "3.0.4"
+  val epimetheus = "0.5.0-M1"
+  val fs2 = "3.0.6"
   val junit = "4.13"
   val kafka = "2.7.0"
   val kindProjector = "0.13.0"
   val log4cats = "2.1.1"
-  val log4j = "1.7.30"
+  val log4j = "1.7.31"
   val logback = "1.2.3"
   val scalacheck = "1.15.4"
-  val scalacheckEffect = "0.7.1"
-  val scalacheckMagnolia = "0.7.1"
-  val munit = "0.7.26"
-  val munitCE3 = "1.0.3"
+  val scalacheckEffect = "0.6.0"
+  val scalacheckMagnolia = "0.6.0"
+  val munit = "0.7.27"
+  val munitCE3 = "1.0.5"
   val scalatest = "3.2.9"
   val scalatestPlus = "3.2.3.0"
-  val simpleClient = "0.9.0"
+  val simpleClient = "0.11.0"
 }
 
 lazy val kafka4s = project
@@ -146,6 +147,7 @@ lazy val commonSettings = Seq(
     "io.confluent" % "kafka-avro-serializer" % V.confluent,
     "com.sksamuel.avro4s" %% "avro4s-core" % V.avro4s,
     "io.prometheus" % "simpleclient" % V.simpleClient,
+    "io.chrisdavenport" %% "epimetheus" % V.epimetheus,
     "org.typelevel" %% "log4cats-slf4j" % V.log4cats,
   ),
   Test / sourceGenerators += (Test / avroScalaGenerate).taskValue,

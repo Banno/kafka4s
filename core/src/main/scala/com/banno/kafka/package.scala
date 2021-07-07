@@ -222,7 +222,7 @@ package object kafka {
   implicit object SerializerContravariant extends Contravariant[Serializer] {
     def contramap[A, B](fa: Serializer[A])(f: B => A): Serializer[B] = new Serializer[B] {
       override def close(): Unit = fa.close()
-      override def configure(configs: JMap[String, _], isKey: Boolean): Unit =
+      override def configure(configs: JMap[String, ?], isKey: Boolean): Unit =
         fa.configure(configs, isKey)
       def serialize(topic: String, data: B): Array[Byte] = fa.serialize(topic, f(data))
     }
@@ -232,7 +232,7 @@ package object kafka {
   implicit object DeserializerFunctor extends Functor[Deserializer] {
     def map[A, B](fa: Deserializer[A])(f: A => B): Deserializer[B] = new Deserializer[B] {
       override def close(): Unit = fa.close()
-      override def configure(configs: JMap[String, _], isKey: Boolean): Unit =
+      override def configure(configs: JMap[String, ?], isKey: Boolean): Unit =
         fa.configure(configs, isKey)
       def deserialize(topic: String, data: Array[Byte]): B = f(fa.deserialize(topic, data))
     }

@@ -32,7 +32,7 @@ abstract class IOMetricsReporter(reporter: MetricsReporterApi[IO]) extends Metri
   // impurity, but it would require a redesign.
   implicit val runtime: IORuntime = IORuntime.global
 
-  override def configure(configs: JMap[String, _]): Unit =
+  override def configure(configs: JMap[String, ?]): Unit =
     reporter.configure(configs.asScala.toMap).unsafeRunSync()
 
   override def init(metrics: JList[KafkaMetric]): Unit =

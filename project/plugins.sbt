@@ -1,6 +1,6 @@
-addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.0")
+addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.3")
 addSbtPlugin("com.julianpeeters" % "sbt-avrohugger" % "2.0.0-RC24")
-addSbtPlugin("io.github.davidgregory084" % "sbt-tpolecat" % "0.1.19")
+addSbtPlugin("io.github.davidgregory084" % "sbt-tpolecat" % "0.1.20")
 addSbtPlugin("com.typesafe.sbt" % "sbt-ghpages" % "0.6.3")
 addSbtPlugin("com.github.cb372" % "sbt-explicit-dependencies" % "0.2.16")
 addSbtPlugin("com.geirsson" % "sbt-ci-release" % "1.5.7")
