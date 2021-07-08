@@ -137,7 +137,7 @@ object EpimetheusMetricsReporterApi {
     ): MetricAdapter[F] =
       Impl(
         NonEmptyList.one(metric),
-        null,
+        gauge.collector,
         m => m.value.flatMap(gauge.label(m).set(_))
       )
 
@@ -147,7 +147,7 @@ object EpimetheusMetricsReporterApi {
     ): MetricAdapter[F] =
       Impl(
         NonEmptyList.one(metric),
-        null,
+        counter.collector,
         m =>
           m.value.flatMap(
             v => {
