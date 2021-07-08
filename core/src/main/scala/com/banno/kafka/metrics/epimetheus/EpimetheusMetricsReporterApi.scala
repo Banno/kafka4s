@@ -183,7 +183,7 @@ object EpimetheusMetricsReporterApi {
         }).getOrElse((adapterMap, none[Collector]))
       }.flatMap(_.traverse_(c => collectorRegistry.unregister(c)))
 
-    def updateMetricsPeriodically: Stream[F, Unit] =
+    private def updateMetricsPeriodically: Stream[F, Unit] =
       for {
         _ <- Stream.eval(updating.set(true))
         _ <- Stream.eval(log.debug(show"Updating ${prefix} Epimetheus metrics every ${updatePeriod}"))
@@ -207,7 +207,7 @@ object EpimetheusMetricsReporterApi {
 
     val ignore = Applicative[F].unit
 
-    def tryAdapter(
+    private def tryAdapter(
         metric: KafkaMetric,
         name: Name,
         create: MetricSource[F] => F[MetricAdapter[F]]
@@ -216,7 +216,7 @@ object EpimetheusMetricsReporterApi {
         name <- (prefix |+| Name("_") |+| name).pure[F]
         source = MetricSource(metric, name)
         maybeAdapter <- adapters.get.map(_.get(name))
-        adapter <- maybeAdapter.fold[F[MetricAdapter[F]]](create(source))(_.add(source).pure[F])
+        adapter <- maybeAdapter.fold(create(source))(_.add(source).pure[F])
         _ <- adapters.update(_ + (name -> adapter))
       } yield ()
 
