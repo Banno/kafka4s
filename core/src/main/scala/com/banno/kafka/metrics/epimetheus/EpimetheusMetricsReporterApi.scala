@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.banno.kafka.metrics.prometheus
+package com.banno.kafka.metrics.epimetheus
 
 import cats._
 import cats.data._
@@ -898,7 +898,7 @@ object EpimetheusMetricsReporterApi {
       }
     }
 
-  private val defaultUpdatePeriod = 10 seconds
+  val defaultUpdatePeriod = 10 seconds
 
   def producer[F[_]: Async](
     updatePeriod: FiniteDuration = defaultUpdatePeriod

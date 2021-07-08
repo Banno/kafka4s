@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.banno.kafka.metrics.prometheus
+package com.banno.kafka.metrics.epimetheus
 
 import com.banno.kafka.metrics._
 import cats.effect.IO
