@@ -36,7 +36,8 @@ object EpimetheusMetricsReporterApi {
 
   def log[G[_]: Sync] = Slf4jLogger.getLoggerFromClass(this.getClass)
 
-  def underscore(s: String): String = s.replaceAll("""\W""", "_")
+  def underscore(s: String): Either[IllegalArgumentException, Label] =
+    Label.impl(s.replaceAll("""\W""", "_"))
 
   case class MetricId(group: String, name: String, tags: List[String])
   object MetricId {
@@ -48,19 +49,23 @@ object EpimetheusMetricsReporterApi {
       )
   }
 
-  case class MetricSource[F[_]](
+  case class MetricSource[F[_]: Sync](
       metric: KafkaMetric,
       name: Name,
-  )(implicit F: Sync[F]) {
-    val sortedTags: List[(String, String)] =
+  ) {
+    private val sortedTags: F[List[(Label, String)]] =
       metric.metricName.tags.asScala.toList
-        .map { case (k, v) => (underscore(k), v) }
-        .sortBy(_._1)
-    val labelNames: List[Label] = sortedTags.map(x => Label.impl(x._1).toOption.get /* TODO */)
-    val labels: List[String] = sortedTags.map(_._2)
-    val help: String = Option(metric.metricName.description)
+        .traverse { case (k, v) => underscore(k).liftTo[F].map((_, v)) }
+        .map(_.sortBy(_._1.show))
+
+    val labelNames: F[List[Label]] = sortedTags.map(_.map(_._1))
+
+    val labels: F[List[String]] = sortedTags.map(_.map(_._2))
+
+    private val help: String = Option(metric.metricName.description)
       .filter(_.trim.nonEmpty)
       .getOrElse("Kafka client metric (no description specified)")
+
     def value: F[Double] =
       // TODO can probably do better than this...
       Sync[F].delay(metric.metricValue.toString.toDouble).recover { case _ => 0 }
@@ -164,7 +169,7 @@ object EpimetheusMetricsReporterApi {
 
   abstract class EpimetheusMetricsReporterApi[F[_]: Async](
       protected val prefix: Name,
-      protected val adapters: Ref[F, Map[String, MetricAdapter[F]]],
+      protected val adapters: Ref[F, Map[Name, MetricAdapter[F]]],
       protected val updating: SignallingRef[F, Boolean],
       protected val updatePeriod: FiniteDuration,
       private val collectorRegistry: CollectorRegistry[F],
@@ -205,21 +210,19 @@ object EpimetheusMetricsReporterApi {
     def tryAdapter(
         metric: KafkaMetric,
         name: Name,
-        //additionalTags: Map[String, String],
         create: MetricSource[F] => F[MetricAdapter[F]]
     ): F[Unit] =
       for {
         name <- (prefix |+| Name("_") |+| name).pure[F]
-        source = MetricSource(metric, name/*, additionalTags*/)
-        maybeAdapter <- adapters.get.map(_.get(name.show))
+        source = MetricSource(metric, name)
+        maybeAdapter <- adapters.get.map(_.get(name))
         adapter <- maybeAdapter.fold[F[MetricAdapter[F]]](create(source))(_.add(source).pure[F])
-        _ <- adapters.update(_ + (name.show -> adapter))
+        _ <- adapters.update(_ + (name -> adapter))
       } yield ()
 
     def adapter(
         metric: KafkaMetric,
         name: Name,
-        /*additionalTags: Map[String, String],*/
         create: MetricSource[F] => F[MetricAdapter[F]]
     ): F[Unit] =
       Stream
@@ -227,14 +230,14 @@ object EpimetheusMetricsReporterApi {
           delay = 100.millis,
           nextDelay = identity,
           maxAttempts = 5,
-          fo = tryAdapter(metric, name, /*additionalTags,*/ create)
+          fo = tryAdapter(metric, name, create)
         )
         .compile
         .drain
   }
 
   def producer[F[_]](
-      adapters: Ref[F, Map[String, MetricAdapter[F]]],
+      adapters: Ref[F, Map[Name, MetricAdapter[F]]],
       updating: SignallingRef[F, Boolean],
       registry: CollectorRegistry[F],
       updatePeriod: FiniteDuration
@@ -471,7 +474,7 @@ object EpimetheusMetricsReporterApi {
     }
 
   def consumer[F[_]](
-      adapters: Ref[F, Map[String, MetricAdapter[F]]],
+      adapters: Ref[F, Map[Name, MetricAdapter[F]]],
       updating: SignallingRef[F, Boolean],
       registry: CollectorRegistry[F],
       updatePeriod: FiniteDuration
@@ -914,7 +917,7 @@ object EpimetheusMetricsReporterApi {
       updatePeriod: FiniteDuration,
   ): F[MetricsReporterApi[F]] =
     for {
-      adapters <- Ref.of[F, Map[String, MetricAdapter[F]]](Map.empty)
+      adapters <- Ref.of[F, Map[Name, MetricAdapter[F]]](Map.empty)
       updating <- SignallingRef[F, Boolean](false)
     } yield producer[F](adapters, updating, registry, updatePeriod)
 
@@ -928,7 +931,7 @@ object EpimetheusMetricsReporterApi {
       updatePeriod: FiniteDuration
   ): F[MetricsReporterApi[F]] =
     for {
-      adapters <- Ref.of[F, Map[String, MetricAdapter[F]]](Map.empty)
+      adapters <- Ref.of[F, Map[Name, MetricAdapter[F]]](Map.empty)
       updating <- SignallingRef[F, Boolean](false)
     } yield consumer[F](adapters, updating, registry, updatePeriod)
 }
