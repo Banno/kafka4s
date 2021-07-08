@@ -33,6 +33,19 @@ import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.math.max
 
+/* Because the metric collection and adaption here is so dynamic, and because we
+ * already had a working Prometheus version written when we went to switch to
+ * Epimetheus, this is Epimetheus on the outside, and Prometheus on the inside.
+ * If we wanted to statically specify the labels, by hand, for every metric we
+ * are dealing with, and if the following Epimetheus PR gets merged:
+ *   https://github.com/davenverse/epimetheus/pull/244
+ * then we could convert to Epimetheus internally. This would save us some
+ * `Sync.delay` (but not all of it, because some of it is on the Kafka side, not
+ * the Prometheus side). It also would not simply the code much---it might
+ * complicate parts of it---because of the mismatch of the fundamental structure
+ * of the JMX metric system versus the Prometheus one, which is one of the
+ * primary things solved by this code.
+ */
 object EpimetheusMetricsReporterApi {
 
   private def log[G[_]: Sync] = Slf4jLogger.getLoggerFromClass(this.getClass)
