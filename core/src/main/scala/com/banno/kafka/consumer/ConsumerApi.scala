@@ -17,6 +17,8 @@
 package com.banno.kafka.consumer
 
 import fs2.Stream
+import cats._
+import cats.arrow._
 import cats.effect._
 import cats.syntax.all._
 import java.util.regex.Pattern
@@ -67,6 +69,86 @@ trait ConsumerApi[F[_], K, V] {
   def unsubscribe: F[Unit]
 
   def partitionQueries: PartitionQueries[F]
+
+  final def mapK[G[_]](f: F ~> G): ConsumerApi[G, K, V] = {
+    val self = this
+    new ConsumerApi[G, K, V] {
+      override def assign(partitions: Iterable[TopicPartition]): G[Unit] =
+        f(self.assign(partitions))
+      override def assignment: G[Set[TopicPartition]] =
+        f(self.assignment)
+
+      override def close: G[Unit] =
+        f(self.close)
+      override def close(timeout: FiniteDuration): G[Unit] =
+        f(self.close(timeout))
+
+      override def commitAsync: G[Unit] =
+        f(self.commitAsync)
+      override def commitAsync(
+          offsets: Map[TopicPartition, OffsetAndMetadata],
+          callback: OffsetCommitCallback
+      ): G[Unit] =
+        f(self.commitAsync(offsets, callback))
+      override def commitAsync(callback: OffsetCommitCallback): G[Unit] =
+        f(self.commitAsync(callback))
+      override def commitSync: G[Unit] =
+        f(self.commitSync)
+      override def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): G[Unit] =
+        f(self.commitSync(offsets))
+
+      override def listTopics: G[Map[String, Seq[PartitionInfo]]] =
+        f(self.listTopics)
+      override def listTopics(timeout: FiniteDuration): G[Map[String, Seq[PartitionInfo]]] =
+        f(self.listTopics(timeout))
+      override def metrics: G[Map[MetricName, Metric]] =
+        f(self.metrics)
+
+      override def pause(partitions: Iterable[TopicPartition]): G[Unit] =
+        f(self.pause(partitions))
+      override def paused: G[Set[TopicPartition]] =
+        f(self.paused)
+      override def poll(timeout: FiniteDuration): G[ConsumerRecords[K, V]] =
+        f(self.poll(timeout))
+      override def position(partition: TopicPartition): G[Long] =
+        f(self.position(partition))
+      override def resume(partitions: Iterable[TopicPartition]): G[Unit] =
+        f(self.resume(partitions))
+      override def seek(partition: TopicPartition, offset: Long): G[Unit] =
+        f(self.seek(partition, offset))
+      override def seekToBeginning(partitions: Iterable[TopicPartition]): G[Unit] =
+        f(self.seekToBeginning(partitions))
+      override def seekToEnd(partitions: Iterable[TopicPartition]): G[Unit] =
+        f(self.seekToEnd(partitions))
+      override def subscribe(topics: Iterable[String]): G[Unit] =
+        f(self.subscribe(topics))
+      override def subscribe(topics: Iterable[String], callback: ConsumerRebalanceListener): G[Unit] =
+        f(self.subscribe(topics, callback))
+      override def subscribe(pattern: Pattern): G[Unit] =
+        f(self.subscribe(pattern))
+      override def subscribe(pattern: Pattern, callback: ConsumerRebalanceListener): G[Unit] =
+        f(self.subscribe(pattern, callback))
+      override def subscription: G[Set[String]] =
+        f(self.subscription)
+      override def unsubscribe: G[Unit] =
+        f(self.unsubscribe)
+
+      override def partitionQueries: PartitionQueries[G] =
+        self.partitionQueries.mapK(f)
+    }
+  }
+}
+
+object ShiftingConsumer {
+  def apply[F[_]: Async, K, V](
+    c: ConsumerApi[F, K, V],
+    blockingContext: ExecutionContext,
+  ): ConsumerApi[F, K, V] =
+    c.mapK(
+      FunctionK.liftFunction(
+        Async[F].evalOn(_, blockingContext)
+      )
+    )
 }
 
 object ConsumerApi {
@@ -109,7 +191,7 @@ object ConsumerApi {
       e =>
         Resource.make(
           createKafkaConsumer[F, K, V](keyDeserializer, valueDeserializer, configs: _*)
-            .map(c => ShiftingConsumerImpl.create(ConsumerImpl(c), e))
+            .map(c => ShiftingConsumer(ConsumerImpl(c), e))
         )(_.close)
     )
 
@@ -139,7 +221,7 @@ object ConsumerApi {
                   KeyDeserializerClass(classOf[KafkaAvroDeserializer]) +
                   ValueDeserializerClass(classOf[KafkaAvroDeserializer])
               ).toSeq: _*
-            ).map(c => ShiftingConsumerImpl.create(ConsumerImpl(c), e))
+            ).map(c => ShiftingConsumer(ConsumerImpl(c), e))
           )(_.close)
       )
 
