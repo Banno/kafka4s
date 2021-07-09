@@ -101,7 +101,6 @@ case class ShiftingConsumerImpl[F[_]: Async, K, V](
     Async[F].evalOn(c.subscribe(pattern, callback), blockingContext)
   def subscription: F[Set[String]] = Async[F].evalOn(c.subscription, blockingContext)
   def unsubscribe: F[Unit] = Async[F].evalOn(c.unsubscribe, blockingContext)
-  def wakeup: F[Unit] = c.wakeup //TODO wakeup is the one method that is thread-safe, right?
 }
 
 object ShiftingConsumerImpl {

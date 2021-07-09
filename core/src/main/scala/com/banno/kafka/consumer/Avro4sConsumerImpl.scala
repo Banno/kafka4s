@@ -92,5 +92,4 @@ case class Avro4sConsumerImpl[F[_]: Functor, K: FromRecord, V: FromRecord](
     c.subscribe(pattern, callback)
   def subscription: F[Set[String]] = c.subscription
   def unsubscribe: F[Unit] = c.unsubscribe
-  def wakeup: F[Unit] = c.wakeup
 }

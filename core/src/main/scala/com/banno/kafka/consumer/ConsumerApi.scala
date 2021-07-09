@@ -82,7 +82,6 @@ trait ConsumerApi[F[_], K, V] {
   def subscribe(pattern: Pattern, callback: ConsumerRebalanceListener): F[Unit]
   def subscription: F[Set[String]]
   def unsubscribe: F[Unit]
-  def wakeup: F[Unit]
 }
 
 object ConsumerApi {
