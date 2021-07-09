@@ -32,64 +32,42 @@ import com.banno.kafka._
 case class Avro4sConsumerImpl[F[_]: Functor, K: FromRecord, V: FromRecord](
     c: ConsumerApi[F, GenericRecord, GenericRecord]
 ) extends ConsumerApi[F, K, V] {
-  def assign(partitions: Iterable[TopicPartition]): F[Unit] = c.assign(partitions)
-  def assignment: F[Set[TopicPartition]] = c.assignment
-  def beginningOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
-    c.beginningOffsets(partitions)
-  def beginningOffsets(
-      partitions: Iterable[TopicPartition],
-      timeout: FiniteDuration
-  ): F[Map[TopicPartition, Long]] =
-    c.beginningOffsets(partitions, timeout)
-  def close: F[Unit] = c.close
-  def close(timeout: FiniteDuration): F[Unit] = c.close(timeout)
-  def commitAsync: F[Unit] = c.commitAsync
-  def commitAsync(
+  override def assign(partitions: Iterable[TopicPartition]): F[Unit] = c.assign(partitions)
+  override def assignment: F[Set[TopicPartition]] = c.assignment
+
+  override def close: F[Unit] = c.close
+  override def close(timeout: FiniteDuration): F[Unit] = c.close(timeout)
+  override def commitAsync: F[Unit] = c.commitAsync
+  override def commitAsync(
       offsets: Map[TopicPartition, OffsetAndMetadata],
       callback: OffsetCommitCallback
   ): F[Unit] = c.commitAsync(offsets, callback)
-  def commitAsync(callback: OffsetCommitCallback): F[Unit] = c.commitAsync(callback)
-  def commitSync: F[Unit] = c.commitSync
-  def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] = c.commitSync(offsets)
-  def committed(partition: Set[TopicPartition]): F[Map[TopicPartition, OffsetAndMetadata]] =
-    c.committed(partition)
-  def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
-    c.endOffsets(partitions)
-  def endOffsets(
-      partitions: Iterable[TopicPartition],
-      timeout: FiniteDuration
-  ): F[Map[TopicPartition, Long]] = c.endOffsets(partitions, timeout)
-  def listTopics: F[Map[String, Seq[PartitionInfo]]] = c.listTopics
-  def listTopics(timeout: FiniteDuration): F[Map[String, Seq[PartitionInfo]]] =
+  override def commitAsync(callback: OffsetCommitCallback): F[Unit] = c.commitAsync(callback)
+  override def commitSync: F[Unit] = c.commitSync
+  override def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] = c.commitSync(offsets)
+
+  override def listTopics: F[Map[String, Seq[PartitionInfo]]] = c.listTopics
+  override def listTopics(timeout: FiniteDuration): F[Map[String, Seq[PartitionInfo]]] =
     c.listTopics(timeout)
-  def metrics: F[Map[MetricName, Metric]] = c.metrics
-  def offsetsForTimes(
-      timestampsToSearch: Map[TopicPartition, Long]
-  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
-    c.offsetsForTimes(timestampsToSearch)
-  def offsetsForTimes(
-      timestampsToSearch: Map[TopicPartition, Long],
-      timeout: FiniteDuration
-  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
-    c.offsetsForTimes(timestampsToSearch, timeout)
-  def partitionsFor(topic: String): F[Seq[PartitionInfo]] = c.partitionsFor(topic)
-  def partitionsFor(topic: String, timeout: FiniteDuration): F[Seq[PartitionInfo]] =
-    c.partitionsFor(topic, timeout)
-  def pause(partitions: Iterable[TopicPartition]): F[Unit] = c.pause(partitions)
-  def paused: F[Set[TopicPartition]] = c.paused
-  def poll(timeout: FiniteDuration): F[ConsumerRecords[K, V]] =
+  override def metrics: F[Map[MetricName, Metric]] = c.metrics
+
+  override def pause(partitions: Iterable[TopicPartition]): F[Unit] = c.pause(partitions)
+  override def paused: F[Set[TopicPartition]] = c.paused
+  override def poll(timeout: FiniteDuration): F[ConsumerRecords[K, V]] =
     c.poll(timeout).map(_.fromGenericRecords[K, V])
-  def position(partition: TopicPartition): F[Long] = c.position(partition)
-  def resume(partitions: Iterable[TopicPartition]): F[Unit] = c.resume(partitions)
-  def seek(partition: TopicPartition, offset: Long): F[Unit] = c.seek(partition, offset)
-  def seekToBeginning(partitions: Iterable[TopicPartition]): F[Unit] = c.seekToBeginning(partitions)
-  def seekToEnd(partitions: Iterable[TopicPartition]): F[Unit] = c.seekToEnd(partitions)
-  def subscribe(topics: Iterable[String]): F[Unit] = c.subscribe(topics)
-  def subscribe(topics: Iterable[String], callback: ConsumerRebalanceListener): F[Unit] =
+  override def position(partition: TopicPartition): F[Long] = c.position(partition)
+  override def resume(partitions: Iterable[TopicPartition]): F[Unit] = c.resume(partitions)
+  override def seek(partition: TopicPartition, offset: Long): F[Unit] = c.seek(partition, offset)
+  override def seekToBeginning(partitions: Iterable[TopicPartition]): F[Unit] = c.seekToBeginning(partitions)
+  override def seekToEnd(partitions: Iterable[TopicPartition]): F[Unit] = c.seekToEnd(partitions)
+  override def subscribe(topics: Iterable[String]): F[Unit] = c.subscribe(topics)
+  override def subscribe(topics: Iterable[String], callback: ConsumerRebalanceListener): F[Unit] =
     c.subscribe(topics, callback)
-  def subscribe(pattern: Pattern): F[Unit] = c.subscribe(pattern)
-  def subscribe(pattern: Pattern, callback: ConsumerRebalanceListener): F[Unit] =
+  override def subscribe(pattern: Pattern): F[Unit] = c.subscribe(pattern)
+  override def subscribe(pattern: Pattern, callback: ConsumerRebalanceListener): F[Unit] =
     c.subscribe(pattern, callback)
-  def subscription: F[Set[String]] = c.subscription
-  def unsubscribe: F[Unit] = c.unsubscribe
+  override def subscription: F[Set[String]] = c.subscription
+  override def unsubscribe: F[Unit] = c.unsubscribe
+
+  override def partitionQueries: PartitionQueries[F] = c.partitionQueries
 }

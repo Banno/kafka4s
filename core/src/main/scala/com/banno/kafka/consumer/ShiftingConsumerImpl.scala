@@ -16,6 +16,7 @@
 
 package com.banno.kafka.consumer
 
+import cats.arrow._
 import cats.effect._
 import java.util.regex.Pattern
 
@@ -29,78 +30,59 @@ case class ShiftingConsumerImpl[F[_]: Async, K, V](
     c: ConsumerApi[F, K, V],
     blockingContext: ExecutionContext
 ) extends ConsumerApi[F, K, V] {
-  def assign(partitions: Iterable[TopicPartition]): F[Unit] =
+  override def assign(partitions: Iterable[TopicPartition]): F[Unit] =
     Async[F].evalOn(c.assign(partitions), blockingContext)
-  def assignment: F[Set[TopicPartition]] = Async[F].evalOn(c.assignment, blockingContext)
-  def beginningOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
-    Async[F].evalOn(c.beginningOffsets(partitions), blockingContext)
-  def beginningOffsets(
-      partitions: Iterable[TopicPartition],
-      timeout: FiniteDuration
-  ): F[Map[TopicPartition, Long]] =
-    Async[F].evalOn(c.beginningOffsets(partitions, timeout), blockingContext)
-  def close: F[Unit] = Async[F].evalOn(c.close, blockingContext)
-  def close(timeout: FiniteDuration): F[Unit] = Async[F].evalOn(c.close(timeout), blockingContext)
-  def commitAsync: F[Unit] = Async[F].evalOn(c.commitAsync, blockingContext)
-  def commitAsync(
+  override def assignment: F[Set[TopicPartition]] = Async[F].evalOn(c.assignment, blockingContext)
+
+  override def close: F[Unit] = Async[F].evalOn(c.close, blockingContext)
+  override def close(timeout: FiniteDuration): F[Unit] = Async[F].evalOn(c.close(timeout), blockingContext)
+  override def commitAsync: F[Unit] = Async[F].evalOn(c.commitAsync, blockingContext)
+  override def commitAsync(
       offsets: Map[TopicPartition, OffsetAndMetadata],
       callback: OffsetCommitCallback
   ): F[Unit] =
     Async[F].evalOn(c.commitAsync(offsets, callback), blockingContext)
-  def commitAsync(callback: OffsetCommitCallback): F[Unit] =
+  override def commitAsync(callback: OffsetCommitCallback): F[Unit] =
     Async[F].evalOn(c.commitAsync(callback), blockingContext)
-  def commitSync: F[Unit] = Async[F].evalOn(c.commitSync, blockingContext)
-  def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] =
+  override def commitSync: F[Unit] = Async[F].evalOn(c.commitSync, blockingContext)
+  override def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] =
     Async[F].evalOn(c.commitSync(offsets), blockingContext)
-  def committed(partition: Set[TopicPartition]): F[Map[TopicPartition, OffsetAndMetadata]] =
-    Async[F].evalOn(c.committed(partition), blockingContext)
-  def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
-    Async[F].evalOn(c.endOffsets(partitions), blockingContext)
-  def endOffsets(
-      partitions: Iterable[TopicPartition],
-      timeout: FiniteDuration
-  ): F[Map[TopicPartition, Long]] =
-    Async[F].evalOn(c.endOffsets(partitions, timeout), blockingContext)
-  def listTopics: F[Map[String, Seq[PartitionInfo]]] = Async[F].evalOn(c.listTopics, blockingContext)
-  def listTopics(timeout: FiniteDuration): F[Map[String, Seq[PartitionInfo]]] =
+
+  override def listTopics: F[Map[String, Seq[PartitionInfo]]] = Async[F].evalOn(c.listTopics, blockingContext)
+  override def listTopics(timeout: FiniteDuration): F[Map[String, Seq[PartitionInfo]]] =
     Async[F].evalOn(c.listTopics(timeout), blockingContext)
-  def metrics: F[Map[MetricName, Metric]] = Async[F].evalOn(c.metrics, blockingContext)
-  def offsetsForTimes(
-      timestampsToSearch: Map[TopicPartition, Long]
-  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
-    Async[F].evalOn(c.offsetsForTimes(timestampsToSearch), blockingContext)
-  def offsetsForTimes(
-      timestampsToSearch: Map[TopicPartition, Long],
-      timeout: FiniteDuration
-  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
-    Async[F].evalOn(c.offsetsForTimes(timestampsToSearch, timeout), blockingContext)
-  def partitionsFor(topic: String): F[Seq[PartitionInfo]] =
-    Async[F].evalOn(c.partitionsFor(topic), blockingContext)
-  def partitionsFor(topic: String, timeout: FiniteDuration): F[Seq[PartitionInfo]] =
-    Async[F].evalOn(c.partitionsFor(topic, timeout), blockingContext)
-  def pause(partitions: Iterable[TopicPartition]): F[Unit] =
+  override def metrics: F[Map[MetricName, Metric]] = Async[F].evalOn(c.metrics, blockingContext)
+
+  override def pause(partitions: Iterable[TopicPartition]): F[Unit] =
     Async[F].evalOn(c.pause(partitions), blockingContext)
-  def paused: F[Set[TopicPartition]] = Async[F].evalOn(c.paused, blockingContext)
-  def poll(timeout: FiniteDuration): F[ConsumerRecords[K, V]] =
+  override def paused: F[Set[TopicPartition]] = Async[F].evalOn(c.paused, blockingContext)
+  override def poll(timeout: FiniteDuration): F[ConsumerRecords[K, V]] =
     Async[F].evalOn(c.poll(timeout), blockingContext)
-  def position(partition: TopicPartition): F[Long] =
+  override def position(partition: TopicPartition): F[Long] =
     Async[F].evalOn(c.position(partition), blockingContext)
-  def resume(partitions: Iterable[TopicPartition]): F[Unit] =
+  override def resume(partitions: Iterable[TopicPartition]): F[Unit] =
     Async[F].evalOn(c.resume(partitions), blockingContext)
-  def seek(partition: TopicPartition, offset: Long): F[Unit] =
+  override def seek(partition: TopicPartition, offset: Long): F[Unit] =
     Async[F].evalOn(c.seek(partition, offset), blockingContext)
-  def seekToBeginning(partitions: Iterable[TopicPartition]): F[Unit] =
+  override def seekToBeginning(partitions: Iterable[TopicPartition]): F[Unit] =
     Async[F].evalOn(c.seekToBeginning(partitions), blockingContext)
-  def seekToEnd(partitions: Iterable[TopicPartition]): F[Unit] =
+  override def seekToEnd(partitions: Iterable[TopicPartition]): F[Unit] =
     Async[F].evalOn(c.seekToEnd(partitions), blockingContext)
-  def subscribe(topics: Iterable[String]): F[Unit] = Async[F].evalOn(c.subscribe(topics), blockingContext)
-  def subscribe(topics: Iterable[String], callback: ConsumerRebalanceListener): F[Unit] =
+  override def subscribe(topics: Iterable[String]): F[Unit] = Async[F].evalOn(c.subscribe(topics), blockingContext)
+  override def subscribe(topics: Iterable[String], callback: ConsumerRebalanceListener): F[Unit] =
     Async[F].evalOn(c.subscribe(topics, callback), blockingContext)
-  def subscribe(pattern: Pattern): F[Unit] = Async[F].evalOn(c.subscribe(pattern), blockingContext)
-  def subscribe(pattern: Pattern, callback: ConsumerRebalanceListener): F[Unit] =
+  override def subscribe(pattern: Pattern): F[Unit] = Async[F].evalOn(c.subscribe(pattern), blockingContext)
+  override def subscribe(pattern: Pattern, callback: ConsumerRebalanceListener): F[Unit] =
     Async[F].evalOn(c.subscribe(pattern, callback), blockingContext)
-  def subscription: F[Set[String]] = Async[F].evalOn(c.subscription, blockingContext)
-  def unsubscribe: F[Unit] = Async[F].evalOn(c.unsubscribe, blockingContext)
+  override def subscription: F[Set[String]] = Async[F].evalOn(c.subscription, blockingContext)
+  override def unsubscribe: F[Unit] = Async[F].evalOn(c.unsubscribe, blockingContext)
+
+  override def partitionQueries: PartitionQueries[F] =
+    c.partitionQueries.mapK(
+      FunctionK.liftFunction(
+        Async[F].evalOn(_, blockingContext)
+      )
+    )
 }
 
 object ShiftingConsumerImpl {

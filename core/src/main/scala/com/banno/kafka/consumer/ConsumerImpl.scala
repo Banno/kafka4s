@@ -29,75 +29,31 @@ import org.apache.kafka.clients.consumer._
 
 case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
     extends ConsumerApi[F, K, V] {
-  import ConsumerImpl.valueIsNotNull
-
   private[this] val log = Slf4jLogger.getLoggerFromClass(this.getClass)
-  def assign(partitions: Iterable[TopicPartition]): F[Unit] =
+  override def assign(partitions: Iterable[TopicPartition]): F[Unit] =
     F.delay(c.assign(partitions.asJavaCollection)) *> log.debug(s"Assigned $partitions")
-  def assignment: F[Set[TopicPartition]] = F.delay(c.assignment().asScala.toSet)
-  def beginningOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
-    F.delay(
-      c.beginningOffsets(partitions.asJavaCollection).asScala.toMap.view.mapValues(Long.unbox).toMap
-    )
-  def beginningOffsets(
-      partitions: Iterable[TopicPartition],
-      timeout: FiniteDuration
-  ): F[Map[TopicPartition, Long]] =
-    F.delay(
-      c.beginningOffsets(
-          partitions.asJavaCollection,
-          java.time.Duration.ofMillis(timeout.toMillis)
-        )
-        .asScala
-        .toMap
-        .view
-        .mapValues(Long.unbox)
-        .toMap
-    )
-  def close: F[Unit] =
+  override def assignment: F[Set[TopicPartition]] = F.delay(c.assignment().asScala.toSet)
+
+  override def close: F[Unit] =
     log.debug(s"${Thread.currentThread.getId} consumer.close()...") *> F.delay(c.close()) *> log
       .debug(s"${Thread.currentThread.getId} consumer.close()")
-  def close(timeout: FiniteDuration): F[Unit] =
+  override def close(timeout: FiniteDuration): F[Unit] =
     log.debug(s"${Thread.currentThread.getId} consumer.close($timeout)...") *> F.delay(
       c.close(java.time.Duration.ofMillis(timeout.toMillis))
     ) *> log.debug(s"${Thread.currentThread.getId} consumer.close($timeout)")
-  def commitAsync: F[Unit] = F.delay(c.commitAsync())
-  def commitAsync(
+  override def commitAsync: F[Unit] = F.delay(c.commitAsync())
+  override def commitAsync(
       offsets: Map[TopicPartition, OffsetAndMetadata],
       callback: OffsetCommitCallback
   ): F[Unit] = F.delay(c.commitAsync(offsets.asJava, callback))
-  def commitAsync(callback: OffsetCommitCallback): F[Unit] = F.delay(c.commitAsync(callback))
-  def commitSync: F[Unit] = F.delay(c.commitSync())
-  def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] =
+  override def commitAsync(callback: OffsetCommitCallback): F[Unit] = F.delay(c.commitAsync(callback))
+  override def commitSync: F[Unit] = F.delay(c.commitSync())
+  override def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] =
     F.delay(c.commitSync(offsets.asJava))
-  def committed(
-      partitions: Set[TopicPartition]
-  ): F[Map[TopicPartition, OffsetAndMetadata]] =
-    F.delay(
-      c.committed(partitions.asJava)
-        .asScala
-        .filter(valueIsNotNull)
-        .toMap
-    )
-  def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
-    F.delay(
-      c.endOffsets(partitions.asJavaCollection).asScala.toMap.view.mapValues(Long.unbox).toMap
-    )
-  def endOffsets(
-      partitions: Iterable[TopicPartition],
-      timeout: FiniteDuration
-  ): F[Map[TopicPartition, Long]] =
-    F.delay(
-      c.endOffsets(partitions.asJavaCollection, java.time.Duration.ofMillis(timeout.toMillis))
-        .asScala
-        .toMap
-        .view
-        .mapValues(Long.unbox)
-        .toMap
-    )
-  def listTopics: F[Map[String, Seq[PartitionInfo]]] =
+
+  override def listTopics: F[Map[String, Seq[PartitionInfo]]] =
     F.delay(c.listTopics().asScala.toMap.view.mapValues(_.asScala.toSeq).toMap)
-  def listTopics(timeout: FiniteDuration): F[Map[String, Seq[PartitionInfo]]] =
+  override def listTopics(timeout: FiniteDuration): F[Map[String, Seq[PartitionInfo]]] =
     F.delay(
       c.listTopics(java.time.Duration.ofMillis(timeout.toMillis))
         .asScala
@@ -106,59 +62,36 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
         .mapValues(_.asScala.toSeq)
         .toMap
     )
-  def metrics: F[Map[MetricName, Metric]] = F.delay(c.metrics().asScala.toMap)
-  def offsetsForTimes(
-      timestampsToSearch: Map[TopicPartition, Long]
-  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
-    F.delay(
-      c.offsetsForTimes(timestampsToSearch.view.mapValues(Long.box).toMap.asJava)
-        .asScala
-        .filter(valueIsNotNull)
-        .toMap
-    )
-  def offsetsForTimes(
-      timestampsToSearch: Map[TopicPartition, Long],
-      timeout: FiniteDuration
-  ): F[Map[TopicPartition, OffsetAndTimestamp]] =
-    F.delay(
-      c.offsetsForTimes(
-          timestampsToSearch.view.mapValues(Long.box).toMap.asJava,
-          java.time.Duration.ofMillis(timeout.toMillis)
-        )
-        .asScala
-        .filter(valueIsNotNull)
-        .toMap
-    )
-  def partitionsFor(topic: String): F[Seq[PartitionInfo]] =
-    F.delay(c.partitionsFor(topic).asScala.toSeq)
-  def partitionsFor(topic: String, timeout: FiniteDuration): F[Seq[PartitionInfo]] =
-    F.delay(c.partitionsFor(topic, java.time.Duration.ofMillis(timeout.toMillis)).asScala.toSeq)
-  def pause(partitions: Iterable[TopicPartition]): F[Unit] =
+  override def metrics: F[Map[MetricName, Metric]] = F.delay(c.metrics().asScala.toMap)
+
+  override def pause(partitions: Iterable[TopicPartition]): F[Unit] =
     F.delay(c.pause(partitions.asJavaCollection))
-  def paused: F[Set[TopicPartition]] = F.delay(c.paused().asScala.toSet)
-  def poll(timeout: FiniteDuration): F[ConsumerRecords[K, V]] =
+  override def paused: F[Set[TopicPartition]] = F.delay(c.paused().asScala.toSet)
+  override def poll(timeout: FiniteDuration): F[ConsumerRecords[K, V]] =
     log.trace(s"${Thread.currentThread.getId} poll($timeout)...") *> F.delay(
       c.poll(java.time.Duration.ofMillis(timeout.toMillis))
     )
-  def position(partition: TopicPartition): F[Long] = F.delay(c.position(partition))
-  def resume(partitions: Iterable[TopicPartition]): F[Unit] =
+  override def position(partition: TopicPartition): F[Long] = F.delay(c.position(partition))
+  override def resume(partitions: Iterable[TopicPartition]): F[Unit] =
     F.delay(c.resume(partitions.asJavaCollection))
-  def seek(partition: TopicPartition, offset: Long): F[Unit] =
+  override def seek(partition: TopicPartition, offset: Long): F[Unit] =
     F.delay(c.seek(partition, offset)) *> log.debug(s"Seeked $partition to $offset")
-  def seekToBeginning(partitions: Iterable[TopicPartition]): F[Unit] =
+  override def seekToBeginning(partitions: Iterable[TopicPartition]): F[Unit] =
     F.delay(c.seekToBeginning(partitions.asJavaCollection)) *> log.debug(
       s"Seeked to beginning: $partitions"
     )
-  def seekToEnd(partitions: Iterable[TopicPartition]): F[Unit] =
+  override def seekToEnd(partitions: Iterable[TopicPartition]): F[Unit] =
     F.delay(c.seekToEnd(partitions.asJavaCollection)) *> log.debug(s"Seeked to end: $partitions")
-  def subscribe(topics: Iterable[String]): F[Unit] = F.delay(c.subscribe(topics.asJavaCollection))
-  def subscribe(topics: Iterable[String], callback: ConsumerRebalanceListener): F[Unit] =
+  override def subscribe(topics: Iterable[String]): F[Unit] = F.delay(c.subscribe(topics.asJavaCollection))
+  override def subscribe(topics: Iterable[String], callback: ConsumerRebalanceListener): F[Unit] =
     F.delay(c.subscribe(topics.asJavaCollection, callback))
-  def subscribe(pattern: Pattern): F[Unit] = F.delay(c.subscribe(pattern))
-  def subscribe(pattern: Pattern, callback: ConsumerRebalanceListener): F[Unit] =
+  override def subscribe(pattern: Pattern): F[Unit] = F.delay(c.subscribe(pattern))
+  override def subscribe(pattern: Pattern, callback: ConsumerRebalanceListener): F[Unit] =
     F.delay(c.subscribe(pattern, callback))
-  def subscription: F[Set[String]] = F.delay(c.subscription().asScala.toSet)
-  def unsubscribe: F[Unit] = F.delay(c.unsubscribe())
+  override def subscription: F[Set[String]] = F.delay(c.subscription().asScala.toSet)
+  override def unsubscribe: F[Unit] = F.delay(c.unsubscribe())
+
+  override def partitionQueries: PartitionQueries[F] = PartitionQueries(c)
 }
 
 object ConsumerImpl {
@@ -167,8 +100,4 @@ object ConsumerImpl {
       c: Consumer[K, V]
   ): ConsumerApi[F, K, V] =
     ConsumerImpl(c)
-
-  def valueIsNotNull[A](keyValPair: (TopicPartition, A)): Boolean =
-    keyValPair._2 != null
-
 }
