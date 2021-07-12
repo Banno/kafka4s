@@ -16,7 +16,6 @@
 
 package com.banno.kafka.consumer
 
-import fs2.Stream
 import cats._
 import cats.arrow._
 import cats.effect._
@@ -27,9 +26,6 @@ import scala.concurrent.duration._
 import org.apache.kafka.common._
 import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.clients.consumer._
-import org.apache.avro.generic.GenericRecord
-import com.sksamuel.avro4s.FromRecord
-import io.confluent.kafka.serializers.KafkaAvroDeserializer
 import com.banno.kafka._
 import java.util.concurrent.{Executors, ThreadFactory}
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
@@ -151,16 +147,6 @@ object ShiftingConsumer {
     )
 }
 
-object Avro4sConsumer {
-  def apply[F[_]: Functor, K, V](
-    c: ConsumerApi[F, GenericRecord, GenericRecord]
-  )(implicit
-      kfr: FromRecord[K],
-    vfr: FromRecord[V],
-  ): ConsumerApi[F, K, V] =
-    c.bimap(kfr.from, vfr.from)
-}
-
 object ConsumerApi {
   implicit def bifunctor[F[_]: Functor]: Bifunctor[ConsumerApi[F, *, *]] =
     new Bifunctor[ConsumerApi[F, *, *]] {
@@ -236,10 +222,10 @@ object ConsumerApi {
         }
     }
 
-  private[this] def createKafkaConsumer[F[_]: Sync, K, V](
-      configs: (String, AnyRef)*
-  ): F[KafkaConsumer[K, V]] =
-    Sync[F].delay(new KafkaConsumer[K, V](configs.toMap.asJava))
+  // private[this] def createKafkaConsumer[F[_]: Sync, K, V](
+  //     configs: (String, AnyRef)*
+  // ): F[KafkaConsumer[K, V]] =
+  //   Sync[F].delay(new KafkaConsumer[K, V](configs.toMap.asJava))
 
   private[this] def createKafkaConsumer[F[_]: Sync, K, V](
       keyDeserializer: Deserializer[K],
@@ -288,54 +274,6 @@ object ConsumerApi {
         configs: (String, AnyRef)*
     ): Resource[F, ConsumerApi[F, Array[Byte], Array[Byte]]] =
       ConsumerApi.resource[F, Array[Byte], Array[Byte]](configs: _*)
-  }
-
-  object Avro {
-
-    def resource[F[_]: Async, K, V](
-        configs: (String, AnyRef)*
-    ): Resource[F, ConsumerApi[F, K, V]] =
-      BlockingContext.resource.flatMap(
-        e =>
-          Resource.make(
-            createKafkaConsumer[F, K, V](
-              (
-                configs.toMap +
-                  KeyDeserializerClass(classOf[KafkaAvroDeserializer]) +
-                  ValueDeserializerClass(classOf[KafkaAvroDeserializer])
-              ).toSeq: _*
-            ).map(c => ShiftingConsumer(ConsumerImpl(c), e))
-          )(_.close)
-      )
-
-    object Generic {
-
-      def resource[F[_]: Async](
-          configs: (String, AnyRef)*
-      ): Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] =
-        ConsumerApi.Avro.resource[F, GenericRecord, GenericRecord](configs: _*)
-
-      def stream[F[_]: Async](
-          configs: (String, AnyRef)*
-      ): Stream[F, ConsumerApi[F, GenericRecord, GenericRecord]] =
-        Stream.resource(resource[F](configs: _*))
-    }
-
-    object Specific {
-
-      def resource[F[_]: Async, K, V](
-          configs: (String, AnyRef)*
-      ): Resource[F, ConsumerApi[F, K, V]] =
-        ConsumerApi.Avro.resource[F, K, V]((configs.toMap + SpecificAvroReader(true)).toSeq: _*)
-    }
-  }
-
-  object Avro4s {
-
-    def resource[F[_]: Async, K: FromRecord, V: FromRecord](
-        configs: (String, AnyRef)*
-    ): Resource[F, ConsumerApi[F, K, V]] =
-      ConsumerApi.Avro.Generic.resource[F](configs: _*).map(Avro4sConsumer(_))
   }
 
   object NonShifting {

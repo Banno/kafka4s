@@ -18,10 +18,8 @@ package com.banno
 
 import org.apache.kafka.common.{PartitionInfo, TopicPartition}
 import org.apache.kafka.common.serialization._
-import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.clients.consumer.{ConsumerRecord, ConsumerRecords, OffsetAndMetadata}
-import com.sksamuel.avro4s.{FromRecord, ToRecord}
 import cats._
 import scala.jdk.CollectionConverters._
 import java.lang.{
@@ -48,13 +46,6 @@ package object kafka {
       */
     def bimap[K2, V2](f: K => K2, g: V => V2): ProducerRecord[K2, V2] =
       new ProducerRecord(pr.topic, pr.partition, pr.timestamp, f(pr.key), g(pr.value), pr.headers)
-
-    /** This only works when both key and value are non-null. */
-    def toGenericRecord(
-        implicit ktr: ToRecord[K],
-        vtr: ToRecord[V]
-    ): ProducerRecord[GenericRecord, GenericRecord] =
-      bimap(ktr.to, vtr.to)
   }
 
   implicit class ScalaConsumerRecords[K, V](crs: ConsumerRecords[K, V]) {
@@ -104,15 +95,6 @@ package object kafka {
         g(cr.value),
         cr.headers
       )
-  }
-
-  implicit class GenericConsumerRecord(cr: ConsumerRecord[GenericRecord, GenericRecord]) {
-    def maybeKeyAs[K](implicit kfr: FromRecord[K]): Option[K] = cr.maybeKey.map(kfr.from)
-    def maybeValueAs[V](implicit vfr: FromRecord[V]): Option[V] = cr.maybeValue.map(vfr.from)
-
-    //note that these will probably throw NPE if key/value is null
-    def keyAs[K](implicit kfr: FromRecord[K]): K = kfr.from(cr.key)
-    def valueAs[V](implicit vfr: FromRecord[V]): V = vfr.from(cr.value)
   }
 
   implicit class ByteArrayConsumerRecord(cr: ConsumerRecord[Array[Byte], Array[Byte]]) {

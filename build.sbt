@@ -33,7 +33,7 @@ lazy val kafka4s = project
   .settings(scalaVersion := V.scalaVersion)
   .disablePlugins(MimaPlugin)
   .enablePlugins(NoPublishPlugin)
-  .aggregate(core, examples, site)
+  .aggregate(core, `kafka4s-avro4s`, examples, site)
 
 lazy val core = project
   .in(file("core"))
@@ -63,10 +63,50 @@ lazy val core = project
       "org.typelevel" %% "munit-cats-effect-3" % V.munitCE3 % "test",
       "org.scalatest" %% "scalatest" % V.scalatest % "test",
       "org.scalatestplus" %% "scalacheck-1-15" % "3.2.8.0" % Test,
+      "com.sksamuel.avro4s" %% "avro4s-core" % V.avro4s % Test,
       "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % "test",
       "org.typelevel" %% "cats-effect" % V.catsEffect,
       "org.typelevel" %% "cats-laws" % V.cats % "test",
       "org.typelevel" %% "discipline-munit" % V.disciplineMunit % "test",
+    )
+  )
+
+lazy val `kafka4s-avro4s` = project
+  .in(file("avro4s"))
+  .settings(commonSettings)
+  .settings(
+    name := "kafka4s-avro4s",
+    mimaBinaryIssueFilters ++= {
+      import com.typesafe.tools.mima.core._
+      import com.typesafe.tools.mima.core.ProblemFilters._
+      Seq()
+    },
+  )
+  .settings(
+    testFrameworks += new TestFramework("munit.Framework"),
+    Test / sourceGenerators += (Test / avroScalaGenerate).taskValue,
+    watchSources ++= ((Test / avroSourceDirectories).value ** "*.avdl").get,
+    libraryDependencies ++= Seq(
+      "io.confluent" % "kafka-avro-serializer" % V.confluent,
+      "com.sksamuel.avro4s" %% "avro4s-core" % V.avro4s,
+    //  "org.apache.curator" % "curator-test" % V.curator % "test",
+    //  ("org.apache.kafka" %% "kafka" % V.kafka % "test").classifier("test"),
+    //  ("org.apache.kafka" % "kafka-clients" % V.kafka % "test").classifier("test"),
+    //  ("org.apache.kafka" % "kafka-streams" % V.kafka % "test").classifier("test"),
+    //  ("org.apache.kafka" % "kafka-streams-test-utils" % V.kafka % "test"),
+    //  "ch.qos.logback" % "logback-classic" % V.logback % "test",
+    //  "org.slf4j" % "log4j-over-slf4j" % V.log4j % "test",
+    //  "org.scalacheck" %% "scalacheck" % V.scalacheck % "test",
+     "org.scalameta" %% "munit" % V.munit % "test",
+    //  "org.scalameta" %% "munit-scalacheck" % V.munit % "test",
+    //  "org.typelevel" %% "scalacheck-effect-munit" % V.scalacheckEffect,
+    //  "org.typelevel" %% "munit-cats-effect-3" % V.munitCE3 % "test",
+    //  "org.scalatest" %% "scalatest" % V.scalatest % "test",
+    //  "org.scalatestplus" %% "scalacheck-1-15" % "3.2.8.0" % Test,
+    //  "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % "test",
+    //  "org.typelevel" %% "cats-effect" % V.catsEffect,
+    //  "org.typelevel" %% "cats-laws" % V.cats % "test",
+    //  "org.typelevel" %% "discipline-munit" % V.disciplineMunit % "test",
     )
   )
 
@@ -75,7 +115,7 @@ lazy val examples = project
   .settings(commonSettings)
   .settings(libraryDependencies += "dev.zio" %% "zio-interop-cats" % "3.0.2.0")
   .disablePlugins(MimaPlugin)
-  .dependsOn(core)
+  .dependsOn(core, `kafka4s-avro4s`)
 
 lazy val site = project
   .in(file("site"))
@@ -144,14 +184,12 @@ lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
     "co.fs2" %% "fs2-core" % V.fs2,
     "org.apache.kafka" % "kafka-clients" % V.kafka,
-    "io.confluent" % "kafka-avro-serializer" % V.confluent,
-    "com.sksamuel.avro4s" %% "avro4s-core" % V.avro4s,
+    "io.confluent" % "kafka-schema-registry-client" % V.confluent,
+    "io.confluent" % "kafka-schema-serializer" % V.confluent,
     "io.prometheus" % "simpleclient" % V.simpleClient,
     "io.chrisdavenport" %% "epimetheus" % V.epimetheus,
     "org.typelevel" %% "log4cats-slf4j" % V.log4cats,
   ),
-  Test / sourceGenerators += (Test / avroScalaGenerate).taskValue,
-  watchSources ++= ((Test / avroSourceDirectories).value ** "*.avdl").get,
   testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oS"),
 )
 
