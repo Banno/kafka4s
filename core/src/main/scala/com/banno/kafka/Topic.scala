@@ -28,7 +28,6 @@ import cats.effect._
 import cats.syntax.all._
 import com.banno.kafka.admin.AdminApi
 import com.banno.kafka.schemaregistry.SchemaRegistryApi
-import com.sksamuel.avro4s.SchemaFor
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.consumer._
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -81,7 +80,7 @@ object Topic {
     }
   }
 
-  def apply[K: SchemaFor: Serde, V: SchemaFor: Serde](
+  def apply[K: Schematic, V: Schematic](
       topic: String,
       topicPurpose: TopicPurpose,
   ): Topic[K, V] =

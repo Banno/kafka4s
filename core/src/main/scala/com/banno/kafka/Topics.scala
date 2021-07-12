@@ -22,7 +22,6 @@ import cats._
 import cats.data._
 import cats.effect._
 import cats.syntax.all._
-import com.sksamuel.avro4s._
 import org.apache.kafka.clients.consumer._
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -116,7 +115,7 @@ object Topics {
   final case class Builder[A <: Coproduct, B <: Coproduct] private[Topics] (
       private val topics: Topics[A, B]
   ) {
-    def and[K: SchemaFor: Serde, V: SchemaFor: Serde](
+    def and[K: Schematic, V: Schematic](
         topic: String,
         purpose: TopicPurpose,
     ): Builder[IncomingRecord[K, V] :+: A, (K, V) :+: B] =
@@ -135,7 +134,7 @@ object Topics {
   ): Builder[IncomingRecord[K, V] :+: CNil, (K, V) :+: CNil] =
     Builder(SingletonTopics(topic))
 
-  def of[K: Serde: SchemaFor, V: Serde: SchemaFor](
+  def of[K: Schematic, V: Schematic](
       topic: String,
       purpose: TopicPurpose
   ): Builder[IncomingRecord[K, V] :+: CNil, (K, V) :+: CNil] =

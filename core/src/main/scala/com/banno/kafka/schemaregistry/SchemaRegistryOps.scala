@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-package com.banno.kafka.schemaregistry
+package com.banno.kafka
+package schemaregistry
 
-import org.apache.avro.Schema
-import com.sksamuel.avro4s.{DefaultFieldMapper, SchemaFor}
-import cats.FlatMap
+import cats._
 import cats.syntax.all._
 
 case class SchemaRegistryOps[F[_]](registry: SchemaRegistryApi[F]) {
@@ -26,39 +25,15 @@ case class SchemaRegistryOps[F[_]](registry: SchemaRegistryApi[F]) {
   def keySubject(topic: String): String = topic + "-key"
   def valueSubject(topic: String): String = topic + "-value"
 
-  def register[A](subject: String)(implicit SF: SchemaFor[A]): F[Int] =
-    registry.register(subject, SF.schema(DefaultFieldMapper).asParsedSchema)
+  def registerKey[K: HasParsedSchema](topic: String): F[Int] =
+    registry.register(keySubject(topic), HasParsedSchema[K].schema)
 
-  def registerKey[K: SchemaFor](topic: String): F[Int] =
-    register[K](keySubject(topic))
+  def registerValue[V: HasParsedSchema](topic: String): F[Int] =
+    registry.register(valueSubject(topic), HasParsedSchema[V].schema)
 
-  def registerValue[V: SchemaFor](topic: String): F[Int] =
-    register[V](valueSubject(topic))
-
-  def register[K: SchemaFor, V: SchemaFor](topic: String)(implicit F: FlatMap[F]): F[(Int, Int)] =
+  def register[K: HasParsedSchema, V: HasParsedSchema](topic: String)(implicit F: FlatMap[F]): F[(Int, Int)] =
     for {
       k <- registerKey[K](topic)
       v <- registerValue[V](topic)
     } yield (k, v)
-
-  def isCompatible(subject: String, schema: Schema): F[Boolean] =
-    registry.testCompatibility(subject, schema.asParsedSchema)
-
-  def isCompatible[A](subject: String)(implicit SF: SchemaFor[A]): F[Boolean] =
-    isCompatible(subject, SF.schema(DefaultFieldMapper))
-
-  def isKeyCompatible[K: SchemaFor](topic: String): F[Boolean] =
-    isCompatible[K](keySubject(topic))
-
-  def isValueCompatible[V: SchemaFor](topic: String): F[Boolean] =
-    isCompatible[V](valueSubject(topic))
-
-  def isCompatible[K: SchemaFor, V: SchemaFor](
-      topic: String
-  )(implicit F: FlatMap[F]): F[(Boolean, Boolean)] =
-    for {
-      k <- isKeyCompatible[K](topic)
-      v <- isValueCompatible[V](topic)
-    } yield (k, v)
-
 }
