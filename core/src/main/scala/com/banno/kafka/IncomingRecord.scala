@@ -22,7 +22,6 @@ import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.clients.consumer._
 import scala.jdk.CollectionConverters._
 import shapeless._
-import org.apache.avro.generic.GenericRecord
 
 final case class TopicPartitionOffset(
     topic: String,
@@ -186,8 +185,8 @@ object IncomingRecords {
   ) extends IncomingRecords[A]
 
   def parseWith[F[_]: ApplicativeThrow, A](
-      cr: ConsumerRecords[GenericRecord, GenericRecord],
-      f: ConsumerRecord[GenericRecord, GenericRecord] => F[A]
+      cr: ConsumerRecords[Array[Byte], Array[Byte]],
+      f: ConsumerRecord[Array[Byte], Array[Byte]] => F[A]
   ): F[IncomingRecords[A]] =
     cr.asScala.toList
       .traverse(f)

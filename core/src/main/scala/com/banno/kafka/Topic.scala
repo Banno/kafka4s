@@ -28,13 +28,10 @@ import cats.effect._
 import cats.syntax.all._
 import com.banno.kafka.admin.AdminApi
 import com.banno.kafka.schemaregistry.SchemaRegistryApi
-import com.sksamuel.avro4s.FromRecord
 import com.sksamuel.avro4s.SchemaFor
-import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.consumer._
 import org.apache.kafka.clients.producer.ProducerRecord
-import com.sksamuel.avro4s.ToRecord
 
 trait Topic[K, V] extends Topical[IncomingRecord[K, V], (K, V)] with AschematicTopic {
   final override def aschematic: NonEmptyList[AschematicTopic] =
@@ -42,32 +39,31 @@ trait Topic[K, V] extends Topical[IncomingRecord[K, V], (K, V)] with AschematicT
 }
 
 object Topic {
-  type CR = ConsumerRecord[GenericRecord, GenericRecord]
-
-  private def fromGeneric[A](
-      gr: GenericRecord
-  )(implicit FR: FromRecord[A]): Try[A] =
-    Try(FR.from(gr))
+  type CR = ConsumerRecord[Array[Byte], Array[Byte]]
 
   sealed trait KeyOrValue {
     def forLog: String
-    def select(cr: CR): GenericRecord
+    def select(cr: CR):Array[Byte]
     override def toString(): String = forLog
   }
 
   object Key extends KeyOrValue {
     override def forLog: String = "key"
-    override def select(cr: CR): GenericRecord = cr.key()
+    override def select(cr: CR): Array[Byte] = cr.key()
   }
 
   object Value extends KeyOrValue {
     override def forLog: String = "value"
-    override def select(cr: CR): GenericRecord = cr.value()
+    override def select(cr: CR): Array[Byte] = cr.value()
   }
 
-  private def parse1[K: FromRecord, V: FromRecord](cr: CR): Try[(K, V)] = {
-    val tryKey = fromGeneric[K](cr.key).adaptError(ParseFailed(Key, cr, _))
-    val tryValue = fromGeneric[V](cr.value).adaptError(ParseFailed(Value, cr, _))
+  private def parse1[K, V](
+    parseK: Array[Byte] => Try[K],
+    parseV: Array[Byte] => Try[V],
+    cr: CR
+  ): Try[(K, V)] = {
+    val tryKey = parseK(cr.key).adaptError(ParseFailed(Key, cr, _))
+    val tryValue = parseV(cr.value).adaptError(ParseFailed(Value, cr, _))
     tryKey.product(tryValue)
   }
 
@@ -85,22 +81,23 @@ object Topic {
     }
   }
 
-  def apply[K: FromRecord: ToRecord: SchemaFor, V: FromRecord: ToRecord: SchemaFor](
+  def apply[K: SchemaFor: Serde, V: SchemaFor: Serde](
       topic: String,
-      topicPurpose: TopicPurpose
+      topicPurpose: TopicPurpose,
   ): Topic[K, V] =
     new Topic[K, V] {
       override def coparse(
           kv: (K, V)
-      ): ProducerRecord[GenericRecord, GenericRecord] =
-        new ProducerRecord(topic, kv._1, kv._2).toGenericRecord
+      ): ProducerRecord[Array[Byte], Array[Byte]] =
+        new ProducerRecord(topic, kv._1, kv._2)
+          .bimap(Serde[K].toByteArray, Serde[V].toByteArray)
 
       override def name: TopicName = TopicName(topic)
 
       override def purpose: TopicPurpose = topicPurpose
 
       override def parse(cr: CR): Try[IncomingRecord[K, V]] =
-        parse1[K, V](cr).map { kv =>
+        parse1[K, V](Serde[K].fromByteArray, Serde[V].fromByteArray, cr).map { kv =>
           IncomingRecord.of(cr).bimap(_ => kv._1, _ => kv._2)
         }
 
@@ -138,13 +135,13 @@ object Topic {
       override def imap[A, B](fa: Topic[K, A])(f: A => B)(g: B => A): Topic[K, B] =
         new Topic[K, B] {
           override def parse(
-              cr: ConsumerRecord[GenericRecord, GenericRecord]
+              cr: ConsumerRecord[Array[Byte], Array[Byte]]
           ): Try[IncomingRecord[K, B]] =
             fa.parse(cr).map(_.map(f))
 
           override def coparse(
               kv: (K, B)
-          ): ProducerRecord[GenericRecord, GenericRecord] =
+          ): ProducerRecord[Array[Byte], Array[Byte]] =
             fa.coparse((kv._1, g(kv._2)))
 
           override def nextOffset(

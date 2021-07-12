@@ -23,7 +23,6 @@ import cats.data._
 import cats.effect._
 import cats.syntax.all._
 import com.sksamuel.avro4s._
-import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.consumer._
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -41,9 +40,9 @@ object Topics {
       extends Topics[IncomingRecord[K, V] :+: S, (K, V) :+: T] {
     def topic: Topic[K, V]
 
-    def tailParse(cr: ConsumerRecord[GenericRecord, GenericRecord]): Try[S]
+    def tailParse(cr: ConsumerRecord[Array[Byte], Array[Byte]]): Try[S]
 
-    def tailCoparse(kv: T): ProducerRecord[GenericRecord, GenericRecord]
+    def tailCoparse(kv: T): ProducerRecord[Array[Byte], Array[Byte]]
 
     def tailNextOffset(cr: S): Map[TopicPartition, OffsetAndMetadata]
 
@@ -56,7 +55,7 @@ object Topics {
       x.eliminate(topic.nextOffset, tailNextOffset)
 
     final override def parse(
-        cr: ConsumerRecord[GenericRecord, GenericRecord]
+        cr: ConsumerRecord[Array[Byte], Array[Byte]]
     ): Try[IncomingRecord[K, V] :+: S] =
       if (cr.topic() === topic.name.show)
         /*then*/ topic.parse(cr).map(Inl.apply)
@@ -96,7 +95,7 @@ object Topics {
     override def tailNextOffset(x: S) = tail.nextOffset(x)
 
     override def tailParse(
-        cr: ConsumerRecord[GenericRecord, GenericRecord]
+        cr: ConsumerRecord[Array[Byte], Array[Byte]]
     ): Try[S] = tail.parse(cr)
 
     override def tailCoparse(kv: T) = tail.coparse(kv)
@@ -117,9 +116,9 @@ object Topics {
   final case class Builder[A <: Coproduct, B <: Coproduct] private[Topics] (
       private val topics: Topics[A, B]
   ) {
-    def and[K: FromRecord: ToRecord: SchemaFor, V: FromRecord: ToRecord: SchemaFor](
+    def and[K: SchemaFor: Serde, V: SchemaFor: Serde](
         topic: String,
-        purpose: TopicPurpose
+        purpose: TopicPurpose,
     ): Builder[IncomingRecord[K, V] :+: A, (K, V) :+: B] =
       and(Topic[K, V](topic, purpose))
 
@@ -136,7 +135,7 @@ object Topics {
   ): Builder[IncomingRecord[K, V] :+: CNil, (K, V) :+: CNil] =
     Builder(SingletonTopics(topic))
 
-  def of[K: FromRecord: ToRecord: SchemaFor, V: FromRecord: ToRecord: SchemaFor](
+  def of[K: Serde: SchemaFor, V: Serde: SchemaFor](
       topic: String,
       purpose: TopicPurpose
   ): Builder[IncomingRecord[K, V] :+: CNil, (K, V) :+: CNil] =

@@ -25,7 +25,6 @@ import cats.syntax.all._
 import fs2.{Chunk, Stream}
 import com.banno.kafka.consumer._
 import com.banno.kafka.metrics.prometheus.ConsumerPrometheusReporter
-import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.clients.consumer._
 
@@ -130,7 +129,7 @@ object RecordStream {
   type Batched[F[_], A] = RecordStream[F, IncomingRecords[A]]
 
   private abstract class Impl[F[_]: Applicative, A](
-      val consumer: ConsumerApi[F, GenericRecord, GenericRecord],
+      val consumer: ConsumerApi[F, Array[Byte], Array[Byte]],
   ) extends RecordStream[F, A] {
     def readProcessCommit[B](process: A => F[B]): Stream[F, B] =
       records.evalMap { x =>
@@ -321,7 +320,7 @@ object RecordStream {
   ) {
     def consumerApi[F[_]: Async](
         reset: AutoOffsetReset
-    ): Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] = {
+    ): Resource[F, ConsumerApi[F, Array[Byte], Array[Byte]]] = {
       val configs: List[(String, AnyRef)] =
         whetherCommits.configs ++
         extraConfigs ++
@@ -334,7 +333,7 @@ object RecordStream {
           ClientId(clientId),
           MetricReporters[ConsumerPrometheusReporter],
         )
-      ConsumerApi.Avro.Generic.resource[F](configs: _*)
+      ConsumerApi.ByteArray.resource[F](configs: _*)
     }
   }
 
@@ -428,7 +427,7 @@ object RecordStream {
     )
 
   private def ephemeralTopicsSeekToEnd[F[_]: Monad](
-      consumer: ConsumerApi[F, GenericRecord, GenericRecord],
+      consumer: ConsumerApi[F, Array[Byte], Array[Byte]],
   ): AschematicTopic => F[Unit] =
     topic =>
       topic.purpose.contentType match {
@@ -447,11 +446,11 @@ object RecordStream {
 
     private def parseBatch[F[_]: ApplicativeThrow, A, B](
         topical: Topical[A, B]
-    ): ConsumerRecords[GenericRecord, GenericRecord] => F[IncomingRecords[A]] =
+    ): ConsumerRecords[Array[Byte], Array[Byte]] => F[IncomingRecords[A]] =
       IncomingRecords.parseWith(_, topical.parse).liftTo[F]
 
     private def recordStream[F[_]: Async, A, B](
-        consumer: ConsumerApi[F, GenericRecord, GenericRecord],
+        consumer: ConsumerApi[F, Array[Byte], Array[Byte]],
         topical: Topical[A, B],
     ): RecordStream[F, IncomingRecords[A]] =
       new Impl[F, IncomingRecords[A]](consumer) {
@@ -486,7 +485,7 @@ object RecordStream {
       override def whetherCommits = baseConfigs.whetherCommits
 
       private def historyImpl[A, B](
-          consumer: ConsumerApi[F, GenericRecord, GenericRecord],
+          consumer: ConsumerApi[F, Array[Byte], Array[Byte]],
           topical: Topical[A, B],
       ): Stream[F, IncomingRecords[A]] =
         consumer
@@ -499,13 +498,13 @@ object RecordStream {
           .evalMap(parseBatch(topical))
 
       private def presentImpl[A, B](
-          consumer: ConsumerApi[F, GenericRecord, GenericRecord],
+          consumer: ConsumerApi[F, Array[Byte], Array[Byte]],
           topical: Topical[A, B],
       ): P[F, IncomingRecords[A]] =
         whetherCommits.extrude(recordStream(consumer, topical))
 
       private def assign[A, B](
-          consumer: ConsumerApi[F, GenericRecord, GenericRecord],
+          consumer: ConsumerApi[F, Array[Byte], Array[Byte]],
           topical: Topical[A, B],
           offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
       ): F[Unit] =
