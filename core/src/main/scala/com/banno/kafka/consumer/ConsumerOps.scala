@@ -19,7 +19,6 @@ package com.banno.kafka.consumer
 import cats._
 import cats.implicits._
 import fs2._
-import java.util.ConcurrentModificationException
 
 import cats.effect._
 
@@ -149,20 +148,6 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       implicit F: Async[F]
   ): F[(Signal[F, Boolean], ConsumerRecord[K, V] => F[Unit])] =
     consumer.assignmentLastOffsets(commitMarkerAdjustment).flatMap(los => createCaughtUpSignal(los))
-
-  def closeAndRecoverConcurrentModificationWithWakeup(
-      implicit F: ApplicativeError[F, Throwable]
-  ): F[Unit] =
-    consumer.close.recoverWith {
-      case _: ConcurrentModificationException => consumer.wakeup
-    }
-
-  def closeAndRecoverConcurrentModificationWithWakeup(
-      timeout: FiniteDuration
-  )(implicit F: ApplicativeError[F, Throwable]): F[Unit] =
-    consumer.close(timeout).recoverWith {
-      case _: ConcurrentModificationException => consumer.wakeup
-    }
 
   def pollAndRecoverWakeupWithClose(
       timeout: FiniteDuration

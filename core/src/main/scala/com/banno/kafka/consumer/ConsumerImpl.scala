@@ -159,7 +159,6 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
     F.delay(c.subscribe(pattern, callback))
   def subscription: F[Set[String]] = F.delay(c.subscription().asScala.toSet)
   def unsubscribe: F[Unit] = F.delay(c.unsubscribe())
-  def wakeup: F[Unit] = F.delay(c.wakeup())
 }
 
 object ConsumerImpl {

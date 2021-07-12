@@ -36,7 +36,6 @@ import org.scalatestplus.scalacheck._
 import scala.jdk.CollectionConverters._
 import java.util.ConcurrentModificationException
 
-import org.apache.kafka.common.errors.WakeupException
 import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.propspec.AnyPropSpec
@@ -116,46 +115,6 @@ class ConsumerAndProducerApiSpec
       .unsafeRunSync()
   }
 
-  //Calling KafkaConsumer.wakeup will cause any other concurrent operation to throw WakeupException
-  property("Simple consumer poll fails with WakeupException on wakeup") {
-    val topic = createTopic()
-    ConsumerApi.NonShifting
-      .resource[IO, String, String](BootstrapServers(bootstrapServer))
-      .use(
-        c =>
-          for {
-            _ <- c.assign(topic, Map.empty[TopicPartition, Long])
-            _ <- c.wakeup
-            e <- c.poll(1.second).attempt
-          } yield {
-            e.left.value shouldBe a[WakeupException]
-          }
-      )
-      .unsafeRunSync()
-  }
-
-  //If we recover from close failing with CME by calling wakeup, and recover from poll failing with WE by calling close, we can call poll and close concurrently
-  property("Simple consumer close while polling") {
-    val topic = createTopic()
-    ConsumerApi.NonShifting
-      .resource[IO, String, String](BootstrapServers(bootstrapServer))
-      .allocated
-      .map {
-        case (c, _) =>
-          for {
-            _ <- c.assign(topic, Map.empty[TopicPartition, Long])
-            f <- Spawn[IO].start(c.pollAndRecoverWakeupWithClose(1 second))
-            e1 <- Temporal[IO].sleep(100 millis) *> c.closeAndRecoverConcurrentModificationWithWakeup.attempt
-            outcome <- f.join
-            e2 <- outcome.embed(IO.raiseError(new RuntimeException("Canceled pollAndRecoverWakeupWithClose")))
-          } yield {
-            e1.toOption.get should ===(())
-            e2.count should ===(0)
-          }
-      }
-      .unsafeRunSync()
-  }
-
   //If we shift all operations onto a singleton thread pool then they become sequential, so we can safely call poll and close concurrently without requiring recovery & wakeup
   property("Singleton shifting consumer close while polling") {
     val topic = createTopic()
@@ -172,24 +131,6 @@ class ConsumerAndProducerApiSpec
             e.toOption.get should ===(())
           }
       }
-      .unsafeRunSync()
-  }
-
-  //wakeup is the one thread-safe operation, so we don't need to shift it
-  property("Singleton shifting consumer poll fails with WakeupException on wakeup") {
-    val topic = createTopic()
-    ConsumerApi
-      .resource[IO, String, String](BootstrapServers(bootstrapServer))
-      .use(
-        c =>
-          for {
-            _ <- c.assign(topic, Map.empty[TopicPartition, Long])
-            _ <- Spawn[IO].start(Temporal[IO].sleep(100 millis) *> c.wakeup)
-            e <- c.poll(1 second).attempt
-          } yield {
-            e.left.value shouldBe a[WakeupException]
-          }
-      )
       .unsafeRunSync()
   }
 
