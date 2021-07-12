@@ -35,11 +35,7 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
 trait ConsumerApi[F[_], K, V] {
   def assign(partitions: Iterable[TopicPartition]): F[Unit]
   def assignment: F[Set[TopicPartition]]
-  def beginningOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]]
-  def beginningOffsets(
-      partitions: Iterable[TopicPartition],
-      timeout: FiniteDuration
-  ): F[Map[TopicPartition, Long]]
+
   def close: F[Unit]
   def close(timeout: FiniteDuration): F[Unit]
   def commitAsync: F[Unit]
@@ -50,24 +46,11 @@ trait ConsumerApi[F[_], K, V] {
   def commitAsync(callback: OffsetCommitCallback): F[Unit]
   def commitSync: F[Unit]
   def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit]
-  def committed(partition: Set[TopicPartition]): F[Map[TopicPartition, OffsetAndMetadata]]
-  def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]]
-  def endOffsets(
-      partitions: Iterable[TopicPartition],
-      timeout: FiniteDuration
-  ): F[Map[TopicPartition, Long]]
+
   def listTopics: F[Map[String, Seq[PartitionInfo]]]
   def listTopics(timeout: FiniteDuration): F[Map[String, Seq[PartitionInfo]]]
   def metrics: F[Map[MetricName, Metric]]
-  def offsetsForTimes(
-      timestampsToSearch: Map[TopicPartition, Long]
-  ): F[Map[TopicPartition, OffsetAndTimestamp]]
-  def offsetsForTimes(
-      timestampsToSearch: Map[TopicPartition, Long],
-      timeout: FiniteDuration
-  ): F[Map[TopicPartition, OffsetAndTimestamp]]
-  def partitionsFor(topic: String): F[Seq[PartitionInfo]]
-  def partitionsFor(topic: String, timeout: FiniteDuration): F[Seq[PartitionInfo]]
+
   def pause(partitions: Iterable[TopicPartition]): F[Unit]
   def paused: F[Set[TopicPartition]]
   def poll(timeout: FiniteDuration): F[ConsumerRecords[K, V]]
@@ -82,6 +65,8 @@ trait ConsumerApi[F[_], K, V] {
   def subscribe(pattern: Pattern, callback: ConsumerRebalanceListener): F[Unit]
   def subscription: F[Set[String]]
   def unsubscribe: F[Unit]
+
+  def partitionQueries: PartitionQueries[F]
 }
 
 object ConsumerApi {

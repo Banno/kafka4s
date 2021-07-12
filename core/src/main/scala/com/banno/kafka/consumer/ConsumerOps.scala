@@ -43,6 +43,24 @@ case object SeekToEnd extends SeekTo {
     consumer.seekToEnd(partitions)
 }
 
+case class PartitionQueriesOps[F[_]](consumer: PartitionQueries[F]) {
+
+  def partitionsFor(topics: List[String])(implicit F: Applicative[F]): F[List[PartitionInfo]] =
+    topics.flatTraverse(consumer.partitionsFor(_).map(_.toList))
+
+  def lastOffsets(partitions: Iterable[TopicPartition], commitMarkerAdjustment: Boolean = false)(
+      implicit F: Functor[F]
+  ): F[Map[TopicPartition, Long]] =
+    consumer
+      .endOffsets(partitions)
+      .map(
+        _.view
+          .mapValues(v => if (v <= 0) v - 1 else if (commitMarkerAdjustment) v - 2 else v - 1)
+          .toMap
+      )
+
+}
+
 case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
 
   def log[G[_]: Sync] = Slf4jLogger.getLoggerFromClass(this.getClass)
@@ -51,7 +69,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
     consumer.subscribe(topics)
 
   def partitionsFor(topics: List[String])(implicit F: Applicative[F]): F[List[PartitionInfo]] =
-    topics.flatTraverse(consumer.partitionsFor(_).map(_.toList))
+    consumer.partitionQueries.partitionsFor(topics)
 
   def assign(
       topics: List[String],
@@ -86,13 +104,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
   def lastOffsets(partitions: Iterable[TopicPartition], commitMarkerAdjustment: Boolean = false)(
       implicit F: Functor[F]
   ): F[Map[TopicPartition, Long]] =
-    consumer
-      .endOffsets(partitions)
-      .map(
-        _.view
-          .mapValues(v => if (v <= 0) v - 1 else if (commitMarkerAdjustment) v - 2 else v - 1)
-          .toMap
-      )
+    consumer.partitionQueries.lastOffsets(partitions, commitMarkerAdjustment)
 
   def assignmentLastOffsets(
       commitMarkerAdjustment: Boolean = false
