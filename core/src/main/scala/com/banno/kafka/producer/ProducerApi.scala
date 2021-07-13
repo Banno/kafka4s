@@ -16,6 +16,8 @@
 
 package com.banno.kafka.producer
 
+import cats._
+import cats.arrow._
 import cats.syntax.all._
 import cats.effect.{Async, Resource, Sync}
 import java.util.concurrent.{Future => JFuture}
@@ -29,6 +31,7 @@ import org.apache.avro.generic.GenericRecord
 import com.sksamuel.avro4s.ToRecord
 import io.confluent.kafka.serializers.KafkaAvroSerializer
 import com.banno.kafka._
+import scala.concurrent.ExecutionContext
 
 trait ProducerApi[F[_], K, V] {
   def abortTransaction: F[Unit]
@@ -113,6 +116,61 @@ trait ProducerApi[F[_], K, V] {
         self.sendAsync(record.bimap(f, g))
     }
   }
+
+  final def mapK[G[_]](f: F ~> G): ProducerApi[G, K, V] = {
+    val self = this
+    new ProducerApi[G, K, V] {
+      override def abortTransaction: G[Unit] = f(self.abortTransaction)
+      override def beginTransaction: G[Unit] = f(self.beginTransaction)
+      override def close: G[Unit] = f(self.close)
+      override def close(timeout: FiniteDuration): G[Unit] = f(self.close(timeout))
+      override def commitTransaction: G[Unit] = f(self.commitTransaction)
+      override def flush: G[Unit] = f(self.flush)
+      override def initTransactions: G[Unit] = f(self.initTransactions)
+      override def metrics: G[Map[MetricName, Metric]] = f(self.metrics)
+      override def partitionsFor(topic: String): G[Seq[PartitionInfo]] =
+        f(self.partitionsFor(topic))
+      override def sendOffsetsToTransaction(
+          offsets: Map[TopicPartition, OffsetAndMetadata],
+          consumerGroupId: String
+      ): G[Unit] =
+        f(self.sendOffsetsToTransaction(offsets, consumerGroupId))
+
+      override private[producer] def sendRaw(
+        record: ProducerRecord[K, V]
+      ): JFuture[RecordMetadata] =
+        self.sendRaw(record)
+      override private[producer] def sendRaw(
+          record: ProducerRecord[K, V],
+          callback: Callback
+      ): JFuture[RecordMetadata] =
+        self.sendRaw(record, callback)
+      override private[producer] def sendRaw(
+          record: ProducerRecord[K, V],
+          callback: Either[Exception, RecordMetadata] => Unit
+      ): Unit =
+        self.sendRaw(record, callback)
+
+      override def sendAndForget(record: ProducerRecord[K, V]): G[Unit] =
+        f(self.sendAndForget(record))
+      override def sendSync(record: ProducerRecord[K, V]): G[RecordMetadata] =
+        f(self.sendSync(record))
+      override def sendAsync(record: ProducerRecord[K, V]): G[RecordMetadata] =
+        f(self.sendAsync(record))
+    }
+  }
+}
+
+object ShiftingProducer {
+  def apply[F[_]: Async, K, V](
+    c: ProducerApi[F, K, V],
+    blockingContext: ExecutionContext,
+  ): ProducerApi[F, K, V] =
+  c.mapK(
+    FunctionK.liftFunction(
+      Async[F].evalOn(_, blockingContext)
+    )
+  )
 }
 
 object Avro4sProducer {
