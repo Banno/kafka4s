@@ -113,23 +113,6 @@ package object kafka {
     //note that these will probably throw NPE if key/value is null
     def keyAs[K](implicit kfr: FromRecord[K]): K = kfr.from(cr.key)
     def valueAs[V](implicit vfr: FromRecord[V]): V = vfr.from(cr.value)
-
-    /** This only works when both key and value are non-null. */
-    def fromGenericRecord[K, V](
-        implicit kfr: FromRecord[K],
-        vfr: FromRecord[V]
-    ): ConsumerRecord[K, V] =
-      cr.bimap(kfr.from, vfr.from)
-  }
-
-  implicit class GenericConsumerRecords(crs: ConsumerRecords[GenericRecord, GenericRecord]) {
-    def fromGenericRecords[K: FromRecord, V: FromRecord]: ConsumerRecords[K, V] =
-      new ConsumerRecords[K, V](
-        crs.partitions.asScala
-          .map(tp => (tp, crs.records(tp).asScala.map(_.fromGenericRecord[K, V]).asJava))
-          .toMap
-          .asJava
-      )
   }
 
   implicit class ByteArrayConsumerRecord(cr: ConsumerRecord[Array[Byte], Array[Byte]]) {
@@ -182,6 +165,16 @@ package object kafka {
   implicit object ConsumerRecordBifunctor extends Bifunctor[ConsumerRecord] {
     def bimap[A, B, C, D](fab: ConsumerRecord[A, B])(f: A => C, g: B => D): ConsumerRecord[C, D] =
       fab.bimap(f, g)
+  }
+
+  implicit object ConsumerRecordsBifunctor extends Bifunctor[ConsumerRecords] {
+    def bimap[A, B, C, D](fab: ConsumerRecords[A, B])(f: A => C, g: B => D): ConsumerRecords[C, D] =
+      new ConsumerRecords[C, D](
+        fab.partitions.asScala
+          .map(tp => (tp, fab.records(tp).asScala.map(_.bimap(f, g)).asJava))
+          .toMap
+          .asJava
+      )
   }
 
   implicit class BifunctorToOptionExtension[F[_, _], A, B](
