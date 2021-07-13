@@ -16,19 +16,8 @@
 
 package com.banno.kafka
 
-import io.confluent.kafka.schemaregistry.ParsedSchema
-import io.confluent.kafka.schemaregistry.avro.AvroSchema
-import org.apache.avro.Schema
-
 package object schemaregistry {
 
   implicit def schemaRegistryOps[F[_]](r: SchemaRegistryApi[F]): SchemaRegistryOps[F] =
     SchemaRegistryOps[F](r)
-
-  implicit class SchemaOps(schema: Schema) {
-    val asParsedSchema: ParsedSchema =
-      new AvroSchema(schema)
-
-  }
-
 }

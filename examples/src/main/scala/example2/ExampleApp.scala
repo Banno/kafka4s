@@ -23,6 +23,7 @@ import com.banno.kafka.admin._
 import com.banno.kafka.schemaregistry._
 import com.banno.kafka.consumer._
 import com.banno.kafka.producer._
+import com.banno.kafka.avro4s._
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.producer.ProducerRecord
 import scala.concurrent.duration._
@@ -55,14 +56,14 @@ final class ExampleApp[F[_]: Async] {
     .toVector
 
   val producer =
-    ProducerApi.Avro4s.resource[F, CustomerId, Customer](
+    Avro4sProducer.resource[F, CustomerId, Customer](
       BootstrapServers(kafkaBootstrapServers),
       SchemaRegistryUrl(schemaRegistryUri),
       ClientId("producer-example")
     )
 
   val consumer =
-    ConsumerApi.Avro4s.resource[F, CustomerId, Customer](
+    Avro4sConsumer.resource[F, CustomerId, Customer](
       BootstrapServers(kafkaBootstrapServers),
       SchemaRegistryUrl(schemaRegistryUri),
       ClientId("consumer-example"),

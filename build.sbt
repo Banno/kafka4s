@@ -86,6 +86,7 @@ lazy val `kafka4s-avro4s` = project
     testFrameworks += new TestFramework("munit.Framework"),
     Test / sourceGenerators += (Test / avroScalaGenerate).taskValue,
     watchSources ++= ((Test / avroSourceDirectories).value ** "*.avdl").get,
+    testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oS"),
     libraryDependencies ++= Seq(
       "io.confluent" % "kafka-avro-serializer" % V.confluent,
       "com.sksamuel.avro4s" %% "avro4s-core" % V.avro4s,
@@ -96,19 +97,19 @@ lazy val `kafka4s-avro4s` = project
     //  ("org.apache.kafka" % "kafka-streams-test-utils" % V.kafka % "test"),
     //  "ch.qos.logback" % "logback-classic" % V.logback % "test",
     //  "org.slf4j" % "log4j-over-slf4j" % V.log4j % "test",
-    //  "org.scalacheck" %% "scalacheck" % V.scalacheck % "test",
-     "org.scalameta" %% "munit" % V.munit % "test",
+     "org.scalacheck" %% "scalacheck" % V.scalacheck % Test,
+     "org.scalameta" %% "munit" % V.munit % Test,
     //  "org.scalameta" %% "munit-scalacheck" % V.munit % "test",
     //  "org.typelevel" %% "scalacheck-effect-munit" % V.scalacheckEffect,
     //  "org.typelevel" %% "munit-cats-effect-3" % V.munitCE3 % "test",
-    //  "org.scalatest" %% "scalatest" % V.scalatest % "test",
-    //  "org.scalatestplus" %% "scalacheck-1-15" % "3.2.8.0" % Test,
-    //  "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % "test",
+     "org.scalatest" %% "scalatest" % V.scalatest % Test,
+     "org.scalatestplus" %% "scalacheck-1-15" % "3.2.8.0" % Test,
+     "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % Test,
     //  "org.typelevel" %% "cats-effect" % V.catsEffect,
     //  "org.typelevel" %% "cats-laws" % V.cats % "test",
     //  "org.typelevel" %% "discipline-munit" % V.disciplineMunit % "test",
     )
-  )
+  ).dependsOn(core % "compile->compile;test->test")
 
 lazy val examples = project
   .enablePlugins(NoPublishPlugin)

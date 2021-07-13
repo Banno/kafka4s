@@ -222,10 +222,10 @@ object ConsumerApi {
         }
     }
 
-  // private[this] def createKafkaConsumer[F[_]: Sync, K, V](
-  //     configs: (String, AnyRef)*
-  // ): F[KafkaConsumer[K, V]] =
-  //   Sync[F].delay(new KafkaConsumer[K, V](configs.toMap.asJava))
+  def createKafkaConsumer[F[_]: Sync, K, V](
+      configs: (String, AnyRef)*
+  ): F[KafkaConsumer[K, V]] =
+    Sync[F].delay(new KafkaConsumer[K, V](configs.toMap.asJava))
 
   private[this] def createKafkaConsumer[F[_]: Sync, K, V](
       keyDeserializer: Deserializer[K],

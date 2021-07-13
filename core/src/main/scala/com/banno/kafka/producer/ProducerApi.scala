@@ -171,11 +171,10 @@ object ShiftingProducer {
 }
 
 object ProducerApi {
-
-  // private[this] def createKafkaProducer[F[_]: Sync, K, V](
-  //     configs: (String, AnyRef)*
-  // ): F[KafkaProducer[K, V]] =
-  //   Sync[F].delay(new KafkaProducer[K, V](configs.toMap.asJava))
+  def createKafkaProducer[F[_]: Sync, K, V](
+      configs: (String, AnyRef)*
+  ): F[KafkaProducer[K, V]] =
+    Sync[F].delay(new KafkaProducer[K, V](configs.toMap.asJava))
 
   private[this] def createKafkaProducer[F[_]: Sync, K, V](
       keySerializer: Serializer[K],
