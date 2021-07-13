@@ -85,6 +85,6 @@ import com.sksamuel.avro4s.ToRecord
 case class GenericProducerOps[F[_]](producer: ProducerApi[F, GenericRecord, GenericRecord]) {
 
   def toAvro4s[K: ToRecord, V: ToRecord]: ProducerApi[F, K, V] =
-    Avro4sProducerImpl[F, K, V](producer)
+    Avro4sProducer[F, K, V](producer)
 
 }

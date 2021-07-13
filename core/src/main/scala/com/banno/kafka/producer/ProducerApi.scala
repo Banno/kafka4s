@@ -58,6 +58,71 @@ trait ProducerApi[F[_], K, V] {
   def sendAndForget(record: ProducerRecord[K, V]): F[Unit]
   def sendSync(record: ProducerRecord[K, V]): F[RecordMetadata]
   def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata]
+
+  // Implementing directly here since Cats doesn't have `Bicontravariant`, and
+  // we technically don't need that level of abstraction, just this method.
+  final def contrabimap[A, B](f: A => K, g: B => V): ProducerApi[F, A, B] = {
+    val self = this
+    new ProducerApi[F, A, B] {
+      override def abortTransaction: F[Unit] =
+        self.abortTransaction
+      override def beginTransaction: F[Unit] =
+        self.beginTransaction
+      override def close: F[Unit] =
+        self.close
+      override def close(timeout: FiniteDuration): F[Unit] =
+        self.close(timeout)
+      override def commitTransaction: F[Unit] =
+        self.commitTransaction
+      override def flush: F[Unit] =
+        self.flush
+      override def initTransactions: F[Unit] =
+        self.initTransactions
+      override def metrics: F[Map[MetricName, Metric]] =
+        self.metrics
+      override def partitionsFor(topic: String): F[Seq[PartitionInfo]] =
+        self.partitionsFor(topic)
+      override def sendOffsetsToTransaction(
+          offsets: Map[TopicPartition, OffsetAndMetadata],
+          consumerGroupId: String
+      ): F[Unit] =
+        self.sendOffsetsToTransaction(offsets, consumerGroupId)
+
+      override private[producer] def sendRaw(
+        record: ProducerRecord[A, B]
+      ): JFuture[RecordMetadata] =
+        self.sendRaw(record.bimap(f, g))
+
+      override private[producer] def sendRaw(
+          record: ProducerRecord[A, B],
+          callback: Callback
+      ): JFuture[RecordMetadata] =
+        self.sendRaw(record.bimap(f, g), callback)
+
+      override private[producer] def sendRaw(
+          record: ProducerRecord[A, B],
+          callback: Either[Exception, RecordMetadata] => Unit
+      ): Unit =
+        self.sendRaw(record.bimap(f, g), callback)
+
+      override def sendAndForget(record: ProducerRecord[A, B]): F[Unit] =
+        self.sendAndForget(record.bimap(f, g))
+      override def sendSync(record: ProducerRecord[A, B]): F[RecordMetadata] =
+        self.sendSync(record.bimap(f, g))
+      override def sendAsync(record: ProducerRecord[A, B]): F[RecordMetadata] =
+        self.sendAsync(record.bimap(f, g))
+    }
+  }
+}
+
+object Avro4sProducer {
+  def apply[F[_], K, V](
+    p: ProducerApi[F, GenericRecord, GenericRecord]
+  )(implicit
+      ktr: ToRecord[K],
+    vtr: ToRecord[V],
+  ): ProducerApi[F, K, V] =
+  p.contrabimap(ktr.to, vtr.to)
 }
 
 object ProducerApi {
@@ -122,6 +187,6 @@ object ProducerApi {
     def resource[F[_]: Async, K: ToRecord, V: ToRecord](
         configs: (String, AnyRef)*
     ): Resource[F, ProducerApi[F, K, V]] =
-      ProducerApi.Avro.Generic.resource[F](configs: _*).map(Avro4sProducerImpl(_))
+      ProducerApi.Avro.Generic.resource[F](configs: _*).map(Avro4sProducer(_))
   }
 }
