@@ -75,9 +75,7 @@ final class ExampleApp[F[_]: Async] {
     for {
       _ <- Sync[F].delay(println("Starting kafka4s example"))
 
-      factory <- Avro4sSchematic.default[F]
-      implicit0(schematicCID: Schematic[CustomerId]) = factory.schematic[CustomerId]
-      implicit0(schematicC: Schematic[Customer]) = factory.schematic[Customer]
+      implicit0(factory: Avro4sSchematic.Factory) <- Avro4sSchematic.default[F]
       _ <- AdminApi.createTopicsIdempotent[F](kafkaBootstrapServers, topic)
       _ <- SchemaRegistryApi.register[F, CustomerId, Customer](schemaRegistryUri, topic.name)
 
