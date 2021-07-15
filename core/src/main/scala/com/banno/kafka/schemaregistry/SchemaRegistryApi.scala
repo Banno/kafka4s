@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-package com.banno.kafka.schemaregistry
+package com.banno.kafka
+package schemaregistry
 
-import org.apache.avro.Schema
 import io.confluent.kafka.schemaregistry.client.{CachedSchemaRegistryClient, SchemaMetadata}
 import io.confluent.kafka.schemaregistry.client.rest.RestService
 import cats.syntax.all._
 import cats.effect.Sync
-import com.sksamuel.avro4s.SchemaFor
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import io.confluent.kafka.schemaregistry.ParsedSchema
 
@@ -33,32 +32,14 @@ trait SchemaRegistryApi[F[_]] {
 
   def getAllSubjects: F[Iterable[String]]
 
-  @deprecated("Use getSchemaById instead.", "3.0.0-M24")
-  def getById(id: Int): F[Schema]
-
-  @deprecated("Use getSchemaBySubjectAndId instead.", "3.0.0-M24")
-  def getSchemaById(id: Int): F[ParsedSchema]
-
-  @deprecated("Use getSchemaBySubjectAndId instead.", "3.0.0-M24")
-  def getBySubjectAndId(subject: String, id: Int): F[Schema]
-
   def getSchemaBySubjectAndId(subject: String, id: Int): F[ParsedSchema]
   def getCompatibility(subject: String): F[CompatibilityLevel]
   def getLatestSchemaMetadata(subject: String): F[SchemaMetadata]
   def getSchemaMetadata(subject: String, version: Int): F[SchemaMetadata]
 
-  @deprecated("Use getVersion(String,ParsedSchema) instead.", "3.0.0-M24")
-  def getVersion(subject: String, schema: Schema): F[Int]
-
   def getVersion(subject: String, schema: ParsedSchema): F[Int]
 
-  @deprecated("Use register(String,ParsedSchema) instead.", "3.0.0-M24")
-  def register(subject: String, schema: Schema): F[Int]
-
   def register(subject: String, schema: ParsedSchema): F[Int]
-
-  @deprecated("Use testCompatibility(String,ParsedSchema) instead.", "3.0.0-M24")
-  def testCompatibility(subject: String, schema: Schema): F[Boolean]
 
   def testCompatibility(subject: String, schema: ParsedSchema): F[Boolean]
 
@@ -96,7 +77,7 @@ object SchemaRegistryApi {
   ): F[SchemaRegistryApi[F]] =
     createClient[F](restService, identityMapCapacity).map(SchemaRegistryImpl[F](_))
 
-  def register[F[_]: Sync, K: SchemaFor, V: SchemaFor](baseUrl: String, topic: String) =
+  def register[F[_]: Sync, K: HasParsedSchema, V: HasParsedSchema](baseUrl: String, topic: String) =
     for {
       schemaRegistry <- apply(baseUrl)
       k <- schemaRegistry.registerKey[K](topic)

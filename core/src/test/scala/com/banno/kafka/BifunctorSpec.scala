@@ -16,14 +16,14 @@
 
 package com.banno.kafka
 
-import cats.laws.discipline.BifunctorTests
+import cats.laws.discipline._
 import com.banno.kafka.test._
 import munit._
 
 class BifunctorSpec extends DisciplineSuite {
   checkAll(
-    "ProducerRecordBifunctor",
-    BifunctorTests(ProducerRecordBifunctor).bifunctor[Int, Int, Int, String, String, String]
+    "ProducerRecordBitraverse",
+    BitraverseTests(ProducerRecordBitraverse).bitraverse[List, Int, Int, Int, String, String, String]
   )
   checkAll(
     "ConsumerRecordBifunctor",

@@ -19,7 +19,6 @@ package com.banno.kafka
 import java.time.Instant
 
 import scala.jdk.CollectionConverters._
-import scala.util._
 import scala.util.control.NoStackTrace
 
 import cats._
@@ -28,13 +27,9 @@ import cats.effect._
 import cats.syntax.all._
 import com.banno.kafka.admin.AdminApi
 import com.banno.kafka.schemaregistry.SchemaRegistryApi
-import com.sksamuel.avro4s.FromRecord
-import com.sksamuel.avro4s.SchemaFor
-import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.consumer._
 import org.apache.kafka.clients.producer.ProducerRecord
-import com.sksamuel.avro4s.ToRecord
 
 trait Topic[K, V] extends Topical[IncomingRecord[K, V], (K, V)] with AschematicTopic {
   final override def aschematic: NonEmptyList[AschematicTopic] =
@@ -42,32 +37,31 @@ trait Topic[K, V] extends Topical[IncomingRecord[K, V], (K, V)] with AschematicT
 }
 
 object Topic {
-  type CR = ConsumerRecord[GenericRecord, GenericRecord]
-
-  private def fromGeneric[A](
-      gr: GenericRecord
-  )(implicit FR: FromRecord[A]): Try[A] =
-    Try(FR.from(gr))
+  type CR = ConsumerRecord[Array[Byte], Array[Byte]]
 
   sealed trait KeyOrValue {
     def forLog: String
-    def select(cr: CR): GenericRecord
+    def select(cr: CR):Array[Byte]
     override def toString(): String = forLog
   }
 
   object Key extends KeyOrValue {
     override def forLog: String = "key"
-    override def select(cr: CR): GenericRecord = cr.key()
+    override def select(cr: CR): Array[Byte] = cr.key()
   }
 
   object Value extends KeyOrValue {
     override def forLog: String = "value"
-    override def select(cr: CR): GenericRecord = cr.value()
+    override def select(cr: CR): Array[Byte] = cr.value()
   }
 
-  private def parse1[K: FromRecord, V: FromRecord](cr: CR): Try[(K, V)] = {
-    val tryKey = fromGeneric[K](cr.key).adaptError(ParseFailed(Key, cr, _))
-    val tryValue = fromGeneric[V](cr.value).adaptError(ParseFailed(Value, cr, _))
+  private def parse1[F[_]: MonadThrow, K, V](
+    parseK: Array[Byte] => F[K],
+    parseV: Array[Byte] => F[V],
+    cr: CR
+  ): F[(K, V)] = {
+    val tryKey = parseK(cr.key).adaptError(ParseFailed(Key, cr, _))
+    val tryValue = parseV(cr.value).adaptError(ParseFailed(Value, cr, _))
     tryKey.product(tryValue)
   }
 
@@ -85,22 +79,23 @@ object Topic {
     }
   }
 
-  def apply[K: FromRecord: ToRecord: SchemaFor, V: FromRecord: ToRecord: SchemaFor](
+  def apply[K: Schematic, V: Schematic](
       topic: String,
-      topicPurpose: TopicPurpose
+      topicPurpose: TopicPurpose,
   ): Topic[K, V] =
     new Topic[K, V] {
-      override def coparse(
+      override def coparse[F[_]: Sync](
           kv: (K, V)
-      ): ProducerRecord[GenericRecord, GenericRecord] =
-        new ProducerRecord(topic, kv._1, kv._2).toGenericRecord
+      ): F[ProducerRecord[Array[Byte], Array[Byte]]] =
+        new ProducerRecord(topic, kv._1, kv._2)
+          .bitraverse(Serde[K].toBytes(name, _), Serde[V].toBytes(name, _))
 
       override def name: TopicName = TopicName(topic)
 
       override def purpose: TopicPurpose = topicPurpose
 
-      override def parse(cr: CR): Try[IncomingRecord[K, V]] =
-        parse1[K, V](cr).map { kv =>
+      override def parse[F[_]: Sync](cr: CR): F[IncomingRecord[K, V]] =
+        parse1[F, K, V](Serde[K].fromBytes(name, _), Serde[V].fromBytes(name, _), cr).map { kv =>
           IncomingRecord.of(cr).bimap(_ => kv._1, _ => kv._2)
         }
 
@@ -137,14 +132,14 @@ object Topic {
     new Invariant[Topic[K, *]] {
       override def imap[A, B](fa: Topic[K, A])(f: A => B)(g: B => A): Topic[K, B] =
         new Topic[K, B] {
-          override def parse(
-              cr: ConsumerRecord[GenericRecord, GenericRecord]
-          ): Try[IncomingRecord[K, B]] =
+          override def parse[F[_]: Sync](
+              cr: ConsumerRecord[Array[Byte], Array[Byte]]
+          ): F[IncomingRecord[K, B]] =
             fa.parse(cr).map(_.map(f))
 
-          override def coparse(
+          override def coparse[F[_]: Sync](
               kv: (K, B)
-          ): ProducerRecord[GenericRecord, GenericRecord] =
+          ): F[ProducerRecord[Array[Byte], Array[Byte]]] =
             fa.coparse((kv._1, g(kv._2)))
 
           override def nextOffset(

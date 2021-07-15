@@ -20,7 +20,7 @@ import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.metrics.MetricsReporter
-import io.confluent.kafka.serializers.{AbstractKafkaAvroSerDeConfig, KafkaAvroDeserializerConfig}
+import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig
 import scala.reflect.ClassTag
 import io.confluent.kafka.serializers.subject.{
   RecordNameStrategy => KRecordNameStrategy,
@@ -104,25 +104,19 @@ object ValueDeserializerClass {
 case class SchemaRegistryUrl(url: String)
 object SchemaRegistryUrl {
   implicit def toConfig(sru: SchemaRegistryUrl): (String, AnyRef) =
-    AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG -> sru.url
+    AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG -> sru.url
 }
 
 case class MaxSchemasPerSubject(m: Int)
 object MaxSchemasPerSubject {
   implicit def toConfig(msps: MaxSchemasPerSubject): (String, AnyRef) =
-    AbstractKafkaAvroSerDeConfig.MAX_SCHEMAS_PER_SUBJECT_CONFIG -> msps.m.toString
+    AbstractKafkaSchemaSerDeConfig.MAX_SCHEMAS_PER_SUBJECT_CONFIG -> msps.m.toString
 }
 
 case class AutoRegisterSchemas(r: Boolean)
 object AutoRegisterSchemas {
   implicit def toConfig(ars: AutoRegisterSchemas): (String, AnyRef) =
-    AbstractKafkaAvroSerDeConfig.AUTO_REGISTER_SCHEMAS -> ars.r.toString
-}
-
-case class SpecificAvroReader(s: Boolean)
-object SpecificAvroReader {
-  implicit def toConfig(sar: SpecificAvroReader): (String, AnyRef) =
-    KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG -> sar.s.toString
+    AbstractKafkaSchemaSerDeConfig.AUTO_REGISTER_SCHEMAS -> ars.r.toString
 }
 
 object MetricReporters {
@@ -147,14 +141,14 @@ object MaxPollRecords {
 }
 
 object KeySubjectNameStrategy {
-  val strategy = AbstractKafkaAvroSerDeConfig.KEY_SUBJECT_NAME_STRATEGY
+  val strategy = AbstractKafkaSchemaSerDeConfig.KEY_SUBJECT_NAME_STRATEGY
   val RecordNameStrategy: (String, AnyRef) = strategy -> classOf[KRecordNameStrategy].getName()
   val TopicNameStrategy: (String, AnyRef) = strategy -> classOf[KTopicNameStrategy].getName()
   val TopicRecordNameStrategy: (String, AnyRef) = strategy -> classOf[KTopicRecordNameStrategy]
     .getName()
 }
 object ValueSubjectNameStrategy {
-  val strategy = AbstractKafkaAvroSerDeConfig.VALUE_SUBJECT_NAME_STRATEGY
+  val strategy = AbstractKafkaSchemaSerDeConfig.VALUE_SUBJECT_NAME_STRATEGY
   val RecordNameStrategy: (String, AnyRef) = strategy -> classOf[KRecordNameStrategy].getName()
   val TopicNameStrategy: (String, AnyRef) = strategy -> classOf[KTopicNameStrategy].getName()
   val TopicRecordNameStrategy: (String, AnyRef) = strategy -> classOf[KTopicRecordNameStrategy]

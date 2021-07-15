@@ -16,7 +16,7 @@
 
 package com.banno.kafka
 
-import cats._
+import cats.effect._
 import cats.syntax.all._
 
 import com.banno.kafka._
@@ -24,28 +24,26 @@ import com.banno.kafka.producer.ProducerApi
 
 import shapeless._
 
-import org.apache.avro.generic.GenericRecord
-
 object Publish {
   type T[F[_], A] = A => F[Unit]
   type KV[F[_], K, V] = T[F, (K, V)]
 
-  def to[F[_]: Functor, A, B](
+  def to[F[_]: Sync, A, B](
       topical: Topical[A, B],
-      producer: ProducerApi[F, GenericRecord, GenericRecord],
+      producer: ProducerApi[F, Array[Byte], Array[Byte]],
   ): T[F, B] =
-    kv => producer.sendAsync(topical.coparse(kv)).void
+    kv => topical.coparse(kv).flatMap(producer.sendAsync).void
 
   trait Builder[F[_], A <: Coproduct, B <: Coproduct] {
     type P <: HList
     def build(
         topics: Topics[A, B],
-        producer: ProducerApi[F, GenericRecord, GenericRecord],
+        producer: ProducerApi[F, Array[Byte], Array[Byte]],
     ): P
   }
 
   object Builder {
-    implicit def buildNPublishers[F[_]: Functor, K, V, X <: Coproduct, Y <: Coproduct](implicit
+    implicit def buildNPublishers[F[_]: Sync, K, V, X <: Coproduct, Y <: Coproduct](implicit
         buildTail: Builder[F, X, Y]
     ) =
       new Builder[F, IncomingRecord[K, V] :+: X, (K, V) :+: Y] {
@@ -53,7 +51,7 @@ object Publish {
 
         override def build(
             topics: Topics[IncomingRecord[K, V] :+: X, (K, V) :+: Y],
-            producer: ProducerApi[F, GenericRecord, GenericRecord],
+            producer: ProducerApi[F, Array[Byte], Array[Byte]],
         ): P = {
           val (topic, topicsTail) = Topics.uncons(topics)
           val head = to(topic, producer)
@@ -67,14 +65,14 @@ object Publish {
         type P = HNil
         override def build(
             topics: Topics[CNil, CNil],
-            producer: ProducerApi[F, GenericRecord, GenericRecord],
+            producer: ProducerApi[F, Array[Byte], Array[Byte]],
         ): P = HNil
       }
   }
 
   def toMany[F[_], A <: Coproduct, B <: Coproduct](
       topics: Topics[A, B],
-      producer: ProducerApi[F, GenericRecord, GenericRecord],
+      producer: ProducerApi[F, Array[Byte], Array[Byte]],
   )(implicit builder: Builder[F, A, B]): builder.P =
     builder.build(topics, producer)
 }

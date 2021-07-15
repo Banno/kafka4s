@@ -29,7 +29,6 @@ import fs2._
 
 import scala.util.Random
 import org.scalacheck.magnolia._
-import com.sksamuel.avro4s.RecordFormat
 import org.apache.kafka.common.TopicPartition
 import org.scalatestplus.scalacheck._
 
@@ -49,14 +48,15 @@ class ConsumerAndProducerApiSpec
 
   import cats.effect.unsafe.implicits.global
 
-  implicit def noShrink[T]: Shrink[T] = Shrink.shrinkAny
+  private implicit def noShrink[T]: Shrink[T] = Shrink.shrinkAny
 
-  //Probably don't need to test every single operation; this is just a sanity check that it is all wired up properly
+  // Probably don't need to test every single operation; this is just a sanity
+  // check that it is all wired up properly
 
-  def producerRecord[K, V](topic: String)(p: (K, V)): ProducerRecord[K, V] =
+  private def producerRecord[K, V](topic: String)(p: (K, V)): ProducerRecord[K, V] =
     new ProducerRecord[K, V](topic, p._1, p._2)
 
-  def writeAndRead[F[_], K, V](
+  private def writeAndRead[F[_], K, V](
       producer: ProducerApi[F, K, V],
       consumer: ConsumerApi[F, K, V],
       topic: String,
@@ -252,65 +252,4 @@ class ConsumerAndProducerApiSpec
   property("Producer transaction works") {
     pending
   }
-
-  property("Avro serdes") {
-    val groupId = genGroupId
-    println(s"5 groupId=$groupId")
-    val topic = createTopic()
-
-    forAll { values: Vector[(String, Person)] =>
-      val actual = (for {
-        p <- Stream.resource(
-          ProducerApi.Avro.resource[IO, String, Person](
-            BootstrapServers(bootstrapServer),
-            SchemaRegistryUrl(schemaRegistryUrl)
-          )
-        )
-        c <- Stream.resource(
-          ConsumerApi.Avro.Specific.resource[IO, String, Person](
-            BootstrapServers(bootstrapServer),
-            GroupId(groupId),
-            AutoOffsetReset.earliest,
-            SchemaRegistryUrl(schemaRegistryUrl)
-          )
-        )
-        v <- writeAndRead(p, c, topic, values)
-      } yield v).compile.toVector.unsafeRunSync()
-      actual should ===(values)
-    }
-  }
-
-  //for avro4s tests
-  case class PersonId(id: String)
-  case class Person2(name: String)
-  implicit def personIdRecordFormat = RecordFormat[PersonId]
-  implicit def person2RecordFormat = RecordFormat[Person2]
-
-  property("avro4s") {
-    val groupId = genGroupId
-    println(s"6 groupId=$groupId")
-    val topic = createTopic()
-
-    forAll { values: Vector[(PersonId, Person2)] =>
-      val actual = (for {
-        p <- Stream.resource(
-          ProducerApi.Avro4s.resource[IO, PersonId, Person2](
-            BootstrapServers(bootstrapServer),
-            SchemaRegistryUrl(schemaRegistryUrl)
-          )
-        )
-        c <- Stream.resource(
-          ConsumerApi.Avro4s.resource[IO, PersonId, Person2](
-            BootstrapServers(bootstrapServer),
-            GroupId(groupId),
-            AutoOffsetReset.earliest,
-            SchemaRegistryUrl(schemaRegistryUrl)
-          )
-        )
-        v <- writeAndRead(p, c, topic, values)
-      } yield v).compile.toVector.unsafeRunSync()
-      actual should ===(values)
-    }
-  }
-
 }
