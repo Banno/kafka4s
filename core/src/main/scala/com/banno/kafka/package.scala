@@ -21,6 +21,7 @@ import org.apache.kafka.common.serialization._
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.clients.consumer.{ConsumerRecord, ConsumerRecords, OffsetAndMetadata}
 import cats._
+import cats.syntax.all._
 import scala.jdk.CollectionConverters._
 import java.lang.{
   Double => JDouble,
@@ -39,14 +40,6 @@ package object kafka {
   implicit class ScalaProducerRecord[K, V](pr: ProducerRecord[K, V]) {
     def maybeKey: Option[K] = Option(pr.key)
     def maybeValue: Option[V] = Option(pr.value)
-
-    /** Note that since a record's key or value could be null, functions f and g
-      * should take care to handle null arguments.
-      * A null key means the sender was unable to choose a key on which to partition.
-      * A null value means the entity identified by the key should be deleted.
-      */
-    def bimap[K2, V2](f: K => K2, g: V => V2): ProducerRecord[K2, V2] =
-      new ProducerRecord(pr.topic, pr.partition, pr.timestamp, f(pr.key), g(pr.value), pr.headers)
   }
 
   implicit class ScalaConsumerRecords[K, V](crs: ConsumerRecords[K, V]) {
@@ -137,32 +130,28 @@ package object kafka {
           x.value == y.value
     }
 
-  implicit object ProducerRecordBifunctor extends Bitraverse[ProducerRecord] {
-    override def bimap[A, B, C, D](fab: ProducerRecord[A, B])(f: A => C, g: B => D): ProducerRecord[C, D] =
-      fab.bimap(f, g)
-
+  implicit object ProducerRecordBitraverse extends Bitraverse[ProducerRecord] {
     override def bifoldLeft[A, B, C](
       fab: ProducerRecord[A,B],
       c: C
-    )(
-      f: (C, A) => C,
-      g: (C, B) => C
-    ): C = ???
+    )(f: (C, A) => C, g: (C, B) => C): C =
+      g(f(c, fab.key), fab.value)
 
     override def bifoldRight[A, B, C](
       fab: ProducerRecord[A,B],
       c: Eval[C]
-    )(
-      f: (A, Eval[C]) => Eval[C],
-      g: (B, Eval[C]) => Eval[C]
-    ): Eval[C] = ???
+    )(f: (A, Eval[C]) => Eval[C], g: (B, Eval[C]) => Eval[C]): Eval[C] =
+      f(fab.key, g(fab.value, c))
 
     override def bitraverse[G[_]: Applicative, A, B, C, D](
       fab: ProducerRecord[A,B]
     )(
       f: A => G[C],
       g: B => G[D]
-    ): G[ProducerRecord[C,D]] = ???
+    ): G[ProducerRecord[C,D]] =
+      (f(fab.key), g(fab.value)).mapN(
+        new ProducerRecord(fab.topic, fab.partition, fab.timestamp, _, _, fab.headers)
+      )
   }
 
   implicit object ConsumerRecordBifunctor extends Bifunctor[ConsumerRecord] {
