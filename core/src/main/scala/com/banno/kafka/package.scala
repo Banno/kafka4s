@@ -40,7 +40,8 @@ package object kafka {
     def maybeKey: Option[K] = Option(pr.key)
     def maybeValue: Option[V] = Option(pr.value)
 
-    /** Note that since a record's key or value could be null, functions f and g should take care to handle null arguments.
+    /** Note that since a record's key or value could be null, functions f and g
+      * should take care to handle null arguments.
       * A null key means the sender was unable to choose a key on which to partition.
       * A null value means the entity identified by the key should be deleted.
       */
@@ -57,11 +58,13 @@ package object kafka {
       Stream.emits(recordList(topic)).covary[F]
 
     /** Returns the last (latest, highest) offset for each topic partition in the collection of records. */
-    //TODO this REALLY needs to be tested... assumes records for partition are in-order, calling .last hopefully never fails, etc
+    // TODO this REALLY needs to be tested... assumes records for partition are
+    // in-order, calling `.last` hopefully never fails, etc
     def lastOffsets: Map[TopicPartition, Long] =
       crs.partitions.asScala.toSeq.map(tp => (tp -> crs.records(tp).asScala.last.offset)).toMap
 
-    /** lastOffsets + 1, can be used to commit the offsets that the consumer should read next, after these records. */
+    /** lastOffsets + 1, can be used to commit the offsets that the consumer
+      * should read next, after these records. */
     def nextOffsets: Map[TopicPartition, OffsetAndMetadata] =
       lastOffsets.view.mapValues(o => new OffsetAndMetadata(o + 1)).toMap
   }
@@ -119,11 +122,6 @@ package object kafka {
   implicit class ByteArrayConsumerRecords(crs: ConsumerRecords[Array[Byte], Array[Byte]]) {
     def recordListAs[K: Deserializer, V: Deserializer](topic: String): List[ConsumerRecord[K, V]] =
       crs.recordList(topic).map(_.as[K, V](topic))
-
-    def recordStreamAs[F[_], K: Deserializer, V: Deserializer](
-        topic: String
-    ): Stream[F, ConsumerRecord[K, V]] =
-      crs.recordStream[F](topic).map(_.as[K, V](topic))
   }
 
   implicit def eqProducerRecord[K, V]: Eq[ProducerRecord[K, V]] =
@@ -139,9 +137,32 @@ package object kafka {
           x.value == y.value
     }
 
-  implicit object ProducerRecordBifunctor extends Bifunctor[ProducerRecord] {
-    def bimap[A, B, C, D](fab: ProducerRecord[A, B])(f: A => C, g: B => D): ProducerRecord[C, D] =
+  implicit object ProducerRecordBifunctor extends Bitraverse[ProducerRecord] {
+    override def bimap[A, B, C, D](fab: ProducerRecord[A, B])(f: A => C, g: B => D): ProducerRecord[C, D] =
       fab.bimap(f, g)
+
+    override def bifoldLeft[A, B, C](
+      fab: ProducerRecord[A,B],
+      c: C
+    )(
+      f: (C, A) => C,
+      g: (C, B) => C
+    ): C = ???
+
+    override def bifoldRight[A, B, C](
+      fab: ProducerRecord[A,B],
+      c: Eval[C]
+    )(
+      f: (A, Eval[C]) => Eval[C],
+      g: (B, Eval[C]) => Eval[C]
+    ): Eval[C] = ???
+
+    override def bitraverse[G[_]: Applicative, A, B, C, D](
+      fab: ProducerRecord[A,B]
+    )(
+      f: A => G[C],
+      g: B => G[D]
+    ): G[ProducerRecord[C,D]] = ???
   }
 
   implicit object ConsumerRecordBifunctor extends Bifunctor[ConsumerRecord] {

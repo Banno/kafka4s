@@ -16,7 +16,7 @@
 
 package com.banno.kafka
 
-import cats._
+import cats.effect._
 import cats.syntax.all._
 
 import com.banno.kafka._
@@ -28,11 +28,11 @@ object Publish {
   type T[F[_], A] = A => F[Unit]
   type KV[F[_], K, V] = T[F, (K, V)]
 
-  def to[F[_]: Functor, A, B](
+  def to[F[_]: Sync, A, B](
       topical: Topical[A, B],
       producer: ProducerApi[F, Array[Byte], Array[Byte]],
   ): T[F, B] =
-    kv => producer.sendAsync(topical.coparse(kv)).void
+    kv => topical.coparse(kv).flatMap(producer.sendAsync).void
 
   trait Builder[F[_], A <: Coproduct, B <: Coproduct] {
     type P <: HList
@@ -43,7 +43,7 @@ object Publish {
   }
 
   object Builder {
-    implicit def buildNPublishers[F[_]: Functor, K, V, X <: Coproduct, Y <: Coproduct](implicit
+    implicit def buildNPublishers[F[_]: Sync, K, V, X <: Coproduct, Y <: Coproduct](implicit
         buildTail: Builder[F, X, Y]
     ) =
       new Builder[F, IncomingRecord[K, V] :+: X, (K, V) :+: Y] {

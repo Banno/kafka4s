@@ -19,7 +19,6 @@ package com.banno.kafka
 import java.time.Instant
 
 import scala.jdk.CollectionConverters._
-import scala.util._
 import scala.util.control.NoStackTrace
 
 import cats._
@@ -56,11 +55,11 @@ object Topic {
     override def select(cr: CR): Array[Byte] = cr.value()
   }
 
-  private def parse1[K, V](
-    parseK: Array[Byte] => Try[K],
-    parseV: Array[Byte] => Try[V],
+  private def parse1[F[_]: MonadThrow, K, V](
+    parseK: Array[Byte] => F[K],
+    parseV: Array[Byte] => F[V],
     cr: CR
-  ): Try[(K, V)] = {
+  ): F[(K, V)] = {
     val tryKey = parseK(cr.key).adaptError(ParseFailed(Key, cr, _))
     val tryValue = parseV(cr.value).adaptError(ParseFailed(Value, cr, _))
     tryKey.product(tryValue)
@@ -85,18 +84,18 @@ object Topic {
       topicPurpose: TopicPurpose,
   ): Topic[K, V] =
     new Topic[K, V] {
-      override def coparse(
+      override def coparse[F[_]: Sync](
           kv: (K, V)
-      ): ProducerRecord[Array[Byte], Array[Byte]] =
+      ): F[ProducerRecord[Array[Byte], Array[Byte]]] =
         new ProducerRecord(topic, kv._1, kv._2)
-          .bimap(Serde[K].toByteArray, Serde[V].toByteArray)
+          .bitraverse(Serde[K].toBytes(_), Serde[V].toBytes(_))
 
       override def name: TopicName = TopicName(topic)
 
       override def purpose: TopicPurpose = topicPurpose
 
-      override def parse(cr: CR): Try[IncomingRecord[K, V]] =
-        parse1[K, V](Serde[K].fromByteArray, Serde[V].fromByteArray, cr).map { kv =>
+      override def parse[F[_]: Sync](cr: CR): F[IncomingRecord[K, V]] =
+        parse1[F, K, V](Serde[K].fromBytes(_), Serde[V].fromBytes(_), cr).map { kv =>
           IncomingRecord.of(cr).bimap(_ => kv._1, _ => kv._2)
         }
 
@@ -133,14 +132,14 @@ object Topic {
     new Invariant[Topic[K, *]] {
       override def imap[A, B](fa: Topic[K, A])(f: A => B)(g: B => A): Topic[K, B] =
         new Topic[K, B] {
-          override def parse(
+          override def parse[F[_]: Sync](
               cr: ConsumerRecord[Array[Byte], Array[Byte]]
-          ): Try[IncomingRecord[K, B]] =
+          ): F[IncomingRecord[K, B]] =
             fa.parse(cr).map(_.map(f))
 
-          override def coparse(
+          override def coparse[F[_]: Sync](
               kv: (K, B)
-          ): ProducerRecord[Array[Byte], Array[Byte]] =
+          ): F[ProducerRecord[Array[Byte], Array[Byte]]] =
             fa.coparse((kv._1, g(kv._2)))
 
           override def nextOffset(

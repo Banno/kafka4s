@@ -16,11 +16,11 @@
 
 package com.banno.kafka
 
-import scala.util._
+import cats.effect._
 import io.confluent.kafka.schemaregistry.ParsedSchema
 
 trait Serialize[A] {
-  def toByteArray(x: A): Array[Byte]
+  def toBytes[F[_]: Sync](x: A): F[Array[Byte]]
 }
 
 object Serialize {
@@ -28,7 +28,7 @@ object Serialize {
 }
 
 trait Deserialize[A] {
-  def fromByteArray(x: Array[Byte]): Try[A]
+  def fromBytes[F[_]: Sync](x: Array[Byte]): F[A]
 }
 
 object Deserialize {

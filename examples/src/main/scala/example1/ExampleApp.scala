@@ -65,15 +65,18 @@ final class ExampleApp[F[_]: Async] {
 
   val example: F[Unit] =
     for {
+      factory <- Avro4sSchematic.default[F]
       _ <- Sync[F].delay(println("Starting kafka4s example"))
 
       _ <- AdminApi.createTopicsIdempotent[F](kafkaBootstrapServers, topic)
       _ <- Sync[F].delay(println(s"Created topic ${topic.name}"))
 
       schemaRegistry <- SchemaRegistryApi(schemaRegistryUri)
+      implicit0(schematicCID: Schematic[CustomerId]) = factory.schematic[CustomerId]
       _ <- schemaRegistry.registerKey[CustomerId](topic.name)
       _ <- Sync[F].delay(println(s"Registered key schema for topic ${topic.name}"))
 
+      implicit0(schematicC: Schematic[Customer]) = factory.schematic[Customer]
       _ <- schemaRegistry.registerValue[Customer](topic.name)
       _ <- Sync[F].delay(println(s"Registered value schema for topic ${topic.name}"))
 

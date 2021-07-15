@@ -16,8 +16,6 @@
 
 package com.banno.kafka
 
-import scala.util._
-
 import cats.data._
 import cats.effect._
 
@@ -34,9 +32,9 @@ trait AschematicTopic {
   * A Kafka topic or aggregation of topics.
   */
 trait Topical[A, B] {
-  def parse(cr: ConsumerRecord[Array[Byte], Array[Byte]]): Try[A]
+  def parse[F[_]: Sync](cr: ConsumerRecord[Array[Byte], Array[Byte]]): F[A]
 
-  def coparse(kv: B): ProducerRecord[Array[Byte], Array[Byte]]
+  def coparse[F[_]: Sync](kv: B): F[ProducerRecord[Array[Byte], Array[Byte]]]
 
   def nextOffset(cr: A): Map[TopicPartition, OffsetAndMetadata]
 

@@ -444,10 +444,10 @@ object RecordStream {
   object Batched {
     type Incoming[F[_], K, V] = Batched[F, IncomingRecord[K, V]]
 
-    private def parseBatch[F[_]: ApplicativeThrow, A, B](
+    private def parseBatch[F[_]: Sync, A, B](
         topical: Topical[A, B]
     ): ConsumerRecords[Array[Byte], Array[Byte]] => F[IncomingRecords[A]] =
-      IncomingRecords.parseWith(_, topical.parse).liftTo[F]
+      IncomingRecords.parseWith(_, topical.parse(_))
 
     private def recordStream[F[_]: Async, A, B](
         consumer: ConsumerApi[F, Array[Byte], Array[Byte]],

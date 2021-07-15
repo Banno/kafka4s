@@ -16,8 +16,6 @@
 
 package com.banno.kafka
 
-import scala.util._
-
 import cats._
 import cats.data._
 import cats.effect._
@@ -39,9 +37,9 @@ object Topics {
       extends Topics[IncomingRecord[K, V] :+: S, (K, V) :+: T] {
     def topic: Topic[K, V]
 
-    def tailParse(cr: ConsumerRecord[Array[Byte], Array[Byte]]): Try[S]
+    def tailParse[F[_]: Sync](cr: ConsumerRecord[Array[Byte], Array[Byte]]): F[S]
 
-    def tailCoparse(kv: T): ProducerRecord[Array[Byte], Array[Byte]]
+    def tailCoparse[F[_]: Sync](kv: T): F[ProducerRecord[Array[Byte], Array[Byte]]]
 
     def tailNextOffset(cr: S): Map[TopicPartition, OffsetAndMetadata]
 
@@ -53,15 +51,15 @@ object Topics {
     final override def nextOffset(x: IncomingRecord[K, V] :+: S) =
       x.eliminate(topic.nextOffset, tailNextOffset)
 
-    final override def parse(
+    final override def parse[F[_]: Sync](
         cr: ConsumerRecord[Array[Byte], Array[Byte]]
-    ): Try[IncomingRecord[K, V] :+: S] =
+    ): F[IncomingRecord[K, V] :+: S] =
       if (cr.topic() === topic.name.show)
         /*then*/ topic.parse(cr).map(Inl.apply)
       else tailParse(cr).map(Inr.apply)
 
-    final override def coparse(kv: (K, V) :+: T) =
-      kv.eliminate(topic.coparse, tailCoparse)
+    final override def coparse[F[_]: Sync](kv: (K, V) :+: T) =
+      kv.eliminate(topic.coparse(_), tailCoparse(_))
 
     final override def setUp[F[_]: Sync](
         bootstrapServers: BootstrapServers,
@@ -75,8 +73,8 @@ object Topics {
       topic: Topic[K, V]
   ) extends Impl[K, V, CNil, CNil] {
     override def aschematic: NonEmptyList[AschematicTopic] = topic.aschematic
-    override def tailParse(cr: Topic.CR): Try[CNil] = Failure(UnrecognizedTopic(cr))
-    override def tailCoparse(kv: CNil) = kv.impossible
+    override def tailParse[F[_]: Sync](cr: Topic.CR): F[CNil] = UnrecognizedTopic(cr).raiseError[F, CNil]
+    override def tailCoparse[F[_]: Sync](kv: CNil) = kv.impossible
     override def tailNextOffset(x: CNil) = x.impossible
     override def tailSetUp[F[_]: Sync](
         bootstrapServers: BootstrapServers,
@@ -93,11 +91,11 @@ object Topics {
 
     override def tailNextOffset(x: S) = tail.nextOffset(x)
 
-    override def tailParse(
+    override def tailParse[F[_]: Sync](
         cr: ConsumerRecord[Array[Byte], Array[Byte]]
-    ): Try[S] = tail.parse(cr)
+    ): F[S] = tail.parse(cr)
 
-    override def tailCoparse(kv: T) = tail.coparse(kv)
+    override def tailCoparse[F[_]: Sync](kv: T) = tail.coparse(kv)
 
     override def tailSetUp[F[_]: Sync](
         bootstrapServers: BootstrapServers,
