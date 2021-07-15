@@ -20,7 +20,7 @@ import cats.effect._
 import io.confluent.kafka.schemaregistry.ParsedSchema
 
 trait Serialize[A] {
-  def toBytes[F[_]: Sync](x: A): F[Array[Byte]]
+  def toBytes[F[_]: Sync](topic: TopicName, x: A): F[Array[Byte]]
 }
 
 object Serialize {
@@ -28,7 +28,7 @@ object Serialize {
 }
 
 trait Deserialize[A] {
-  def fromBytes[F[_]: Sync](x: Array[Byte]): F[A]
+  def fromBytes[F[_]: Sync](topic: TopicName, x: Array[Byte]): F[A]
 }
 
 object Deserialize {

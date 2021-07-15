@@ -46,12 +46,9 @@ package avro4s {
       S: SchemaFor[A],
     ): Schematic[A] =
       new Schematic[A] {
-        override def fromBytes[F[_]: Sync](bytes: Array[Byte]): F[A] = {
-          val topic: String = null // TODO do we need to actually pass that in?
-          def q = deserializer.deserialize(topic, bytes)
-          val x = Sync[F].delay(q)
+        override def fromBytes[F[_]: Sync](name: TopicName, bytes: Array[Byte]): F[A] =
           for {
-            obj <- x
+            obj <- Sync[F].delay(deserializer.deserialize(name.show, bytes))
             record <- obj match {
               case r: GenericRecord => r.pure[F]
               case r =>
@@ -60,16 +57,15 @@ package avro4s {
             }
             a <- Sync[F].delay(F.from(record))
           } yield a
-        }
 
         override def schema: ParsedSchema =
           new AvroSchema(S.schema(DefaultFieldMapper))
 
-        override def toBytes[F[_]: Sync](x: A): F[Array[Byte]] = {
-          val _ = T.to(x)
-          val _ = serializer
-          ???
-        }
+        override def toBytes[F[_]: Sync](name: TopicName, x: A): F[Array[Byte]] =
+          for {
+            record <- Sync[F].delay(T.to(x))
+            bytes <- Sync[F].delay(serializer.serialize(name.show, record))
+          } yield bytes
       }
 
     def apply[F[_]: Sync](

@@ -88,14 +88,14 @@ object Topic {
           kv: (K, V)
       ): F[ProducerRecord[Array[Byte], Array[Byte]]] =
         new ProducerRecord(topic, kv._1, kv._2)
-          .bitraverse(Serde[K].toBytes(_), Serde[V].toBytes(_))
+          .bitraverse(Serde[K].toBytes(name, _), Serde[V].toBytes(name, _))
 
       override def name: TopicName = TopicName(topic)
 
       override def purpose: TopicPurpose = topicPurpose
 
       override def parse[F[_]: Sync](cr: CR): F[IncomingRecord[K, V]] =
-        parse1[F, K, V](Serde[K].fromBytes(_), Serde[V].fromBytes(_), cr).map { kv =>
+        parse1[F, K, V](Serde[K].fromBytes(name, _), Serde[V].fromBytes(name, _), cr).map { kv =>
           IncomingRecord.of(cr).bimap(_ => kv._1, _ => kv._2)
         }
 
