@@ -20,6 +20,8 @@ import cats._
 import fs2.Stream
 
 package object consumer {
+  implicit def partitionQueriesOps[F[_]](c: PartitionQueries[F]): PartitionQueriesOps[F] =
+    PartitionQueriesOps[F](c)
 
   implicit def consumerOps[F[_], K, V](c: ConsumerApi[F, K, V]): ConsumerOps[F, K, V] =
     ConsumerOps[F, K, V](c)
