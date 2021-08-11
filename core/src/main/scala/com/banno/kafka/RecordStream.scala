@@ -434,6 +434,7 @@ object RecordStream {
       topic.purpose.contentType match {
         case TopicContentType.Ephemera =>
           consumer
+            .partitionQueries
             .partitionsFor(topic.name.show)
             .flatMap(infos => consumer.seekToEnd(infos.map(_.toTopicPartition)))
         case _ => Applicative[F].unit
@@ -509,7 +510,7 @@ object RecordStream {
           offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
       ): F[Unit] =
         for {
-          offsets <- offsetsF(PartitionQueries(consumer))
+          offsets <- offsetsF(consumer.partitionQueries)
           () <- consumer.assign(topical.names.map(_.show).toList, offsets)
           // By definition, no need to ever read old ephemera.
           () <- topical.aschematic.traverse_(ephemeralTopicsSeekToEnd(consumer))

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.banno.kafka.metrics.prometheus
+package com.banno.kafka.metrics.epimetheus
 
 import cats.syntax.all._
 import cats.effect.IO
@@ -29,7 +29,7 @@ import munit._
 import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
 
-class PrometheusMetricsReporterApiSpec extends CatsEffectSuite with DockerizedKafka {
+class EpimetheusMetricsReporterApiSpec extends CatsEffectSuite with DockerizedKafka {
   // This test allocates a lot of consumers. It was timing out in the GitHub
   // Actions build with the default amount of 30 seconds. That build seems to
   // have throttled resources compared to our development machines.
@@ -55,7 +55,7 @@ class PrometheusMetricsReporterApiSpec extends CatsEffectSuite with DockerizedKa
 
   // When Kafka clients change their metrics, this test will help identify the
   // changes we need to make
-  test("Prometheus reporter should register Prometheus collectors for all known Kafka metrics and unregister on close") {
+  test("Epimetheus reporter should register Epimetheus collectors for all known Kafka metrics and unregister on close") {
     for {
       topic <- createTopic[IO](2)
       records = List(
@@ -65,7 +65,7 @@ class PrometheusMetricsReporterApiSpec extends CatsEffectSuite with DockerizedKa
       () <- ProducerApi
         .resource[IO, String, String](
           BootstrapServers(bootstrapServer),
-          MetricReporters[ProducerPrometheusReporter]
+          MetricReporters[ProducerEpimetheusReporter]
         )
         .use(
           p =>
@@ -73,7 +73,7 @@ class PrometheusMetricsReporterApiSpec extends CatsEffectSuite with DockerizedKa
               .resource[IO, String, String](
                 BootstrapServers(bootstrapServer),
                 ClientId("c1"),
-                MetricReporters[ConsumerPrometheusReporter]
+                MetricReporters[ConsumerEpimetheusReporter]
               )
               .use(
                 c1 =>
@@ -81,7 +81,7 @@ class PrometheusMetricsReporterApiSpec extends CatsEffectSuite with DockerizedKa
                     .resource[IO, String, String](
                       BootstrapServers(bootstrapServer),
                       ClientId("c2"),
-                      MetricReporters[ConsumerPrometheusReporter]
+                      MetricReporters[ConsumerEpimetheusReporter]
                     )
                     .use(
                       c2 =>
@@ -96,7 +96,7 @@ class PrometheusMetricsReporterApiSpec extends CatsEffectSuite with DockerizedKa
                           _ <- c2.poll(1 second)
                           _ <- c2.poll(1 second)
 
-                          _ <- IO.sleep(PrometheusMetricsReporterApi.defaultUpdatePeriod + (1 second))
+                          _ <- IO.sleep(EpimetheusMetricsReporterApi.defaultUpdatePeriod + (1 second))
 
                           registry = CollectorRegistry.defaultRegistry
                           () = assertEquals(
