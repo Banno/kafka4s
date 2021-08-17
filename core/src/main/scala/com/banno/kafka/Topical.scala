@@ -50,4 +50,6 @@ trait Topical[A, B] {
       bootstrapServers: BootstrapServers,
       schemaRegistryUri: SchemaRegistryUrl,
   ): F[Unit]
+
+  def registerSchemas[F[_]: Sync](schemaRegistryUri: SchemaRegistryUrl): F[Unit]
 }
