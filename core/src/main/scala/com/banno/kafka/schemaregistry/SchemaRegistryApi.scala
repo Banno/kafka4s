@@ -70,9 +70,10 @@ object SchemaRegistryApi {
 
   def createClient[F[_]: Sync](
       baseUrl: String,
-      identityMapCapacity: Int
+      identityMapCapacity: Int,
+      configs: Map[String, Object] = Map.empty,
   ): F[CachedSchemaRegistryClient] =
-    Sync[F].delay(new CachedSchemaRegistryClient(baseUrl, identityMapCapacity))
+    Sync[F].delay(new CachedSchemaRegistryClient(baseUrl, identityMapCapacity, configs.asJava))
   def createClient[F[_]: Sync](
       baseUrls: Seq[String],
       identityMapCapacity: Int
@@ -84,8 +85,11 @@ object SchemaRegistryApi {
   ): F[CachedSchemaRegistryClient] =
     Sync[F].delay(new CachedSchemaRegistryClient(restService, identityMapCapacity))
 
-  def apply[F[_]: Sync](baseUrl: String): F[SchemaRegistryApi[F]] =
-    createClient[F](baseUrl, identityMapCapacity = 1024).map(SchemaRegistryImpl[F](_))
+  def apply[F[_]: Sync](
+    baseUrl: String,
+    configs: Map[String, Object] = Map.empty,
+  ): F[SchemaRegistryApi[F]] =
+    createClient[F](baseUrl, identityMapCapacity = 1024, configs = configs).map(SchemaRegistryImpl[F](_))
   def apply[F[_]: Sync](baseUrl: String, identityMapCapacity: Int): F[SchemaRegistryApi[F]] =
     createClient[F](baseUrl, identityMapCapacity).map(SchemaRegistryImpl[F](_))
   def apply[F[_]: Sync](baseUrls: Seq[String], identityMapCapacity: Int): F[SchemaRegistryApi[F]] =
@@ -96,9 +100,13 @@ object SchemaRegistryApi {
   ): F[SchemaRegistryApi[F]] =
     createClient[F](restService, identityMapCapacity).map(SchemaRegistryImpl[F](_))
 
-  def register[F[_]: Sync, K: SchemaFor, V: SchemaFor](baseUrl: String, topic: String) =
+  def register[F[_]: Sync, K: SchemaFor, V: SchemaFor](
+    baseUrl: String,
+    topic: String,
+    configs: Map[String, Object] = Map.empty,
+  ) =
     for {
-      schemaRegistry <- apply(baseUrl)
+      schemaRegistry <- apply(baseUrl, configs)
       k <- schemaRegistry.registerKey[K](topic)
       _ <- log.debug(s"Registered key schema for topic ${topic} at ${baseUrl}")
       v <- schemaRegistry.registerValue[V](topic)
