@@ -117,6 +117,14 @@ object Topic {
           // transparent.
         ).configs(purpose.configs.toMap.asJava)
 
+      override def registerSchemas[F[_]: Sync](
+        schemaRegistryUri: SchemaRegistryUrl
+      ): F[Unit] =
+        SchemaRegistryApi.register[F, K, V](
+          schemaRegistryUri.url,
+          topic,
+        ).void
+
       override def setUp[F[_]: Sync](
           bootstrapServers: BootstrapServers,
           schemaRegistryUri: SchemaRegistryUrl,
@@ -126,10 +134,7 @@ object Topic {
             bootstrapServers.bs,
             config
           )
-          (_, _) <- SchemaRegistryApi.register[F, K, V](
-            schemaRegistryUri.url,
-            topic,
-          )
+          _ <- registerSchemas(schemaRegistryUri)
         } yield ()
     }
 
@@ -150,6 +155,10 @@ object Topic {
           override def nextOffset(
               cr: IncomingRecord[K, B]
           ) = cr.metadata.nextOffset
+
+          override def registerSchemas[F[_]: Sync](
+            schemaRegistryUri: SchemaRegistryUrl
+          ): F[Unit] = fa.registerSchemas(schemaRegistryUri)
 
           override def setUp[F[_]: Sync](
               bootstrapServers: BootstrapServers,
