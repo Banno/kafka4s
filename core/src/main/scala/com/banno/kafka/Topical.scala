@@ -51,5 +51,8 @@ trait Topical[A, B] {
       schemaRegistryUri: SchemaRegistryUrl,
   ): F[Unit]
 
-  def registerSchemas[F[_]: Sync](schemaRegistryUri: SchemaRegistryUrl): F[Unit]
+  def registerSchemas[F[_]: Sync](
+    schemaRegistryUri: SchemaRegistryUrl,
+    configs: Map[String, Object] = Map.empty,
+  ): F[Unit]
 }
