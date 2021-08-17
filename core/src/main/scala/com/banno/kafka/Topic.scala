@@ -118,11 +118,13 @@ object Topic {
         ).configs(purpose.configs.toMap.asJava)
 
       override def registerSchemas[F[_]: Sync](
-        schemaRegistryUri: SchemaRegistryUrl
+        schemaRegistryUri: SchemaRegistryUrl,
+        configs: Map[String, Object] = Map.empty,
       ): F[Unit] =
         SchemaRegistryApi.register[F, K, V](
           schemaRegistryUri.url,
           topic,
+          configs,
         ).void
 
       override def setUp[F[_]: Sync](
@@ -157,8 +159,9 @@ object Topic {
           ) = cr.metadata.nextOffset
 
           override def registerSchemas[F[_]: Sync](
-            schemaRegistryUri: SchemaRegistryUrl
-          ): F[Unit] = fa.registerSchemas(schemaRegistryUri)
+            schemaRegistryUri: SchemaRegistryUrl,
+            configs: Map[String, Object] = Map.empty,
+          ): F[Unit] = fa.registerSchemas(schemaRegistryUri, configs)
 
           override def setUp[F[_]: Sync](
               bootstrapServers: BootstrapServers,
