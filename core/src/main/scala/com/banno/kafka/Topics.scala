@@ -52,6 +52,10 @@ object Topics {
         schemaRegistryUri: SchemaRegistryUrl,
     ): F[Unit]
 
+    def tailRegisterSchemas[F[_]: Sync](
+      schemaRegistryUri: SchemaRegistryUrl
+    ): F[Unit]
+
     final override def nextOffset(x: IncomingRecord[K, V] :+: S) =
       x.eliminate(topic.nextOffset, tailNextOffset)
 
@@ -64,6 +68,12 @@ object Topics {
 
     final override def coparse(kv: (K, V) :+: T) =
       kv.eliminate(topic.coparse, tailCoparse)
+
+    override def registerSchemas[F[_]: Sync](
+      schemaRegistryUri: SchemaRegistryUrl
+    ): F[Unit] =
+      topic.registerSchemas(schemaRegistryUri) *>
+      tailRegisterSchemas(schemaRegistryUri)
 
     final override def setUp[F[_]: Sync](
         bootstrapServers: BootstrapServers,
@@ -80,6 +90,9 @@ object Topics {
     override def tailParse(cr: Topic.CR): Try[CNil] = Failure(UnrecognizedTopic(cr))
     override def tailCoparse(kv: CNil) = kv.impossible
     override def tailNextOffset(x: CNil) = x.impossible
+    override def tailRegisterSchemas[F[_]: Sync](
+      schemaRegistryUri: SchemaRegistryUrl
+    ): F[Unit] = Applicative[F].unit
     override def tailSetUp[F[_]: Sync](
         bootstrapServers: BootstrapServers,
         schemaRegistryUri: SchemaRegistryUrl,
@@ -100,6 +113,10 @@ object Topics {
     ): Try[S] = tail.parse(cr)
 
     override def tailCoparse(kv: T) = tail.coparse(kv)
+
+    override def tailRegisterSchemas[F[_]: Sync](
+      schemaRegistryUri: SchemaRegistryUrl
+    ): F[Unit] = tail.registerSchemas(schemaRegistryUri)
 
     override def tailSetUp[F[_]: Sync](
         bootstrapServers: BootstrapServers,
