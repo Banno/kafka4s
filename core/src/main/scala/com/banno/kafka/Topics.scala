@@ -50,6 +50,7 @@ object Topics {
     def tailSetUp[F[_]: Sync](
         bootstrapServers: BootstrapServers,
         schemaRegistryUri: SchemaRegistryUrl,
+        configs: Map[String, Object],
     ): F[Unit]
 
     def tailRegisterSchemas[F[_]: Sync](
@@ -80,9 +81,10 @@ object Topics {
     final override def setUp[F[_]: Sync](
         bootstrapServers: BootstrapServers,
         schemaRegistryUri: SchemaRegistryUrl,
+        configs: Map[String, Object] = Map.empty,
     ): F[Unit] =
-      topic.setUp(bootstrapServers, schemaRegistryUri) *>
-      tailSetUp(bootstrapServers, schemaRegistryUri)
+      topic.setUp(bootstrapServers, schemaRegistryUri, configs) *>
+      tailSetUp(bootstrapServers, schemaRegistryUri, configs)
   }
 
   private final case class SingletonTopics[K, V](
@@ -99,6 +101,7 @@ object Topics {
     override def tailSetUp[F[_]: Sync](
         bootstrapServers: BootstrapServers,
         schemaRegistryUri: SchemaRegistryUrl,
+        configs: Map[String, Object],
     ): F[Unit] = Applicative[F].unit
   }
 
@@ -125,7 +128,8 @@ object Topics {
     override def tailSetUp[F[_]: Sync](
         bootstrapServers: BootstrapServers,
         schemaRegistryUri: SchemaRegistryUrl,
-    ): F[Unit] = tail.setUp(bootstrapServers, schemaRegistryUri)
+        configs: Map[String, Object],
+    ): F[Unit] = tail.setUp(bootstrapServers, schemaRegistryUri, configs)
   }
 
   def uncons[K, V, S <: Coproduct, T <: Coproduct](
