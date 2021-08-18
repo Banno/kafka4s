@@ -130,13 +130,15 @@ object Topic {
       override def setUp[F[_]: Sync](
           bootstrapServers: BootstrapServers,
           schemaRegistryUri: SchemaRegistryUrl,
+          configs: Map[String, Object] = Map.empty,
       ): F[Unit] =
         for {
           _ <- AdminApi.createTopicsIdempotent(
             bootstrapServers.bs,
-            config
+            List(config),
+            configs
           )
-          _ <- registerSchemas(schemaRegistryUri)
+          _ <- registerSchemas(schemaRegistryUri, configs)
         } yield ()
     }
 
@@ -165,8 +167,9 @@ object Topic {
 
           override def setUp[F[_]: Sync](
               bootstrapServers: BootstrapServers,
-              schemaRegistryUri: SchemaRegistryUrl
-          ): F[Unit] = fa.setUp(bootstrapServers, schemaRegistryUri)
+              schemaRegistryUri: SchemaRegistryUrl,
+              configs: Map[String, Object] = Map.empty,
+          ): F[Unit] = fa.setUp(bootstrapServers, schemaRegistryUri, configs)
 
           override def name: TopicName = fa.name
           override def purpose: TopicPurpose = fa.purpose
