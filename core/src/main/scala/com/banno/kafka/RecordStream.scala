@@ -669,5 +669,54 @@ object RecordStream {
           WhetherCommits.May(groupId),
         )
       )
+
+    def assign[F[_]: Async](
+        kafkaBootstrapServers: BootstrapServers,
+        schemaRegistryUri: SchemaRegistryUrl,
+        clientId: String,
+        configs: Map[String, AnyRef],
+    ): Assigner[F, IncomingRecords, Stream] =
+      AssignerImpl(
+        BaseConfigs(
+          kafkaBootstrapServers,
+          schemaRegistryUri,
+          clientId,
+          WhetherCommits.No,
+          configs.toList: _*
+        )
+      )
+
+    def assign[F[_]: Async](
+        kafkaBootstrapServers: BootstrapServers,
+        schemaRegistryUri: SchemaRegistryUrl,
+        groupId: GroupId,
+        configs: Map[String, AnyRef],
+    ): Assigner[F, IncomingRecords, RecordStream] =
+      AssignerImpl(
+        BaseConfigs(
+          kafkaBootstrapServers,
+          schemaRegistryUri,
+          groupId.id,
+          WhetherCommits.May(groupId),
+          configs.toList: _*
+        )
+      )
+
+    def assign[F[_]: Async](
+        kafkaBootstrapServers: BootstrapServers,
+        schemaRegistryUri: SchemaRegistryUrl,
+        clientId: String,
+        groupId: GroupId,
+        configs: Map[String, AnyRef],
+    ): Assigner[F, IncomingRecords, RecordStream] =
+      AssignerImpl(
+        BaseConfigs(
+          kafkaBootstrapServers,
+          schemaRegistryUri,
+          clientId,
+          WhetherCommits.May(groupId),
+          configs.toList: _*
+        )
+      )
   }
 }
