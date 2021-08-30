@@ -95,6 +95,44 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
   def assign(topic: String, offsets: Map[TopicPartition, Long])(implicit F: Monad[F]): F[Unit] =
     assign(List(topic), offsets)
 
+  def seekToCommittedOr(
+      partitions: Set[TopicPartition],
+      seekTo: SeekTo,
+  )(implicit F: Monad[F]): F[Unit] =
+    for {
+      committed <- consumer.committed(partitions)
+      _ <- partitions.toList.traverse_(
+        tp =>
+          committed
+            .get(tp)
+            //p could be mapped to an explicit null value
+            .flatMap(Option(_))
+            .fold(SeekTo.seek(consumer, List(tp), seekTo))(o => consumer.seek(tp, o.offset))
+      )
+    } yield ()
+
+  def assignAndSeekToCommittedOr(
+      topics: List[String],
+      seekTo: SeekTo,
+  )(implicit F: Monad[F]): F[Unit] =
+    for {
+      infos <- consumer.partitionsFor(topics)
+      partitions = infos.map(_.toTopicPartition)
+      () <- consumer.assign(partitions)
+      () <- seekToCommittedOr(partitions.toSet, seekTo)
+    } yield ()
+
+  def subscribeAndSeekToCommittedOr(
+      topics: List[String],
+      seekTo: SeekTo,
+  )(implicit F: Monad[F]): F[Unit] =
+    for {
+      infos <- consumer.partitionsFor(topics)
+      partitions = infos.map(_.toTopicPartition)
+      () <- consumer.subscribe(topics)
+      () <- seekToCommittedOr(partitions.toSet, seekTo)
+    } yield ()
+
   def positions[G[_]: Traverse](
       partitions: G[TopicPartition]
   )(implicit F: Applicative[F]): F[G[(TopicPartition, Long)]] =
