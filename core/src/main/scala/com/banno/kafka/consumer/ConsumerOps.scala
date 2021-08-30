@@ -37,6 +37,7 @@ sealed trait SeekTo
 case object SeekToBeginning extends SeekTo
 case object SeekToEnd extends SeekTo
 case class SeekToTimestamps(timestamps: Map[TopicPartition, Long], default: SeekTo) extends SeekTo
+case class SeekToTimestamp(timestamp: Long, default: SeekTo) extends SeekTo
 
 object SeekTo {
   def seek[F[_]: Monad](
@@ -61,6 +62,9 @@ object SeekTo {
                 .fold(SeekTo.seek(consumer, List(p), default))(o => consumer.seek(p, o.offset))
           )
         } yield ()
+      case SeekToTimestamp(timestamp, default) => 
+        val timestamps = partitions.map(p => (p, timestamp)).toMap
+        seek(consumer, partitions, SeekToTimestamps(timestamps, default))
     }
 }
 
