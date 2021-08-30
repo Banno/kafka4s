@@ -31,16 +31,35 @@ import com.banno.kafka._
 import fs2.concurrent.{Signal, SignallingRef}
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
-sealed trait SeekTo {
-  def apply[F[_]](consumer: ConsumerApi[F, ?, ?], partitions: Iterable[TopicPartition]): F[Unit]
-}
-case object SeekToBeginning extends SeekTo {
-  def apply[F[_]](consumer: ConsumerApi[F, ?, ?], partitions: Iterable[TopicPartition]): F[Unit] =
-    consumer.seekToBeginning(partitions)
-}
-case object SeekToEnd extends SeekTo {
-  def apply[F[_]](consumer: ConsumerApi[F, ?, ?], partitions: Iterable[TopicPartition]): F[Unit] =
-    consumer.seekToEnd(partitions)
+sealed trait SeekTo
+case object SeekToBeginning extends SeekTo
+case object SeekToEnd extends SeekTo
+case class SeekToTimestamps(timestamps: Map[TopicPartition, Long], default: SeekTo) extends SeekTo
+
+object SeekTo {
+  def seek[F[_]: Monad](
+      consumer: ConsumerApi[F, _, _],
+      partitions: Iterable[TopicPartition],
+      seekTo: SeekTo
+  ): F[Unit] =
+    seekTo match {
+      case SeekToBeginning =>
+        consumer.seekToBeginning(partitions)
+      case SeekToEnd =>
+        consumer.seekToEnd(partitions)
+      case SeekToTimestamps(ts, default) =>
+        for {
+          offsets <- consumer.partitionQueries.offsetsForTimes(ts)
+          () <- partitions.toList.traverse_(
+            p =>
+              offsets
+                .get(p)
+                //p could be mapped to an explicit null value
+                .flatMap(Option(_))
+                .fold(SeekTo.seek(consumer, List(p), default))(o => consumer.seek(p, o.offset))
+          )
+        } yield ()
+    }
 }
 
 case class PartitionQueriesOps[F[_]](consumer: PartitionQueries[F]) {
