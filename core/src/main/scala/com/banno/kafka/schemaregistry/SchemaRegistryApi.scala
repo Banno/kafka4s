@@ -86,10 +86,11 @@ object SchemaRegistryApi {
     Sync[F].delay(new CachedSchemaRegistryClient(restService, identityMapCapacity))
 
   def apply[F[_]: Sync](
-    baseUrl: String,
-    configs: Map[String, Object] = Map.empty,
+      baseUrl: String,
+      configs: Map[String, Object] = Map.empty,
   ): F[SchemaRegistryApi[F]] =
-    createClient[F](baseUrl, identityMapCapacity = 1024, configs = configs).map(SchemaRegistryImpl[F](_))
+    createClient[F](baseUrl, identityMapCapacity = 1024, configs = configs)
+      .map(SchemaRegistryImpl[F](_))
   def apply[F[_]: Sync](baseUrl: String, identityMapCapacity: Int): F[SchemaRegistryApi[F]] =
     createClient[F](baseUrl, identityMapCapacity).map(SchemaRegistryImpl[F](_))
   def apply[F[_]: Sync](baseUrls: Seq[String], identityMapCapacity: Int): F[SchemaRegistryApi[F]] =
@@ -101,9 +102,9 @@ object SchemaRegistryApi {
     createClient[F](restService, identityMapCapacity).map(SchemaRegistryImpl[F](_))
 
   def register[F[_]: Sync, K: SchemaFor, V: SchemaFor](
-    baseUrl: String,
-    topic: String,
-    configs: Map[String, Object] = Map.empty,
+      baseUrl: String,
+      topic: String,
+      configs: Map[String, Object] = Map.empty,
   ) =
     for {
       schemaRegistry <- apply(baseUrl, configs)

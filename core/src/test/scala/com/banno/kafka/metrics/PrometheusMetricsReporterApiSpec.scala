@@ -97,9 +97,8 @@ class PrometheusMetricsReporterApiSpec extends AnyFlatSpec with Matchers with In
             )
       )
       .unsafeRunSync()
-      CollectorRegistry.defaultRegistry
-        .metricFamilySamples.asScala
-        .count(_.name.startsWith("kafka_producer")) should ===(0)
+    CollectorRegistry.defaultRegistry.metricFamilySamples.asScala
+      .count(_.name.startsWith("kafka_producer")) should ===(0)
   }
 
 }

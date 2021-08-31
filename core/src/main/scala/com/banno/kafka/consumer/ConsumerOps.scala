@@ -54,25 +54,33 @@ object SeekTo {
         consumer.seekToEnd(partitions)
       case SeekToOffsets(offsets, default) =>
         partitions.toList.traverse_(
-            tp =>
-              offsets
-                .get(tp)
-                //p could be mapped to an explicit null value
-                .flatMap(Option(_))
-                .fold(SeekTo.seek(consumer, List(tp), default))(o => consumer.seek(tp, o))
-          )
+          tp =>
+            offsets
+              .get(tp)
+              //p could be mapped to an explicit null value
+              .flatMap(Option(_))
+              .fold(SeekTo.seek(consumer, List(tp), default))(o => consumer.seek(tp, o))
+        )
       case SeekToTimestamps(ts, default) =>
         for {
           offsets <- consumer.offsetsForTimes(ts)
-          () <- seek(consumer, partitions, SeekToOffsets(offsets.view.mapValues(_.offset).toMap, default))
+          () <- seek(
+            consumer,
+            partitions,
+            SeekToOffsets(offsets.view.mapValues(_.offset).toMap, default)
+          )
         } yield ()
-      case SeekToTimestamp(timestamp, default) => 
+      case SeekToTimestamp(timestamp, default) =>
         val timestamps = partitions.map(p => (p, timestamp)).toMap
         seek(consumer, partitions, SeekToTimestamps(timestamps, default))
-      case SeekToCommitted(default) => 
+      case SeekToCommitted(default) =>
         for {
           committed <- consumer.committed(partitions.toSet)
-          () <- seek(consumer, partitions, SeekToOffsets(committed.view.mapValues(_.offset).toMap, default))
+          () <- seek(
+            consumer,
+            partitions,
+            SeekToOffsets(committed.view.mapValues(_.offset).toMap, default)
+          )
         } yield ()
     }
 }
@@ -286,7 +294,8 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       finalOffsets: Map[TopicPartition, Long],
       pollTimeout: FiniteDuration,
       maxZeroCount: Int
-  )(implicit
+  )(
+      implicit
       F: MonadError[F, Throwable]
   ): Stream[F, ConsumerRecords[K, V]] =
     //position is next offset consumer will read, assume already read up to offset before position

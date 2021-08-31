@@ -78,9 +78,9 @@ object TopicPurpose {
   val smallState: TopicPurpose =
     lowScale(
       cleanupPolicy(compact) |+|
-      minCleanableDirtyRatio(0.01) |+|
-      segmentMegabytes(1) |+|
-      segmentDuration(10.minutes),
+        minCleanableDirtyRatio(0.01) |+|
+        segmentMegabytes(1) |+|
+        segmentDuration(10.minutes),
       TopicContentType.State
     )
 
@@ -89,9 +89,9 @@ object TopicPurpose {
   val mediumState: TopicPurpose =
     lowScale(
       cleanupPolicy(compact) |+|
-      minCleanableDirtyRatio(0.10) |+|
-      segmentMegabytes(100) |+|
-      segmentDuration(1.day),
+        minCleanableDirtyRatio(0.10) |+|
+        segmentMegabytes(100) |+|
+        segmentDuration(1.day),
       TopicContentType.State
     )
 
