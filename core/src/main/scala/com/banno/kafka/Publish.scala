@@ -45,7 +45,8 @@ object Publish {
   }
 
   object Builder {
-    implicit def buildNPublishers[F[_]: Functor, K, V, X <: Coproduct, Y <: Coproduct](implicit
+    implicit def buildNPublishers[F[_]: Functor, K, V, X <: Coproduct, Y <: Coproduct](
+        implicit
         buildTail: Builder[F, X, Y]
     ) =
       new Builder[F, IncomingRecord[K, V] :+: X, (K, V) :+: Y] {

@@ -324,16 +324,16 @@ object RecordStream {
     ): Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] = {
       val configs: List[(String, AnyRef)] =
         whetherCommits.configs ++
-        extraConfigs ++
-        List(
-          kafkaBootstrapServers,
-          schemaRegistryUri,
-          EnableAutoCommit(false),
-          reset,
-          IsolationLevel.ReadCommitted,
-          ClientId(clientId),
-          MetricReporters[ConsumerPrometheusReporter],
-        )
+          extraConfigs ++
+          List(
+            kafkaBootstrapServers,
+            schemaRegistryUri,
+            EnableAutoCommit(false),
+            reset,
+            IsolationLevel.ReadCommitted,
+            ClientId(clientId),
+            MetricReporters[ConsumerPrometheusReporter],
+          )
       ConsumerApi.Avro.Generic.resource[F](configs: _*)
     }
   }

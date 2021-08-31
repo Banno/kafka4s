@@ -27,6 +27,7 @@ import io.confluent.kafka.serializers.subject.{
   TopicNameStrategy => KTopicNameStrategy,
   TopicRecordNameStrategy => KTopicRecordNameStrategy
 }
+import scala.concurrent.duration.FiniteDuration
 
 //TODO other configs... maybe we could auto generate these somehow?
 
@@ -75,6 +76,11 @@ case class EnableAutoCommit(b: Boolean)
 object EnableAutoCommit {
   implicit def toConfig(eac: EnableAutoCommit): (String, AnyRef) =
     ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> eac.b.toString
+}
+
+object AutoCommitInterval {
+  def apply(d: FiniteDuration): (String, AnyRef) =
+    ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG -> d.toMillis.toString
 }
 
 case class KeySerializerClass(c: Class[?])
