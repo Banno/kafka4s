@@ -34,25 +34,37 @@ import fs2.concurrent.{Signal, SignallingRef}
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 sealed trait SeekTo
-case object SeekToBeginning extends SeekTo
-case object SeekToEnd extends SeekTo
-case class SeekToTimestamps(timestamps: Map[TopicPartition, Long], default: SeekTo) extends SeekTo
-case class SeekToTimestamp(timestamp: Long, default: SeekTo) extends SeekTo
-case class SeekToCommitted(default: SeekTo) extends SeekTo
-case class SeekToOffsets(offsets: Map[TopicPartition, Long], default: SeekTo) extends SeekTo
 
 object SeekTo {
+
+  private case object Beginning extends SeekTo
+  private case object End extends SeekTo
+  private case class Timestamps(timestamps: Map[TopicPartition, Long], default: SeekTo)
+      extends SeekTo
+  private case class Timestamp(timestamp: Long, default: SeekTo) extends SeekTo
+  private case class Committed(default: SeekTo) extends SeekTo
+  private case class Offsets(offsets: Map[TopicPartition, Long], default: SeekTo) extends SeekTo
+
+  def beginning: SeekTo = Beginning
+  def end: SeekTo = End
+  def timestamps(timestamps: Map[TopicPartition, Long], default: SeekTo): SeekTo =
+    Timestamps(timestamps, default)
+  def timestamp(timestamp: Long, default: SeekTo): SeekTo = Timestamp(timestamp, default)
+  def committed(default: SeekTo): SeekTo = Committed(default)
+  def offsets(offsets: Map[TopicPartition, Long], default: SeekTo): SeekTo =
+    Offsets(offsets, default)
+
   def seek[F[_]: Monad](
       consumer: ConsumerApi[F, _, _],
       partitions: Iterable[TopicPartition],
       seekTo: SeekTo
   ): F[Unit] =
     seekTo match {
-      case SeekToBeginning =>
+      case Beginning =>
         consumer.seekToBeginning(partitions)
-      case SeekToEnd =>
+      case End =>
         consumer.seekToEnd(partitions)
-      case SeekToOffsets(offsets, default) =>
+      case Offsets(offsets, default) =>
         partitions.toList.traverse_(
           tp =>
             offsets
@@ -61,25 +73,25 @@ object SeekTo {
               .flatMap(Option(_))
               .fold(SeekTo.seek(consumer, List(tp), default))(o => consumer.seek(tp, o))
         )
-      case SeekToTimestamps(ts, default) =>
+      case Timestamps(ts, default) =>
         for {
           offsets <- consumer.offsetsForTimes(ts)
           () <- seek(
             consumer,
             partitions,
-            SeekToOffsets(offsets.view.mapValues(_.offset).toMap, default)
+            Offsets(offsets.view.mapValues(_.offset).toMap, default)
           )
         } yield ()
-      case SeekToTimestamp(timestamp, default) =>
+      case Timestamp(timestamp, default) =>
         val timestamps = partitions.map(p => (p, timestamp)).toMap
-        seek(consumer, partitions, SeekToTimestamps(timestamps, default))
-      case SeekToCommitted(default) =>
+        seek(consumer, partitions, Timestamps(timestamps, default))
+      case Committed(default) =>
         for {
           committed <- consumer.committed(partitions.toSet)
           () <- seek(
             consumer,
             partitions,
-            SeekToOffsets(committed.view.mapValues(_.offset).toMap, default)
+            Offsets(committed.view.mapValues(_.offset).toMap, default)
           )
         } yield ()
     }
@@ -98,9 +110,9 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
   def assign(
       topics: List[String],
       offsets: Map[TopicPartition, Long],
-      seekTo: SeekTo = SeekToBeginning
+      seekTo: SeekTo = SeekTo.beginning
   )(implicit F: Monad[F]): F[Unit] =
-    assignAndSeek(topics, SeekToOffsets(offsets, seekTo))
+    assignAndSeek(topics, SeekTo.offsets(offsets, seekTo))
 
   def assign(topic: String, offsets: Map[TopicPartition, Long])(implicit F: Monad[F]): F[Unit] =
     assign(List(topic), offsets)
