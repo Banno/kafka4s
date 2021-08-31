@@ -38,6 +38,8 @@ case object SeekToBeginning extends SeekTo
 case object SeekToEnd extends SeekTo
 case class SeekToTimestamps(timestamps: Map[TopicPartition, Long], default: SeekTo) extends SeekTo
 case class SeekToTimestamp(timestamp: Long, default: SeekTo) extends SeekTo
+case class SeekToCommitted(default: SeekTo) extends SeekTo
+case class SeekToOffsets(offsets: Map[TopicPartition, Long], default: SeekTo) extends SeekTo
 
 object SeekTo {
   def seek[F[_]: Monad](
@@ -50,21 +52,28 @@ object SeekTo {
         consumer.seekToBeginning(partitions)
       case SeekToEnd =>
         consumer.seekToEnd(partitions)
+      case SeekToOffsets(offsets, default) =>
+        partitions.toList.traverse_(
+            tp =>
+              offsets
+                .get(tp)
+                //p could be mapped to an explicit null value
+                .flatMap(Option(_))
+                .fold(SeekTo.seek(consumer, List(tp), default))(o => consumer.seek(tp, o))
+          )
       case SeekToTimestamps(ts, default) =>
         for {
           offsets <- consumer.offsetsForTimes(ts)
-          () <- partitions.toList.traverse_(
-            p =>
-              offsets
-                .get(p)
-                //p could be mapped to an explicit null value
-                .flatMap(Option(_))
-                .fold(SeekTo.seek(consumer, List(p), default))(o => consumer.seek(p, o.offset))
-          )
+          () <- seek(consumer, partitions, SeekToOffsets(offsets.view.mapValues(_.offset).toMap, default))
         } yield ()
       case SeekToTimestamp(timestamp, default) => 
         val timestamps = partitions.map(p => (p, timestamp)).toMap
         seek(consumer, partitions, SeekToTimestamps(timestamps, default))
+      case SeekToCommitted(default) => 
+        for {
+          committed <- consumer.committed(partitions.toSet)
+          () <- seek(consumer, partitions, SeekToOffsets(committed.view.mapValues(_.offset).toMap, default))
+        } yield ()
     }
 }
 
@@ -83,39 +92,12 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       offsets: Map[TopicPartition, Long],
       seekTo: SeekTo = SeekToBeginning
   )(implicit F: Monad[F]): F[Unit] =
-    for {
-      infos <- consumer.partitionsFor(topics)
-      partitions = infos.map(_.toTopicPartition)
-      _ <- consumer.assign(partitions)
-      _ <- partitions.traverse_(
-        tp =>
-          offsets
-            .get(tp)
-            .map(o => consumer.seek(tp, o))
-            .getOrElse(SeekTo.seek(consumer, List(tp), seekTo))
-      )
-    } yield ()
+    assignAndSeek(topics, SeekToOffsets(offsets, seekTo))
 
   def assign(topic: String, offsets: Map[TopicPartition, Long])(implicit F: Monad[F]): F[Unit] =
     assign(List(topic), offsets)
 
-  def seekToCommittedOr(
-      partitions: Set[TopicPartition],
-      seekTo: SeekTo,
-  )(implicit F: Monad[F]): F[Unit] =
-    for {
-      committed <- consumer.committed(partitions)
-      _ <- partitions.toList.traverse_(
-        tp =>
-          committed
-            .get(tp)
-            //p could be mapped to an explicit null value
-            .flatMap(Option(_))
-            .fold(SeekTo.seek(consumer, List(tp), seekTo))(o => consumer.seek(tp, o.offset))
-      )
-    } yield ()
-
-  def assignAndSeekToCommittedOr(
+  def assignAndSeek(
       topics: List[String],
       seekTo: SeekTo,
   )(implicit F: Monad[F]): F[Unit] =
@@ -123,10 +105,10 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       infos <- consumer.partitionsFor(topics)
       partitions = infos.map(_.toTopicPartition)
       () <- consumer.assign(partitions)
-      () <- seekToCommittedOr(partitions.toSet, seekTo)
+      () <- SeekTo.seek(consumer, partitions, seekTo)
     } yield ()
 
-  def subscribeAndSeekToCommittedOr(
+  def subscribeAndSeek(
       topics: List[String],
       seekTo: SeekTo,
   )(implicit F: Monad[F]): F[Unit] =
@@ -134,7 +116,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       infos <- consumer.partitionsFor(topics)
       partitions = infos.map(_.toTopicPartition)
       () <- consumer.subscribe(topics)
-      () <- seekToCommittedOr(partitions.toSet, seekTo)
+      () <- SeekTo.seek(consumer, partitions, seekTo)
     } yield ()
 
   def positions[G[_]: Traverse](
