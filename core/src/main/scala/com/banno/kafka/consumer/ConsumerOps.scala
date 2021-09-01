@@ -128,16 +128,17 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       () <- SeekTo.seek(consumer, partitions, seekTo)
     } yield ()
 
-  def subscribeAndSeek(
-      topics: List[String],
-      seekTo: SeekTo,
-  )(implicit F: Monad[F]): F[Unit] =
-    for {
-      infos <- consumer.partitionsFor(topics)
-      partitions = infos.map(_.toTopicPartition)
-      () <- consumer.subscribe(topics)
-      () <- SeekTo.seek(consumer, partitions, seekTo)
-    } yield ()
+  //this doesn't work as-is, because partitions are not assigned when subscribe returns, need to use ConsumerRebalanceListener
+  // def subscribeAndSeek(
+  //     topics: List[String],
+  //     seekTo: SeekTo,
+  // )(implicit F: Monad[F]): F[Unit] =
+  //   for {
+  //     infos <- consumer.partitionsFor(topics)
+  //     partitions = infos.map(_.toTopicPartition)
+  //     () <- consumer.subscribe(topics)
+  //     () <- SeekTo.seek(consumer, partitions, seekTo)
+  //   } yield ()
 
   def positions[G[_]: Traverse](
       partitions: G[TopicPartition]
