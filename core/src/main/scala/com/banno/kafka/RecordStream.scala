@@ -310,15 +310,33 @@ object RecordStream {
         .map(_.flatMap(chunked))
   }
 
+  sealed trait ConfigStage1 {
+    def client(clientId: String): ConfigStage2[Stream]
+    def group(groupId: GroupId): ConfigStage2[RecordStream]
+    def clientAndGroup(
+      clientId: String,
+      groupId: GroupId
+    ): ConfigStage2[RecordStream]
+  }
+
+  sealed trait ConfigStage2[P[_[_], _]] {
+    def untyped(configs: Seq[(String, AnyRef)]): ConfigStage2[P]
+
+    def batched: ConfigStage3[P, IncomingRecords]
+    def chunked: ConfigStage3[P, Id]
+  }
+
+  sealed trait ConfigStage3[P[_[_], _], G[_]] {
+    def assign[F[_]: Concurrent: ContextShift]: Assigner[F, G, P]
+  }
+
   private final case class BaseConfigs[P[_[_], _]](
       kafkaBootstrapServers: BootstrapServers,
       schemaRegistryUri: SchemaRegistryUrl,
       clientId: String,
       whetherCommits: WhetherCommits[P],
-      // these extra configs are for testing confluent kafka auth https://banno-jha.atlassian.net/browse/KAYAK-708
-      // they should eventually be replaced by proper types, after we figure out exactly what the configs should be
-      extraConfigs: (String, AnyRef)*,
-  ) {
+      extraConfigs: Seq[(String, AnyRef)] = Seq.empty,
+  ) extends ConfigStage2[P] {
     def consumerApi[F[_]: Async: ContextShift](
         reset: AutoOffsetReset
     ): Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] = {
@@ -336,7 +354,56 @@ object RecordStream {
           )
       ConsumerApi.Avro.Generic.resource[F](configs: _*)
     }
+
+    override def untyped(configs: Seq[(String, AnyRef)]) =
+      copy(extraConfigs = configs)
+
+    private def batchedAssign[F[_]: Concurrent: ContextShift]: Assigner[F, IncomingRecords, P] =
+      Batched.AssignerImpl(this)
+
+    override def batched: ConfigStage3[P, IncomingRecords] =
+      new ConfigStage3[P, IncomingRecords] {
+        override def assign[F[_]: Concurrent: ContextShift] = batchedAssign
+      }
+
+    override val chunked: ConfigStage3[P, Id] =
+      new ConfigStage3[P, Id] {
+        override def assign[F[_]: Concurrent: ContextShift] = new ChunkedAssigner(batchedAssign)
+      }
   }
+
+  def configure(
+    kafkaBootstrapServers: BootstrapServers,
+    schemaRegistryUri: SchemaRegistryUrl,
+  ): ConfigStage1 =
+    new ConfigStage1 {
+      override def client(clientId: String): ConfigStage2[Stream] =
+        BaseConfigs(
+          kafkaBootstrapServers,
+          schemaRegistryUri,
+          clientId,
+          WhetherCommits.No,
+        )
+
+      override def group(groupId: GroupId): ConfigStage2[RecordStream] =
+        BaseConfigs(
+          kafkaBootstrapServers,
+          schemaRegistryUri,
+          groupId.id,
+          WhetherCommits.May(groupId),
+        )
+
+      override def clientAndGroup(
+        clientId: String,
+        groupId: GroupId
+      ): ConfigStage2[RecordStream] =
+        BaseConfigs(
+          kafkaBootstrapServers,
+          schemaRegistryUri,
+          clientId,
+          WhetherCommits.May(groupId),
+        )
+    }
 
   private object ChunkedAssigner {
     def apply[F[_]: Concurrent: ContextShift, P[_[_], _]](
@@ -353,7 +420,7 @@ object RecordStream {
             schemaRegistryUri,
             clientId,
             whetherCommits,
-            extraConfigs.toList: _*
+            extraConfigs.toList
           )
         )
       )
@@ -373,7 +440,7 @@ object RecordStream {
           schemaRegistryUri,
           clientId,
           WhetherCommits.May(groupId),
-          extraConfigs: _*,
+          extraConfigs,
         )
       )
     )
@@ -686,7 +753,7 @@ object RecordStream {
           schemaRegistryUri,
           clientId,
           WhetherCommits.No,
-          configs.toList: _*
+          configs.toList
         )
       )
 
@@ -702,7 +769,7 @@ object RecordStream {
           schemaRegistryUri,
           groupId.id,
           WhetherCommits.May(groupId),
-          configs.toList: _*
+          configs.toList
         )
       )
 
@@ -719,7 +786,7 @@ object RecordStream {
           schemaRegistryUri,
           clientId,
           WhetherCommits.May(groupId),
-          configs.toList: _*
+          configs.toList
         )
       )
   }
