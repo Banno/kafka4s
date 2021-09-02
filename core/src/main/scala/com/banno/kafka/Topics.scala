@@ -50,6 +50,12 @@ object Topics {
     def tailSetUp[F[_]: Sync](
         bootstrapServers: BootstrapServers,
         schemaRegistryUri: SchemaRegistryUrl,
+        configs: Map[String, Object],
+    ): F[Unit]
+
+    def tailRegisterSchemas[F[_]: Sync](
+      schemaRegistryUri: SchemaRegistryUrl,
+      configs: Map[String, Object],
     ): F[Unit]
 
     final override def nextOffset(x: IncomingRecord[K, V] :+: S) =
@@ -65,12 +71,20 @@ object Topics {
     final override def coparse(kv: (K, V) :+: T) =
       kv.eliminate(topic.coparse, tailCoparse)
 
+    override def registerSchemas[F[_]: Sync](
+      schemaRegistryUri: SchemaRegistryUrl,
+      configs: Map[String, Object] = Map.empty,
+    ): F[Unit] =
+      topic.registerSchemas(schemaRegistryUri, configs) *>
+      tailRegisterSchemas(schemaRegistryUri, configs)
+
     final override def setUp[F[_]: Sync](
         bootstrapServers: BootstrapServers,
         schemaRegistryUri: SchemaRegistryUrl,
+        configs: Map[String, Object] = Map.empty,
     ): F[Unit] =
-      topic.setUp(bootstrapServers, schemaRegistryUri) *>
-      tailSetUp(bootstrapServers, schemaRegistryUri)
+      topic.setUp(bootstrapServers, schemaRegistryUri, configs) *>
+      tailSetUp(bootstrapServers, schemaRegistryUri, configs)
   }
 
   private final case class SingletonTopics[K, V](
@@ -80,9 +94,14 @@ object Topics {
     override def tailParse(cr: Topic.CR): Try[CNil] = Failure(UnrecognizedTopic(cr))
     override def tailCoparse(kv: CNil) = kv.impossible
     override def tailNextOffset(x: CNil) = x.impossible
+    override def tailRegisterSchemas[F[_]: Sync](
+      schemaRegistryUri: SchemaRegistryUrl,
+      configs: Map[String, Object],
+    ): F[Unit] = Applicative[F].unit
     override def tailSetUp[F[_]: Sync](
         bootstrapServers: BootstrapServers,
         schemaRegistryUri: SchemaRegistryUrl,
+        configs: Map[String, Object],
     ): F[Unit] = Applicative[F].unit
   }
 
@@ -101,10 +120,16 @@ object Topics {
 
     override def tailCoparse(kv: T) = tail.coparse(kv)
 
+    override def tailRegisterSchemas[F[_]: Sync](
+      schemaRegistryUri: SchemaRegistryUrl,
+      configs: Map[String, Object],
+    ): F[Unit] = tail.registerSchemas(schemaRegistryUri, configs)
+
     override def tailSetUp[F[_]: Sync](
         bootstrapServers: BootstrapServers,
         schemaRegistryUri: SchemaRegistryUrl,
-    ): F[Unit] = tail.setUp(bootstrapServers, schemaRegistryUri)
+        configs: Map[String, Object],
+    ): F[Unit] = tail.setUp(bootstrapServers, schemaRegistryUri, configs)
   }
 
   def uncons[K, V, S <: Coproduct, T <: Coproduct](

@@ -31,16 +31,68 @@ import com.banno.kafka._
 import fs2.concurrent.{Signal, SignallingRef}
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
-sealed trait SeekTo {
-  def apply[F[_]](consumer: ConsumerApi[F, ?, ?], partitions: Iterable[TopicPartition]): F[Unit]
-}
-case object SeekToBeginning extends SeekTo {
-  def apply[F[_]](consumer: ConsumerApi[F, ?, ?], partitions: Iterable[TopicPartition]): F[Unit] =
-    consumer.seekToBeginning(partitions)
-}
-case object SeekToEnd extends SeekTo {
-  def apply[F[_]](consumer: ConsumerApi[F, ?, ?], partitions: Iterable[TopicPartition]): F[Unit] =
-    consumer.seekToEnd(partitions)
+sealed trait SeekTo
+
+object SeekTo {
+
+  private case object Beginning extends SeekTo
+  private case object End extends SeekTo
+  private case class Timestamps(timestamps: Map[TopicPartition, Long], default: SeekTo)
+      extends SeekTo
+  private case class Timestamp(timestamp: Long, default: SeekTo) extends SeekTo
+  private case class Committed(default: SeekTo) extends SeekTo
+  private case class Offsets(offsets: Map[TopicPartition, Long], default: SeekTo) extends SeekTo
+
+  def beginning: SeekTo = Beginning
+  def end: SeekTo = End
+  def timestamps(timestamps: Map[TopicPartition, Long], default: SeekTo): SeekTo =
+    Timestamps(timestamps, default)
+  def timestamp(timestamp: Long, default: SeekTo): SeekTo = Timestamp(timestamp, default)
+  def committed(default: SeekTo): SeekTo = Committed(default)
+  def offsets(offsets: Map[TopicPartition, Long], default: SeekTo): SeekTo =
+    Offsets(offsets, default)
+
+  def seek[F[_]: Monad](
+      consumer: ConsumerApi[F, _, _],
+      partitions: Iterable[TopicPartition],
+      seekTo: SeekTo
+  ): F[Unit] =
+    seekTo match {
+      case Beginning =>
+        consumer.seekToBeginning(partitions)
+      case End =>
+        consumer.seekToEnd(partitions)
+      case Offsets(offsets, default) =>
+        partitions.toList.traverse_(
+          tp =>
+            offsets
+              .get(tp)
+              //p could be mapped to an explicit null value
+              .flatMap(Option(_))
+              .fold(SeekTo.seek(consumer, List(tp), default))(o => consumer.seek(tp, o))
+        )
+      case Timestamps(ts, default) =>
+        for {
+          offsets <- consumer.partitionQueries.offsetsForTimes(ts)
+          () <- seek(
+            consumer,
+            partitions,
+            Offsets(offsets.view.mapValues(_.offset).toMap, default)
+          )
+        } yield ()
+      case Timestamp(timestamp, default) =>
+        val timestamps = partitions.map(p => (p, timestamp)).toMap
+        seek(consumer, partitions, Timestamps(timestamps, default))
+      case Committed(default) =>
+        for {
+          committed <- consumer.partitionQueries.committed(partitions.toSet)
+          () <- seek(
+            consumer,
+            partitions,
+            Offsets(committed.view.mapValues(_.offset).toMap, default)
+          )
+        } yield ()
+    }
 }
 
 case class PartitionQueriesOps[F[_]](consumer: PartitionQueries[F]) {
@@ -74,19 +126,35 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
   def assign(
       topics: List[String],
       offsets: Map[TopicPartition, Long],
-      seekTo: SeekTo = SeekToBeginning
+      seekTo: SeekTo = SeekTo.beginning
+  )(implicit F: Monad[F]): F[Unit] =
+    assignAndSeek(topics, SeekTo.offsets(offsets, seekTo))
+
+  def assign(topic: String, offsets: Map[TopicPartition, Long])(implicit F: Monad[F]): F[Unit] =
+    assign(List(topic), offsets)
+
+  def assignAndSeek(
+      topics: List[String],
+      seekTo: SeekTo,
   )(implicit F: Monad[F]): F[Unit] =
     for {
       infos <- consumer.partitionsFor(topics)
       partitions = infos.map(_.toTopicPartition)
-      _ <- consumer.assign(partitions)
-      _ <- partitions.traverse_(
-        tp => offsets.get(tp).map(o => consumer.seek(tp, o)).getOrElse(seekTo(consumer, List(tp)))
-      )
+      () <- consumer.assign(partitions)
+      () <- SeekTo.seek(consumer, partitions, seekTo)
     } yield ()
 
-  def assign(topic: String, offsets: Map[TopicPartition, Long])(implicit F: Monad[F]): F[Unit] =
-    assign(List(topic), offsets)
+  //this doesn't work as-is, because partitions are not assigned when subscribe returns, need to use ConsumerRebalanceListener
+  // def subscribeAndSeek(
+  //     topics: List[String],
+  //     seekTo: SeekTo,
+  // )(implicit F: Monad[F]): F[Unit] =
+  //   for {
+  //     infos <- consumer.partitionsFor(topics)
+  //     partitions = infos.map(_.toTopicPartition)
+  //     () <- consumer.subscribe(topics)
+  //     () <- SeekTo.seek(consumer, partitions, seekTo)
+  //   } yield ()
 
   def positions[G[_]: Traverse](
       partitions: G[TopicPartition]

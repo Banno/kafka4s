@@ -49,5 +49,11 @@ trait Topical[A, B] {
   def setUp[F[_]: Sync](
       bootstrapServers: BootstrapServers,
       schemaRegistryUri: SchemaRegistryUrl,
+      configs: Map[String, Object] = Map.empty,
+  ): F[Unit]
+
+  def registerSchemas[F[_]: Sync](
+    schemaRegistryUri: SchemaRegistryUrl,
+    configs: Map[String, Object] = Map.empty,
   ): F[Unit]
 }

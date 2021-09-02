@@ -344,6 +344,7 @@ object RecordStream {
         schemaRegistryUri: SchemaRegistryUrl,
         clientId: String,
         whetherCommits: WhetherCommits[P],
+        extraConfigs: Map[String, AnyRef],
     ): ChunkedAssigner[F, P] =
       new ChunkedAssigner(
         Batched.AssignerImpl(
@@ -351,7 +352,8 @@ object RecordStream {
             kafkaBootstrapServers,
             schemaRegistryUri,
             clientId,
-            whetherCommits
+            whetherCommits,
+            extraConfigs.toList: _*
           )
         )
       )
@@ -400,6 +402,7 @@ object RecordStream {
       schemaRegistryUri,
       clientId,
       WhetherCommits.No,
+      Map.empty,
     )
 
   def assign[F[_]: Async](
@@ -412,6 +415,7 @@ object RecordStream {
       schemaRegistryUri,
       groupId.id,
       WhetherCommits.May(groupId),
+      Map.empty,
     )
 
   def assign[F[_]: Async](
@@ -425,6 +429,50 @@ object RecordStream {
       schemaRegistryUri,
       clientId,
       WhetherCommits.May(groupId),
+      Map.empty,
+    )
+
+  def assign[F[_]: Async](
+      kafkaBootstrapServers: BootstrapServers,
+      schemaRegistryUri: SchemaRegistryUrl,
+      clientId: String,
+      extraConfigs: Map[String, AnyRef],
+  ): Assigner[F, Id, Stream] =
+    ChunkedAssigner(
+      kafkaBootstrapServers,
+      schemaRegistryUri,
+      clientId,
+      WhetherCommits.No,
+      extraConfigs,
+    )
+
+  def assign[F[_]: Async](
+      kafkaBootstrapServers: BootstrapServers,
+      schemaRegistryUri: SchemaRegistryUrl,
+      groupId: GroupId,
+      extraConfigs: Map[String, AnyRef],
+  ): Assigner[F, Id, RecordStream] =
+    ChunkedAssigner(
+      kafkaBootstrapServers,
+      schemaRegistryUri,
+      groupId.id,
+      WhetherCommits.May(groupId),
+      extraConfigs,
+    )
+
+  def assign[F[_]: Async](
+      kafkaBootstrapServers: BootstrapServers,
+      schemaRegistryUri: SchemaRegistryUrl,
+      clientId: String,
+      groupId: GroupId,
+      extraConfigs: Map[String, AnyRef],
+  ): Assigner[F, Id, RecordStream] =
+    ChunkedAssigner(
+      kafkaBootstrapServers,
+      schemaRegistryUri,
+      clientId,
+      WhetherCommits.May(groupId),
+      extraConfigs,
     )
 
   private def ephemeralTopicsSeekToEnd[F[_]: Monad](
@@ -619,6 +667,55 @@ object RecordStream {
           schemaRegistryUri,
           clientId,
           WhetherCommits.May(groupId),
+        )
+      )
+
+    def assign[F[_]: Async](
+        kafkaBootstrapServers: BootstrapServers,
+        schemaRegistryUri: SchemaRegistryUrl,
+        clientId: String,
+        configs: Map[String, AnyRef],
+    ): Assigner[F, IncomingRecords, Stream] =
+      AssignerImpl(
+        BaseConfigs(
+          kafkaBootstrapServers,
+          schemaRegistryUri,
+          clientId,
+          WhetherCommits.No,
+          configs.toList: _*
+        )
+      )
+
+    def assign[F[_]: Async](
+        kafkaBootstrapServers: BootstrapServers,
+        schemaRegistryUri: SchemaRegistryUrl,
+        groupId: GroupId,
+        configs: Map[String, AnyRef],
+    ): Assigner[F, IncomingRecords, RecordStream] =
+      AssignerImpl(
+        BaseConfigs(
+          kafkaBootstrapServers,
+          schemaRegistryUri,
+          groupId.id,
+          WhetherCommits.May(groupId),
+          configs.toList: _*
+        )
+      )
+
+    def assign[F[_]: Async](
+        kafkaBootstrapServers: BootstrapServers,
+        schemaRegistryUri: SchemaRegistryUrl,
+        clientId: String,
+        groupId: GroupId,
+        configs: Map[String, AnyRef],
+    ): Assigner[F, IncomingRecords, RecordStream] =
+      AssignerImpl(
+        BaseConfigs(
+          kafkaBootstrapServers,
+          schemaRegistryUri,
+          clientId,
+          WhetherCommits.May(groupId),
+          configs.toList: _*
         )
       )
   }
