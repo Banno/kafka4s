@@ -554,14 +554,19 @@ object RecordStream {
       private def assign[A, B](
           consumer: ConsumerApi[F, GenericRecord, GenericRecord],
           topical: Topical[A, B],
-          offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
+          seekToF: Kleisli[F, PartitionQueries[F], SeekTo]
       ): F[Unit] =
         for {
-          offsets <- offsetsF(PartitionQueries(consumer))
-          () <- consumer.assign(topical.names.map(_.show).toList, offsets)
+          seekTo <- seekToF(PartitionQueries(consumer))
+          () <- consumer.assignAndSeek(topical.names.map(_.show).toList, seekTo)
           // By definition, no need to ever read old ephemera.
           () <- topical.aschematic.traverse_(ephemeralTopicsSeekToEnd(consumer))
         } yield ()
+
+      private def toSeekToF(
+        offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
+      ): Kleisli[F, PartitionQueries[F], SeekTo] =
+        offsetsF.map(SeekTo.offsets(_, SeekTo.beginning))
 
       override def presentWith[A, B](
           topical: Topical[A, B],
@@ -569,7 +574,7 @@ object RecordStream {
           offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
       ): Resource[F, P[F, IncomingRecords[A]]] =
         baseConfigs.consumerApi(reset).evalMap { consumer =>
-          assign(consumer, topical, offsetsF)
+          assign(consumer, topical, toSeekToF(offsetsF))
             .as(presentImpl(consumer, topical))
         }
 
@@ -578,7 +583,7 @@ object RecordStream {
           offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
       ): Resource[F, PastAndPresent.Batched[F, P, A]] =
         baseConfigs.consumerApi(AutoOffsetReset.earliest).evalMap { consumer =>
-          assign(consumer, topical, offsetsF)
+          assign(consumer, topical, toSeekToF(offsetsF))
             .as(
               whetherCommits.pastAndPresent(
                 history = historyImpl(consumer, topical),
@@ -592,7 +597,7 @@ object RecordStream {
           offsets: Map[TopicPartition, Long],
       ): Resource[F, Stream[F, IncomingRecords[A]]] =
         baseConfigs.consumerApi(AutoOffsetReset.earliest).evalMap { consumer =>
-          assign(consumer, topical, Kleisli.pure(offsets))
+          assign(consumer, topical, toSeekToF(Kleisli.pure(offsets)))
             .as(historyImpl(consumer, topical))
         }
     }
