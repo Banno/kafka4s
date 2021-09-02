@@ -260,7 +260,68 @@ object RecordStream {
       history(topical, Map.empty)
   }
 
-  private final case class ChunkedSubscriber[F[_]: Concurrent](
+  private def toSeekTo(offsets: Map[TopicPartition, Long]): SeekTo =
+    SeekTo.offsets(offsets, SeekTo.beginning)
+
+  private def toSeekToF[F[_]: Functor](
+    offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
+  ): Kleisli[F, PartitionQueries[F], SeekTo] =
+    offsetsF.map(toSeekTo)
+
+  sealed trait Seeker[F[_], A] {
+    protected implicit val F: Applicative[F]
+
+    final def offsets(
+      offsets: Map[TopicPartition, Long]
+    ): A =
+      seekTo(toSeekTo(offsets))
+
+    final def seekTo(
+      seekTo: SeekTo
+    ): A =
+      seekBy(Kleisli.pure(seekTo))
+
+    final def offsetsBy(
+      offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
+    ): A =
+      seekBy(toSeekToF(offsetsF))
+
+    def seekBy(
+      seekToF: Kleisli[F, PartitionQueries[F], SeekTo]
+    ): A
+  }
+
+  sealed trait StreamSelector[F[_], H[_], P[_[_], _], A] {
+    private[RecordStream] def whetherCommits: WhetherCommits[P]
+
+    def present: H[P[F, A]]
+    def pastAndPresent: H[PastAndPresent[F, P, A]]
+    def history: H[Stream[F, A]]
+
+    final def mapK[HH[_]](f: H ~> HH): StreamSelector[F, HH, P, A] = {
+      val self = this
+      new StreamSelector[F, HH, P, A] {
+        private[RecordStream] def whetherCommits: WhetherCommits[P] =
+          self.whetherCommits
+
+        override def present: HH[P[F, A]] =
+          f(self.present)
+
+        override def pastAndPresent: HH[PastAndPresent[F, P, A]] =
+          f(self.pastAndPresent)
+
+        override def history: HH[Stream[F, A]] =
+          f(self.history)
+      }
+    }
+  }
+
+  type SeekResource[F[_], A] =
+    Seeker[F, Resource[F, A]]
+  type SelectAndSeek[F[_], P[_[_], _], A] =
+    StreamSelector[F, SeekResource[F, *], P, A]
+
+  private final case class ChunkedSubscriber[F[_]: Async](
       val batched: Subscriber[F, IncomingRecords],
   ) extends Subscriber[F, Id] {
     override def whetherCommits = batched.whetherCommits
@@ -327,7 +388,9 @@ object RecordStream {
   }
 
   sealed trait ConfigStage3[P[_[_], _], G[_]] {
-    def assign[F[_]: Concurrent: ContextShift]: Assigner[F, G, P]
+    def assign[F[_]: Concurrent, A](
+        topical: Topical[A, ?]
+    ): SelectAndSeek[F, P, G[A]]
   }
 
   private final case class BaseConfigs[P[_[_], _]](
@@ -337,6 +400,21 @@ object RecordStream {
       whetherCommits: WhetherCommits[P],
       extraConfigs: Seq[(String, AnyRef)] = Seq.empty,
   ) extends ConfigStage2[P] {
+    def consumerApiV2[F[_]: Async: ContextShift]: Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] = {
+      val configs: List[(String, AnyRef)] =
+      whetherCommits.configs ++
+      extraConfigs ++
+      List(
+          kafkaBootstrapServers,
+          schemaRegistryUri,
+          EnableAutoCommit(false),
+          IsolationLevel.ReadCommitted,
+          ClientId(clientId),
+          MetricReporters[ConsumerPrometheusReporter],
+        )
+      ConsumerApi.Avro.Generic.resource[F](configs: _*)
+    }
+
     def consumerApi[F[_]: Async: ContextShift](
         reset: AutoOffsetReset
     ): Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] = {
@@ -358,17 +436,25 @@ object RecordStream {
     override def untyped(configs: Seq[(String, AnyRef)]) =
       copy(extraConfigs = configs)
 
-    private def batchedAssign[F[_]: Concurrent: ContextShift]: Assigner[F, IncomingRecords, P] =
-      Batched.AssignerImpl(this)
+    private def batchedAssign[F[_]: Concurrent, A](
+        topical: Topical[A, ?]
+    ): SelectAndSeek[F, P, IncomingRecords[A]] = {
+      val _ = Batched.StreamSelectorImpl(whetherCommits, topical)
+      ???
+    }
 
     override def batched: ConfigStage3[P, IncomingRecords] =
       new ConfigStage3[P, IncomingRecords] {
-        override def assign[F[_]: Concurrent: ContextShift] = batchedAssign
+        override def assign[F[_]: Concurrent, A](
+          topical: Topical[A, ?]
+        ) = batchedAssign(topical)
       }
 
     override val chunked: ConfigStage3[P, Id] =
       new ConfigStage3[P, Id] {
-        override def assign[F[_]: Concurrent: ContextShift] = new ChunkedAssigner(batchedAssign)
+        override def assign[F[_]: Concurrent, A](
+          topical: Topical[A, ?]
+        ) = ???
       }
   }
 
@@ -593,6 +679,66 @@ object RecordStream {
             .as(recordStream(consumer, topical))
         }
     }
+
+    private[RecordStream] type NeedsConsumer[F[_], A] =
+      Function[ConsumerApi[F, GenericRecord, GenericRecord], A]
+
+    private[RecordStream] case class StreamSelectorImpl[F[_]: Concurrent, P[_[_], _], A](
+        whetherCommits: WhetherCommits[P],
+        topical: Topical[A, ?],
+    ) extends StreamSelector[F, NeedsConsumer[F, *], P, IncomingRecords[A]] {
+      override def present: NeedsConsumer[F, P[F, IncomingRecords[A]]] =
+        c => whetherCommits.extrude(recordStream(c, topical))
+
+      override def pastAndPresent: NeedsConsumer[F, PastAndPresent.Batched[F, P, A]] =
+      consumer =>
+        whetherCommits.pastAndPresent(
+          history = history(consumer),
+          present = present(consumer),
+        )
+
+      override def history: NeedsConsumer[F, Stream[F, IncomingRecords[A]]] =
+        _.recordsThroughAssignmentLastOffsetsOrZeros(
+              pollTimeout,
+              10,
+              commitMarkerAdjustment = true
+            )
+            .prefetch
+            .evalMap(parseBatch(topical))
+
+    }
+
+    private def assign[F[_]: Monad, A, B](
+      consumer: ConsumerApi[F, GenericRecord, GenericRecord],
+      topical: Topical[A, B],
+      seekToF: Kleisli[F, PartitionQueries[F], SeekTo],
+    ): F[Unit] =
+      for {
+        seekTo <- seekToF(PartitionQueries(consumer))
+        () <- consumer.assignAndSeek(topical.names.map(_.show).toList, seekTo)
+        // By definition, no need to ever read old ephemera.
+        () <- topical.aschematic.traverse_(ephemeralTopicsSeekToEnd(consumer))
+      } yield ()
+
+    private[RecordStream] def assignAndSeek[F[_]: Concurrent: ContextShift, P[_[_], _], X](
+        baseConfigs: BaseConfigs[P],
+        topical: Topical[X, ?],
+    ): SelectAndSeek[F, P, IncomingRecords[X]] =
+      StreamSelectorImpl(baseConfigs.whetherCommits, topical).mapK(
+        new ~>[NeedsConsumer[F, *], SeekResource[F, *]] {
+          override def apply[A](fa: NeedsConsumer[F, A]): SeekResource[F, A] =
+            new Seeker[F, Resource[F, A]] {
+              override implicit val F: Applicative[F] = Applicative[F]
+              override def seekBy(
+                seekToF: Kleisli[F, PartitionQueries[F], SeekTo]
+              ) =
+                baseConfigs.consumerApiV2[F].evalMap { consumer =>
+                  assign(consumer, topical, seekToF)
+                    .as(fa(consumer))
+                }
+            }
+        }
+      )
 
     private[RecordStream] case class AssignerImpl[F[_]: Concurrent: ContextShift, P[_[_], _]](
         baseConfigs: BaseConfigs[P]
