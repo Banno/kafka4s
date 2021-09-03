@@ -47,6 +47,8 @@ sealed trait RecordStream[F[_], A] {
   def readProcessCommit[B](process: A => F[B]): Stream[F, B]
 }
 
+// TODO: at some point when making breaking changes, rename this to
+// `HistoryAndUnbounded`, and its `present` stream to `unbounded`.
 sealed trait PastAndPresent[F[_], P[_[_], _], A] {
   def history: Stream[F, A]
   def present: P[F, A]
@@ -307,17 +309,8 @@ object RecordStream {
       ): A = apply(seekToF)
     }
 
-    implicit def applyInstance[F[_]]: Apply[Seeker[F, *]] =
-      new Apply[Seeker[F, *]] {
-        override def ap[A, B](
-            ff: Seeker[F, A => B]
-        )(
-            fa: Seeker[F, A]
-        ): Seeker[F, B] =
-          Impl { (seekToF: Kleisli[F, PartitionQueries[F], SeekTo]) =>
-            ff.seekBy(seekToF)(fa.seekBy(seekToF))
-          }(fa.F)
-
+    implicit def functor[F[_]]: Functor[Seeker[F, *]] =
+      new Functor[Seeker[F, *]] {
         override def map[A, B](fa: Seeker[F, A])(f: A => B): Seeker[F, B] =
           Impl { (seekToF: Kleisli[F, PartitionQueries[F], SeekTo]) =>
             f(fa.seekBy(seekToF))
@@ -330,14 +323,14 @@ object RecordStream {
     private[RecordStream] implicit val F: Concurrent[F]
     private[RecordStream] implicit val G: Apply[G]
 
-    def present: G[P[F, A]]
-    def pastAndPresent: G[PastAndPresent[F, P, A]]
+    def unbounded: G[P[F, A]]
+    def historyAndUnbounded: G[PastAndPresent[F, P, A]]
     def history: G[Stream[F, A]]
 
     final def mapK[H[_]: Apply](f: G ~> H): StreamSelector[F, H, P, A] =
       StreamSelector.Impl(
         f(history),
-        f(present),
+        f(unbounded),
         whetherCommits,
       )
   }
@@ -345,12 +338,12 @@ object RecordStream {
   private object StreamSelector {
     final case class Impl[F[_], G[_], P[_[_], _], A](
         history: G[Stream[F, A]],
-        present: G[P[F, A]],
+        unbounded: G[P[F, A]],
         whetherCommits: WhetherCommits[P],
     )(implicit val F: Concurrent[F], val G: Apply[G])
         extends StreamSelector[F, G, P, A] {
-      override def pastAndPresent: G[PastAndPresent[F, P, A]] =
-        history.product(present).map { pp =>
+      override def historyAndUnbounded: G[PastAndPresent[F, P, A]] =
+        history.product(unbounded).map { pp =>
           whetherCommits.pastAndPresent(
             history = pp._1,
             present = pp._2,
@@ -359,10 +352,8 @@ object RecordStream {
     }
   }
 
-  type SeekResource[F[_], A] =
-    Seeker[F, Resource[F, A]]
-  type SelectAndSeek[F[_], P[_[_], _], A] =
-    StreamSelector[F, SeekResource[F, *], P, A]
+  type SeekAndSelect[F[_], P[_[_], _], A] =
+    Seeker[F, StreamSelector[F, Resource[F, *], P, A]]
 
   private def chunkedSelector[F[_]: Concurrent, G[_], P[_[_], _], A, B](
       batched: StreamSelector[F, G, P, IncomingRecords[A]],
@@ -371,7 +362,7 @@ object RecordStream {
     implicit val ap: Apply[G] = batched.G
     StreamSelector.Impl(
       batched.history.map(_.flatMap(chunked)),
-      batched.present.map(batched.whetherCommits.chunk(topical)),
+      batched.unbounded.map(batched.whetherCommits.chunk(topical)),
       batched.whetherCommits,
     )
   }
@@ -436,7 +427,7 @@ object RecordStream {
   }
 
   sealed trait ConfigStage2[P[_[_], _]] {
-    def untyped(configs: Seq[(String, AnyRef)]): ConfigStage2[P]
+    def untypedExtras(configs: Seq[(String, AnyRef)]): ConfigStage2[P]
 
     def batched: ConfigStage3[P, IncomingRecords]
     def chunked: ConfigStage3[P, Id]
@@ -445,7 +436,7 @@ object RecordStream {
   sealed trait ConfigStage3[P[_[_], _], G[_]] {
     def assign[F[_]: Concurrent: ContextShift, A](
         topical: Topical[A, ?]
-    ): SelectAndSeek[F, P, G[A]]
+    ): SeekAndSelect[F, P, G[A]]
   }
 
   private final case class BaseConfigs[P[_[_], _]](
@@ -489,7 +480,7 @@ object RecordStream {
       ConsumerApi.Avro.Generic.resource[F](configs: _*)
     }
 
-    override def untyped(configs: Seq[(String, AnyRef)]) =
+    override def untypedExtras(configs: Seq[(String, AnyRef)]) =
       copy(extraConfigs = configs)
 
     override val batched: ConfigStage3[P, IncomingRecords] = {
@@ -506,9 +497,11 @@ object RecordStream {
         override def assign[F[_]: Concurrent: ContextShift, A](
             topical: Topical[A, ?]
         ) =
-          chunkedSelector(
-            batched.assign(topical),
-            topical
+          Seeker.functor.map(batched.assign(topical))(
+            chunkedSelector(
+              _,
+              topical
+            )
           )
       }
   }
@@ -769,19 +762,18 @@ object RecordStream {
     private[RecordStream] def assignAndSeek[F[_]: Concurrent: ContextShift, P[_[_], _], X](
         baseConfigs: BaseConfigs[P],
         topical: Topical[X, ?],
-    ): SelectAndSeek[F, P, IncomingRecords[X]] =
-      streamSelectorViaConsumer(baseConfigs.whetherCommits, topical).mapK(
-        new ~>[NeedsConsumer[F, *], SeekResource[F, *]] {
-          override def apply[A](fa: NeedsConsumer[F, A]): SeekResource[F, A] =
-            Seeker.Impl(
-              (seekToF: Kleisli[F, PartitionQueries[F], SeekTo]) =>
-                baseConfigs.consumerApiV2[F].evalMap { consumer =>
-                  assign(consumer, topical, seekToF)
-                    .as(fa(consumer))
-                }
-            )
-        }
-      )(Seeker.applyInstance.compose)
+    ): SeekAndSelect[F, P, IncomingRecords[X]] =
+      Seeker.Impl { (seekToF: Kleisli[F, PartitionQueries[F], SeekTo]) =>
+        streamSelectorViaConsumer(baseConfigs.whetherCommits, topical).mapK(
+          new ~>[NeedsConsumer[F, *], Resource[F, *]] {
+            override def apply[A](fa: NeedsConsumer[F, A]): Resource[F, A] =
+              baseConfigs.consumerApiV2[F].evalMap { consumer =>
+                assign(consumer, topical, seekToF)
+                  .as(fa(consumer))
+              }
+          }
+        )
+      }
 
     private[RecordStream] case class AssignerImpl[F[_]: Concurrent: ContextShift, P[_[_], _]](
         baseConfigs: BaseConfigs[P]
