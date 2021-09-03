@@ -763,16 +763,13 @@ object RecordStream {
       streamSelectorViaConsumer(baseConfigs.whetherCommits, topical).mapK(
         new ~>[NeedsConsumer[F, *], SeekResource[F, *]] {
           override def apply[A](fa: NeedsConsumer[F, A]): SeekResource[F, A] =
-            new Seeker[F, Resource[F, A]] {
-              override implicit val F: Applicative[F] = Applicative[F]
-              override def seekBy(
-                  seekToF: Kleisli[F, PartitionQueries[F], SeekTo]
-              ) =
+            Seeker.Impl(
+              (seekToF: Kleisli[F, PartitionQueries[F], SeekTo]) =>
                 baseConfigs.consumerApiV2[F].evalMap { consumer =>
                   assign(consumer, topical, seekToF)
-                    .as(fa(consumer))
+                  .as(fa(consumer))
                 }
-            }
+            )
         }
       )(Seeker.applyInstance.compose)
 
