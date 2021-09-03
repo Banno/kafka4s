@@ -281,6 +281,9 @@ object RecordStream {
     ): A =
       seekBy(Kleisli.pure(seekTo))
 
+    final def seekToBeginning: A = seekTo(SeekTo.beginning)
+    final def seekToEnd: A = seekTo(SeekTo.end)
+
     final def offsetsBy(
         offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
     ): A =
