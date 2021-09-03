@@ -21,7 +21,7 @@ import cats.implicits._
 import fs2._
 import java.util.ConcurrentModificationException
 
-import cats.effect.Sync
+import cats.effect.{Sync, Clock}
 import cats.effect.concurrent.Ref
 
 import scala.jdk.CollectionConverters._
@@ -53,6 +53,10 @@ object SeekTo {
   def committed(default: SeekTo): SeekTo = Committed(default)
   def offsets(offsets: Map[TopicPartition, Long], default: SeekTo): SeekTo =
     Offsets(offsets, default)
+  def timestampBeforeNow[F[_]: Clock: Functor](duration: FiniteDuration, default: SeekTo): F[SeekTo] = 
+    Clock[F].realTime(MILLISECONDS).map(now => 
+      timestamp(now - duration.toMillis, default)
+    )
 
   def seek[F[_]: Monad](
       consumer: ConsumerApi[F, _, _],
