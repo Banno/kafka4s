@@ -131,9 +131,13 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
 
     val b1 = serializer.serialize(topic, rf1.to(r1))
     assertEquals(rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r1)
-    assert(Try(rf2.from(
-      deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]
-    )).isFailure)
+    assert(
+      Try(
+        rf2.from(
+          deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]
+        )
+      ).isFailure
+    )
 
     serializer.serialize(topic, rf2.to(r2))
     val b2 = serializer.serialize(topic, rf2.to(r2))
@@ -197,9 +201,13 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
 
     val b1 = serializer.serialize(topic, rf1.to(r1))
     assertEquals(rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r1)
-    assert(Try(rf2.from(
-      deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]
-    )).isFailure)
+    assert(
+      Try(
+        rf2.from(
+          deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]
+        )
+      ).isFailure
+    )
 
     val b2 = serializer.serialize(topic, rf2.to(r2))
     assertEquals(rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r1)
@@ -244,9 +252,13 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
     assertEquals(rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r2)
 
     val b2 = serializer.serialize(topic, rf2.to(r2))
-    assert(Try(rf1.from(
-      deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]
-    )).isFailure)
+    assert(
+      Try(
+        rf1.from(
+          deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]
+        )
+      ).isFailure
+    )
     assertEquals(rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r2)
   }
 
@@ -315,9 +327,13 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
     assertEquals(rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r2)
 
     val b3 = serializer.serialize(topic, rf2.to(r3))
-    assert(Try(rf1.from(
-      deserializer.deserialize(topic, b3).asInstanceOf[GenericRecord]
-    )).isFailure)
+    assert(
+      Try(
+        rf1.from(
+          deserializer.deserialize(topic, b3).asInstanceOf[GenericRecord]
+        )
+      ).isFailure
+    )
     assertEquals(rf2.from(deserializer.deserialize(topic, b3).asInstanceOf[GenericRecord]), r3)
   }
 
@@ -345,9 +361,13 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
 
     val b3 = serializer.serialize(topic, rf1.to(r3))
     assertEquals(rf1.from(deserializer.deserialize(topic, b3).asInstanceOf[GenericRecord]), r3)
-    assert(Try(rf2.from(
-      deserializer.deserialize(topic, b3).asInstanceOf[GenericRecord]
-    )).isFailure)
+    assert(
+      Try(
+        rf2.from(
+          deserializer.deserialize(topic, b3).asInstanceOf[GenericRecord]
+        )
+      ).isFailure
+    )
   }
 
 }

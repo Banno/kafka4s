@@ -79,7 +79,7 @@ object EnableAutoCommit {
 }
 
 object AutoCommitInterval {
-  def apply(d: FiniteDuration): (String, AnyRef) = 
+  def apply(d: FiniteDuration): (String, AnyRef) =
     ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG -> d.toMillis.toString
 }
 

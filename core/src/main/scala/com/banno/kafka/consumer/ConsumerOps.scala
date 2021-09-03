@@ -303,7 +303,8 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       finalOffsets: Map[TopicPartition, Long],
       pollTimeout: FiniteDuration,
       maxZeroCount: Int
-  )(implicit
+  )(
+      implicit
       F: MonadError[F, Throwable]
   ): Stream[F, ConsumerRecords[K, V]] =
     //position is next offset consumer will read, assume already read up to offset before position

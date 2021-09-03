@@ -46,7 +46,8 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
       offsets: Map[TopicPartition, OffsetAndMetadata],
       callback: OffsetCommitCallback
   ): F[Unit] = F.delay(c.commitAsync(offsets.asJava, callback))
-  override def commitAsync(callback: OffsetCommitCallback): F[Unit] = F.delay(c.commitAsync(callback))
+  override def commitAsync(callback: OffsetCommitCallback): F[Unit] =
+    F.delay(c.commitAsync(callback))
   override def commitSync: F[Unit] = F.delay(c.commitSync())
   override def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] =
     F.delay(c.commitSync(offsets.asJava))
@@ -82,7 +83,8 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
     )
   override def seekToEnd(partitions: Iterable[TopicPartition]): F[Unit] =
     F.delay(c.seekToEnd(partitions.asJavaCollection)) *> log.debug(s"Seeked to end: $partitions")
-  override def subscribe(topics: Iterable[String]): F[Unit] = F.delay(c.subscribe(topics.asJavaCollection))
+  override def subscribe(topics: Iterable[String]): F[Unit] =
+    F.delay(c.subscribe(topics.asJavaCollection))
   override def subscribe(topics: Iterable[String], callback: ConsumerRebalanceListener): F[Unit] =
     F.delay(c.subscribe(topics.asJavaCollection, callback))
   override def subscribe(pattern: Pattern): F[Unit] = F.delay(c.subscribe(pattern))

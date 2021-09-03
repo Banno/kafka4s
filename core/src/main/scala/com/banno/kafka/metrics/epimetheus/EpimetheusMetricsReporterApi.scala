@@ -96,7 +96,7 @@ object EpimetheusMetricsReporterApi {
     object LastOne extends `Removed?`[Nothing]
     def lastOne[F[_]]: `Removed?`[F] = LastOne
     case class Removed[F[_]](
-      updated: MetricAdapter[F]
+        updated: MetricAdapter[F]
     ) extends `Removed?`[F]
     def removed[F[_]](updated: MetricAdapter[F]): `Removed?`[F] =
       Removed(updated)
@@ -111,9 +111,9 @@ object EpimetheusMetricsReporterApi {
 
   private object MetricAdapter {
     private case class Impl[F[_]: Applicative](
-      metrics: NonEmptyList[MetricSource[F]],
-      collector: Collector,
-      update1: MetricSource[F] => F[Unit]
+        metrics: NonEmptyList[MetricSource[F]],
+        collector: Collector,
+        update1: MetricSource[F] => F[Unit]
     ) extends MetricAdapter[F] {
       override def add(m: MetricSource[F]): MetricAdapter[F] =
         copy(metrics = metrics :+ m)
@@ -122,18 +122,21 @@ object EpimetheusMetricsReporterApi {
         metrics.traverse_(update1)
 
       override def remove(metric: KafkaMetric): `Removed?`[F] =
-        NonEmptyList.fromList(
-          metrics.filterNot(_.matches(metric))
-        ).fold(`Removed?`.lastOne[F])(ms =>
-          if (metrics.length === ms.length)
-          /*then*/ `Removed?`.notThere[F]
-          else `Removed?`.removed(Impl(ms, collector, update1))
-        )
+        NonEmptyList
+          .fromList(
+            metrics.filterNot(_.matches(metric))
+          )
+          .fold(`Removed?`.lastOne[F])(
+            ms =>
+              if (metrics.length === ms.length)
+                /*then*/ `Removed?`.notThere[F]
+              else `Removed?`.removed(Impl(ms, collector, update1))
+          )
     }
 
     def gauge[F[_]: Sync](
-      metric: MetricSource[F],
-      gauge: Gauge
+        metric: MetricSource[F],
+        gauge: Gauge
     ): MetricAdapter[F] =
       Impl(
         NonEmptyList.one(metric),
@@ -142,8 +145,8 @@ object EpimetheusMetricsReporterApi {
       )
 
     def counter[F[_]: Sync](
-      metric: MetricSource[F],
-      counter: Counter
+        metric: MetricSource[F],
+        counter: Counter
     ): MetricAdapter[F] =
       Impl(
         NonEmptyList.one(metric),
@@ -169,12 +172,19 @@ object EpimetheusMetricsReporterApi {
   ) extends MetricsReporterApi[F] {
 
     override def remove(metric: KafkaMetric): F[Unit] =
-      adapters.modify { adapterMap =>
-        adapterMap.collectFirst(kv => kv._2.remove(metric) match {
-          case `Removed?`.LastOne => (adapterMap - kv._1, kv._2.collector.some)
-          case `Removed?`.Removed(updated) => (adapterMap.updated(kv._1, updated), none)
-        }).getOrElse((adapterMap, none[Collector]))
-      }.flatMap(_.traverse_(c => Sync[F].delay(collectorRegistry.unregister(c))))
+      adapters
+        .modify { adapterMap =>
+          adapterMap
+            .collectFirst(
+              kv =>
+                kv._2.remove(metric) match {
+                  case `Removed?`.LastOne => (adapterMap - kv._1, kv._2.collector.some)
+                  case `Removed?`.Removed(updated) => (adapterMap.updated(kv._1, updated), none)
+                }
+            )
+            .getOrElse((adapterMap, none[Collector]))
+        }
+        .flatMap(_.traverse_(c => Sync[F].delay(collectorRegistry.unregister(c))))
 
     def updateMetricsPeriodically: Stream[F, Unit] =
       for {
@@ -193,10 +203,12 @@ object EpimetheusMetricsReporterApi {
     override def configure(configs: Map[String, Any]): F[Unit] = Applicative[F].unit
 
     override def close: F[Unit] =
-      adapters.modify { adapterMap =>
-        (Map.empty, adapterMap.values.map(_.collector).toList)
-      }.flatMap(_.traverse_(c => Sync[F].delay(collectorRegistry.unregister(c)))) *>
-      updating.set(false)
+      adapters
+        .modify { adapterMap =>
+          (Map.empty, adapterMap.values.map(_.collector).toList)
+        }
+        .flatMap(_.traverse_(c => Sync[F].delay(collectorRegistry.unregister(c)))) *>
+        updating.set(false)
 
     val ignore = Applicative[F].unit
 
@@ -235,7 +247,13 @@ object EpimetheusMetricsReporterApi {
       registry: UnsafeCollectorRegistry,
       updatePeriod: FiniteDuration
   )(implicit F: Async[F]): MetricsReporterApi[F] =
-    new EpimetheusMetricsReporterApi[F]("kafka_producer", adapters, updating, updatePeriod, registry) {
+    new EpimetheusMetricsReporterApi[F](
+      "kafka_producer",
+      adapters,
+      updating,
+      updatePeriod,
+      registry
+    ) {
 
       override def add(metric: KafkaMetric): F[Unit] = {
 
@@ -472,7 +490,13 @@ object EpimetheusMetricsReporterApi {
       registry: UnsafeCollectorRegistry,
       updatePeriod: FiniteDuration
   )(implicit F: Async[F]): MetricsReporterApi[F] =
-    new EpimetheusMetricsReporterApi[F]("kafka_consumer", adapters, updating, updatePeriod, registry) {
+    new EpimetheusMetricsReporterApi[F](
+      "kafka_consumer",
+      adapters,
+      updating,
+      updatePeriod,
+      registry
+    ) {
 
       override def add(metric: KafkaMetric): F[Unit] = {
 
@@ -901,12 +925,12 @@ object EpimetheusMetricsReporterApi {
   val defaultUpdatePeriod = 10 seconds
 
   def producer[F[_]: Async](
-    updatePeriod: FiniteDuration = defaultUpdatePeriod
+      updatePeriod: FiniteDuration = defaultUpdatePeriod
   ): F[MetricsReporterApi[F]] =
     producer(CollectorRegistry.defaultRegistry, updatePeriod)
 
   def producer[F[_]: Async](
-    registry: CollectorRegistry[F]
+      registry: CollectorRegistry[F]
   ): F[MetricsReporterApi[F]] =
     producer(registry, defaultUpdatePeriod)
 
@@ -920,12 +944,12 @@ object EpimetheusMetricsReporterApi {
     } yield producer[F](adapters, updating, CollectorRegistry.Unsafe.asJava(registry), updatePeriod)
 
   def consumer[F[_]: Async](
-    updatePeriod: FiniteDuration = defaultUpdatePeriod
+      updatePeriod: FiniteDuration = defaultUpdatePeriod
   ): F[MetricsReporterApi[F]] =
     consumer(CollectorRegistry.defaultRegistry, updatePeriod)
 
   def consumer[F[_]: Async](
-    registry: CollectorRegistry[F],
+      registry: CollectorRegistry[F],
   ): F[MetricsReporterApi[F]] =
     consumer(registry, defaultUpdatePeriod)
 

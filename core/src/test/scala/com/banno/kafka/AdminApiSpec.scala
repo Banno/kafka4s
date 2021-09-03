@@ -39,12 +39,14 @@ class AdminApiSpec extends CatsEffectSuite with DockerizedKafka {
         ns2 <- Sync[F].delay(ltr2.names.get())
       } yield (topicName, ns1, ns2)
 
-    AdminApi.resource[IO](BootstrapServers(bootstrapServer))
+    AdminApi
+      .resource[IO](BootstrapServers(bootstrapServer))
       .use(program[IO])
       .map { tuple =>
         val (topicName, before, after) = tuple
         !before.contains(topicName) && after.contains(topicName)
-      }.assert
+      }
+      .assert
   }
 
 }

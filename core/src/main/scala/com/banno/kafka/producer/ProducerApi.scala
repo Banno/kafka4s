@@ -92,7 +92,7 @@ trait ProducerApi[F[_], K, V] {
         self.sendOffsetsToTransaction(offsets, consumerGroupId)
 
       override private[producer] def sendRaw(
-        record: ProducerRecord[A, B]
+          record: ProducerRecord[A, B]
       ): JFuture[RecordMetadata] =
         self.sendRaw(record.bimap(f, g))
 
@@ -137,7 +137,7 @@ trait ProducerApi[F[_], K, V] {
         f(self.sendOffsetsToTransaction(offsets, consumerGroupId))
 
       override private[producer] def sendRaw(
-        record: ProducerRecord[K, V]
+          record: ProducerRecord[K, V]
       ): JFuture[RecordMetadata] =
         self.sendRaw(record)
       override private[producer] def sendRaw(
@@ -163,24 +163,25 @@ trait ProducerApi[F[_], K, V] {
 
 object ShiftingProducer {
   def apply[F[_]: Async, K, V](
-    c: ProducerApi[F, K, V],
-    blockingContext: ExecutionContext,
+      c: ProducerApi[F, K, V],
+      blockingContext: ExecutionContext,
   ): ProducerApi[F, K, V] =
-  c.mapK(
-    FunctionK.liftFunction(
-      Async[F].evalOn(_, blockingContext)
+    c.mapK(
+      FunctionK.liftFunction(
+        Async[F].evalOn(_, blockingContext)
+      )
     )
-  )
 }
 
 object Avro4sProducer {
   def apply[F[_], K, V](
-    p: ProducerApi[F, GenericRecord, GenericRecord]
-  )(implicit
+      p: ProducerApi[F, GenericRecord, GenericRecord]
+  )(
+      implicit
       ktr: ToRecord[K],
-    vtr: ToRecord[V],
+      vtr: ToRecord[V],
   ): ProducerApi[F, K, V] =
-  p.contrabimap(ktr.to, vtr.to)
+    p.contrabimap(ktr.to, vtr.to)
 }
 
 object ProducerApi {

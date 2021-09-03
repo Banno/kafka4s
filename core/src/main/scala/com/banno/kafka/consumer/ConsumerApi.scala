@@ -122,7 +122,10 @@ trait ConsumerApi[F[_], K, V] {
         f(self.seekToEnd(partitions))
       override def subscribe(topics: Iterable[String]): G[Unit] =
         f(self.subscribe(topics))
-      override def subscribe(topics: Iterable[String], callback: ConsumerRebalanceListener): G[Unit] =
+      override def subscribe(
+          topics: Iterable[String],
+          callback: ConsumerRebalanceListener
+      ): G[Unit] =
         f(self.subscribe(topics, callback))
       override def subscribe(pattern: Pattern): G[Unit] =
         f(self.subscribe(pattern))
@@ -141,8 +144,8 @@ trait ConsumerApi[F[_], K, V] {
 
 object ShiftingConsumer {
   def apply[F[_]: Async, K, V](
-    c: ConsumerApi[F, K, V],
-    blockingContext: ExecutionContext,
+      c: ConsumerApi[F, K, V],
+      blockingContext: ExecutionContext,
   ): ConsumerApi[F, K, V] =
     c.mapK(
       FunctionK.liftFunction(
@@ -153,10 +156,11 @@ object ShiftingConsumer {
 
 object Avro4sConsumer {
   def apply[F[_]: Functor, K, V](
-    c: ConsumerApi[F, GenericRecord, GenericRecord]
-  )(implicit
+      c: ConsumerApi[F, GenericRecord, GenericRecord]
+  )(
+      implicit
       kfr: FromRecord[K],
-    vfr: FromRecord[V],
+      vfr: FromRecord[V],
   ): ConsumerApi[F, K, V] =
     c.bimap(kfr.from, vfr.from)
 }
@@ -165,11 +169,11 @@ object ConsumerApi {
   implicit def bifunctor[F[_]: Functor]: Bifunctor[ConsumerApi[F, *, *]] =
     new Bifunctor[ConsumerApi[F, *, *]] {
       override def bimap[A, B, C, D](
-        fab: ConsumerApi[F,A,B]
+          fab: ConsumerApi[F, A, B]
       )(
-        f: A => C,
-        g: B => D
-      ): ConsumerApi[F,C,D] =
+          f: A => C,
+          g: B => D
+      ): ConsumerApi[F, C, D] =
         new ConsumerApi[F, C, D] {
           override def assign(partitions: Iterable[TopicPartition]): F[Unit] =
             fab.assign(partitions)
@@ -220,7 +224,10 @@ object ConsumerApi {
             fab.seekToEnd(partitions)
           override def subscribe(topics: Iterable[String]): F[Unit] =
             fab.subscribe(topics)
-          override def subscribe(topics: Iterable[String], callback: ConsumerRebalanceListener): F[Unit] =
+          override def subscribe(
+              topics: Iterable[String],
+              callback: ConsumerRebalanceListener
+          ): F[Unit] =
             fab.subscribe(topics, callback)
           override def subscribe(pattern: Pattern): F[Unit] =
             fab.subscribe(pattern)

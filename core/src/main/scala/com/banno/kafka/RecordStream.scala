@@ -314,8 +314,8 @@ object RecordStream {
     def client(clientId: String): ConfigStage2[Stream]
     def group(groupId: GroupId): ConfigStage2[RecordStream]
     def clientAndGroup(
-      clientId: String,
-      groupId: GroupId
+        clientId: String,
+        groupId: GroupId
     ): ConfigStage2[RecordStream]
   }
 
@@ -342,16 +342,16 @@ object RecordStream {
     ): Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] = {
       val configs: List[(String, AnyRef)] =
         whetherCommits.configs ++
-        extraConfigs ++
-        List(
-          kafkaBootstrapServers,
-          schemaRegistryUri,
-          EnableAutoCommit(false),
-          reset,
-          IsolationLevel.ReadCommitted,
-          ClientId(clientId),
-          MetricReporters[ConsumerPrometheusReporter],
-        )
+          extraConfigs ++
+          List(
+            kafkaBootstrapServers,
+            schemaRegistryUri,
+            EnableAutoCommit(false),
+            reset,
+            IsolationLevel.ReadCommitted,
+            ClientId(clientId),
+            MetricReporters[ConsumerPrometheusReporter],
+          )
       ConsumerApi.Avro.Generic.resource[F](configs: _*)
     }
 
@@ -373,8 +373,8 @@ object RecordStream {
   }
 
   def configure(
-    kafkaBootstrapServers: BootstrapServers,
-    schemaRegistryUri: SchemaRegistryUrl,
+      kafkaBootstrapServers: BootstrapServers,
+      schemaRegistryUri: SchemaRegistryUrl,
   ): ConfigStage1 =
     new ConfigStage1 {
       override def client(clientId: String): ConfigStage2[Stream] =
@@ -394,8 +394,8 @@ object RecordStream {
         )
 
       override def clientAndGroup(
-        clientId: String,
-        groupId: GroupId
+          clientId: String,
+          groupId: GroupId
       ): ConfigStage2[RecordStream] =
         BaseConfigs(
           kafkaBootstrapServers,
@@ -548,8 +548,7 @@ object RecordStream {
     topic =>
       topic.purpose.contentType match {
         case TopicContentType.Ephemera =>
-          consumer
-            .partitionQueries
+          consumer.partitionQueries
             .partitionsFor(topic.name.show)
             .flatMap(infos => consumer.seekToEnd(infos.map(_.toTopicPartition)))
         case _ => Applicative[F].unit
@@ -632,7 +631,7 @@ object RecordStream {
         } yield ()
 
       private def toSeekToF(
-        offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
+          offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
       ): Kleisli[F, PartitionQueries[F], SeekTo] =
         offsetsF.map(SeekTo.offsets(_, SeekTo.beginning))
 

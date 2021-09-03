@@ -54,8 +54,8 @@ object Topics {
     ): F[Unit]
 
     def tailRegisterSchemas[F[_]: Sync](
-      schemaRegistryUri: SchemaRegistryUrl,
-      configs: Map[String, Object],
+        schemaRegistryUri: SchemaRegistryUrl,
+        configs: Map[String, Object],
     ): F[Unit]
 
     final override def nextOffset(x: IncomingRecord[K, V] :+: S) =
@@ -72,11 +72,11 @@ object Topics {
       kv.eliminate(topic.coparse, tailCoparse)
 
     override def registerSchemas[F[_]: Sync](
-      schemaRegistryUri: SchemaRegistryUrl,
-      configs: Map[String, Object] = Map.empty,
+        schemaRegistryUri: SchemaRegistryUrl,
+        configs: Map[String, Object] = Map.empty,
     ): F[Unit] =
       topic.registerSchemas(schemaRegistryUri, configs) *>
-      tailRegisterSchemas(schemaRegistryUri, configs)
+        tailRegisterSchemas(schemaRegistryUri, configs)
 
     final override def setUp[F[_]: Sync](
         bootstrapServers: BootstrapServers,
@@ -84,7 +84,7 @@ object Topics {
         configs: Map[String, Object] = Map.empty,
     ): F[Unit] =
       topic.setUp(bootstrapServers, schemaRegistryUri, configs) *>
-      tailSetUp(bootstrapServers, schemaRegistryUri, configs)
+        tailSetUp(bootstrapServers, schemaRegistryUri, configs)
   }
 
   private final case class SingletonTopics[K, V](
@@ -95,8 +95,8 @@ object Topics {
     override def tailCoparse(kv: CNil) = kv.impossible
     override def tailNextOffset(x: CNil) = x.impossible
     override def tailRegisterSchemas[F[_]: Sync](
-      schemaRegistryUri: SchemaRegistryUrl,
-      configs: Map[String, Object],
+        schemaRegistryUri: SchemaRegistryUrl,
+        configs: Map[String, Object],
     ): F[Unit] = Applicative[F].unit
     override def tailSetUp[F[_]: Sync](
         bootstrapServers: BootstrapServers,
@@ -121,8 +121,8 @@ object Topics {
     override def tailCoparse(kv: T) = tail.coparse(kv)
 
     override def tailRegisterSchemas[F[_]: Sync](
-      schemaRegistryUri: SchemaRegistryUrl,
-      configs: Map[String, Object],
+        schemaRegistryUri: SchemaRegistryUrl,
+        configs: Map[String, Object],
     ): F[Unit] = tail.registerSchemas(schemaRegistryUri, configs)
 
     override def tailSetUp[F[_]: Sync](

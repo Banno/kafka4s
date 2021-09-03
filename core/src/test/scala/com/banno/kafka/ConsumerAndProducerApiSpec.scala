@@ -26,7 +26,6 @@ import com.banno.kafka.producer._
 import com.banno.kafka.consumer._
 import fs2._
 
-
 import scala.util.Random
 import org.scalacheck.magnolia._
 import com.sksamuel.avro4s.RecordFormat

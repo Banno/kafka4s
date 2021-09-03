@@ -133,9 +133,11 @@ object AdminApi {
       topics: Iterable[NewTopic],
       configs: Map[String, Object] = Map.empty,
   ): F[CreateTopicsResult] =
-    AdminApi.resource[F](
-      Map[String, Object](BootstrapServers(bootstrapServers)) ++ configs
-    ).use(_.createTopicsIdempotent(topics))
+    AdminApi
+      .resource[F](
+        Map[String, Object](BootstrapServers(bootstrapServers)) ++ configs
+      )
+      .use(_.createTopicsIdempotent(topics))
 
   def createTopicsIdempotent[F[_]: Sync](
       bootstrapServers: String,

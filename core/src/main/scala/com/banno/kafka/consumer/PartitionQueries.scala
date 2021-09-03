@@ -115,9 +115,16 @@ object PartitionQueries {
 
   def apply[F[_]: Sync](c: Consumer[_, _]): PartitionQueries[F] =
     new PartitionQueries[F] {
-      override def beginningOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
+      override def beginningOffsets(
+          partitions: Iterable[TopicPartition]
+      ): F[Map[TopicPartition, Long]] =
         Sync[F].delay(
-          c.beginningOffsets(partitions.asJavaCollection).asScala.toMap.view.mapValues(Long.unbox).toMap
+          c.beginningOffsets(partitions.asJavaCollection)
+            .asScala
+            .toMap
+            .view
+            .mapValues(Long.unbox)
+            .toMap
         )
 
       override def beginningOffsets(
@@ -189,6 +196,8 @@ object PartitionQueries {
       override def partitionsFor(topic: String): F[Seq[PartitionInfo]] =
         Sync[F].delay(c.partitionsFor(topic).asScala.toSeq)
       override def partitionsFor(topic: String, timeout: FiniteDuration): F[Seq[PartitionInfo]] =
-        Sync[F].delay(c.partitionsFor(topic, java.time.Duration.ofMillis(timeout.toMillis)).asScala.toSeq)
+        Sync[F].delay(
+          c.partitionsFor(topic, java.time.Duration.ofMillis(timeout.toMillis)).asScala.toSeq
+        )
     }
 }

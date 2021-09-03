@@ -36,16 +36,15 @@ class EpimetheusMetricsReporterApiSpec extends CatsEffectSuite with DockerizedKa
   override val munitTimeout = Duration(1, MINUTES)
 
   private def assertTotals(
-    registry: CollectorRegistry,
-    metric: String,
-    expected: Option[List[Double]],
+      registry: CollectorRegistry,
+      metric: String,
+      expected: Option[List[Double]],
   ): Unit =
     assertEquals(
       registry.metricFamilySamples.asScala
         .find(_.name == metric)
         .map(
-          _.samples
-            .asScala
+          _.samples.asScala
             .filter(_.name == s"${metric}_total")
             .map(_.value)
             .toList
@@ -55,7 +54,9 @@ class EpimetheusMetricsReporterApiSpec extends CatsEffectSuite with DockerizedKa
 
   // When Kafka clients change their metrics, this test will help identify the
   // changes we need to make
-  test("Epimetheus reporter should register Epimetheus collectors for all known Kafka metrics and unregister on close") {
+  test(
+    "Epimetheus reporter should register Epimetheus collectors for all known Kafka metrics and unregister on close"
+  ) {
     for {
       topic <- createTopic[IO](2)
       records = List(
@@ -96,11 +97,13 @@ class EpimetheusMetricsReporterApiSpec extends CatsEffectSuite with DockerizedKa
                           _ <- c2.poll(1 second)
                           _ <- c2.poll(1 second)
 
-                          _ <- IO.sleep(EpimetheusMetricsReporterApi.defaultUpdatePeriod + (1 second))
+                          _ <- IO
+                            .sleep(EpimetheusMetricsReporterApi.defaultUpdatePeriod + (1 second))
 
                           registry = CollectorRegistry.defaultRegistry
                           () = assertEquals(
-                            registry.metricFamilySamples.asScala.count(_.name.startsWith("kafka_producer")),
+                            registry.metricFamilySamples.asScala
+                              .count(_.name.startsWith("kafka_producer")),
                             56
                           )
                           () = assertTotals(
@@ -128,10 +131,9 @@ class EpimetheusMetricsReporterApiSpec extends CatsEffectSuite with DockerizedKa
                     )
               )
         )
-        finalMetricCount = CollectorRegistry.defaultRegistry
-          .metricFamilySamples.asScala
-          .count(_.name.startsWith("kafka_producer"))
-        () = assertEquals(finalMetricCount, 0)
+      finalMetricCount = CollectorRegistry.defaultRegistry.metricFamilySamples.asScala
+        .count(_.name.startsWith("kafka_producer"))
+      () = assertEquals(finalMetricCount, 0)
     } yield ()
   }
 }
