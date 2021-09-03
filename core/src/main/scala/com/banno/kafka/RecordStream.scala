@@ -47,11 +47,9 @@ sealed trait RecordStream[F[_], A] {
   def readProcessCommit[B](process: A => F[B]): Stream[F, B]
 }
 
-// TODO: at some point when making breaking changes, rename this to
-// `HistoryAndUnbounded`, and its `present` stream to `unbounded`.
-sealed trait PastAndPresent[F[_], P[_[_], _], A] {
+sealed trait HistoryAndUnbounded[F[_], P[_[_], _], A] {
   def history: Stream[F, A]
-  def present: P[F, A]
+  def unbounded: P[F, A]
 
   protected final def catchUp(f: A => F[Unit])(implicit F: Concurrent[F]): F[Unit] =
     history
@@ -59,68 +57,68 @@ sealed trait PastAndPresent[F[_], P[_[_], _], A] {
       .compile
       .drain
 
-  protected def presentStream: Stream[F, A]
+  protected def unboundedStream: Stream[F, A]
 
   final def catchUpThenStream(
       f: A => F[Unit]
   )(implicit F: Concurrent[F]): F[Stream[F, Unit]] =
-    catchUp(f).map(_ => presentStream.evalMap(f))
+    catchUp(f).map(_ => unboundedStream.evalMap(f))
 }
 
-sealed trait PastAndRecordStream[F[_], A] extends PastAndPresent[F, RecordStream, A] {
+sealed trait HistoryAndRecordStream[F[_], A] extends HistoryAndUnbounded[F, RecordStream, A] {
   def catchUpThenReadProcessCommit(
       f: A => F[Unit]
   ): F[Stream[F, Unit]]
 }
 
-object PastAndPresent {
-  type Incoming[F[_], P[_[_], _], K, V] = PastAndPresent[F, P, IncomingRecord[K, V]]
-  type Batched[F[_], P[_[_], _], A] = PastAndPresent[F, P, IncomingRecords[A]]
+object HistoryAndUnbounded {
+  type Incoming[F[_], P[_[_], _], K, V] = HistoryAndUnbounded[F, P, IncomingRecord[K, V]]
+  type Batched[F[_], P[_[_], _], A] = HistoryAndUnbounded[F, P, IncomingRecords[A]]
 }
 
-object PastAndStream {
-  type T[F[_], A] = PastAndPresent[F, Stream, A]
+object HistoryAndStream {
+  type T[F[_], A] = HistoryAndUnbounded[F, Stream, A]
   type Incoming[F[_], K, V] = T[F, IncomingRecord[K, V]]
   type Batched[F[_], A] = T[F, IncomingRecords[A]]
 
   private final case class Impl[F[_], A](
       history: Stream[F, A],
-      present: Stream[F, A]
-  ) extends PastAndPresent[F, Stream, A] {
-    override protected def presentStream: Stream[F, A] = present
+      unbounded: Stream[F, A]
+  ) extends HistoryAndUnbounded[F, Stream, A] {
+    override protected def unboundedStream: Stream[F, A] =unbounded
   }
 
   def apply[F[_], A](
       history: Stream[F, A],
-      present: Stream[F, A]
+      unbounded: Stream[F, A]
   ): T[F, A] =
-    Impl(history = history, present = present)
+    Impl(history = history, unbounded = unbounded)
 
   object Batched {
     type Incoming[F[_], K, V] = Batched[F, IncomingRecord[K, V]]
   }
 }
 
-object PastAndRecordStream {
-  type Incoming[F[_], K, V] = PastAndRecordStream[F, IncomingRecord[K, V]]
-  type Batched[F[_], A] = PastAndRecordStream[F, IncomingRecords[A]]
+object HistoryAndRecordStream {
+  type Incoming[F[_], K, V] = HistoryAndRecordStream[F, IncomingRecord[K, V]]
+  type Batched[F[_], A] = HistoryAndRecordStream[F, IncomingRecords[A]]
 
   private final case class Impl[F[_]: Concurrent, A](
       history: Stream[F, A],
-      present: RecordStream[F, A]
-  ) extends PastAndRecordStream[F, A] {
-    override protected def presentStream: Stream[F, A] = present.records
+      unbounded: RecordStream[F, A]
+  ) extends HistoryAndRecordStream[F, A] {
+    override protected def unboundedStream: Stream[F, A] = unbounded.records
     override def catchUpThenReadProcessCommit(
         f: A => F[Unit]
     ): F[Stream[F, Unit]] =
-      catchUp(f).map(_ => present.readProcessCommit(f))
+      catchUp(f).map(_ => unbounded.readProcessCommit(f))
   }
 
   def apply[F[_]: Concurrent, A](
       history: Stream[F, A],
-      present: RecordStream[F, A]
-  ): PastAndRecordStream[F, A] =
-    Impl(history = history, present = present)
+      unbounded: RecordStream[F, A]
+  ): HistoryAndRecordStream[F, A] =
+    Impl(history = history, unbounded = unbounded)
 
   object Batched {
     type Incoming[F[_], K, V] = Batched[F, IncomingRecord[K, V]]
@@ -152,10 +150,10 @@ object RecordStream {
         topical: Topical[A, B],
     ): P[F, IncomingRecords[A]] => P[F, A]
 
-    def pastAndPresent[F[_]: Concurrent, A](
+    def historyAndUnbounded[F[_]: Concurrent, A](
         history: Stream[F, A],
-        present: P[F, A]
-    ): PastAndPresent[F, P, A]
+        unbounded: P[F, A]
+    ): HistoryAndUnbounded[F, P, A]
 
     def configs: List[(String, AnyRef)]
   }
@@ -169,10 +167,10 @@ object RecordStream {
       ): Stream[F, IncomingRecords[A]] => Stream[F, A] =
         _.flatMap(chunked)
 
-      override def pastAndPresent[F[_]: Concurrent, A](
+      override def historyAndUnbounded[F[_]: Concurrent, A](
           history: Stream[F, A],
-          present: Stream[F, A]
-      ): PastAndPresent[F, Stream, A] = PastAndStream(history, present)
+          unbounded: Stream[F, A]
+      ): HistoryAndUnbounded[F, Stream, A] = HistoryAndStream(history, unbounded)
 
       override def configs: List[(String, AnyRef)] = List()
     }
@@ -191,10 +189,10 @@ object RecordStream {
             override def records: Stream[F, A] = rs.records.flatMap(chunked)
           }
 
-      override def pastAndPresent[F[_]: Concurrent, A](
+      override def historyAndUnbounded[F[_]: Concurrent, A](
           history: Stream[F, A],
-          present: RecordStream[F, A]
-      ): PastAndPresent[F, RecordStream, A] = PastAndRecordStream(history, present)
+          unbounded: RecordStream[F, A]
+      ): HistoryAndUnbounded[F, RecordStream, A] = HistoryAndRecordStream(history, unbounded)
 
       override def configs: List[(String, AnyRef)] = List(groupId)
     }
@@ -271,7 +269,7 @@ object RecordStream {
     private[RecordStream] implicit val G: Apply[G]
 
     def unbounded: G[P[F, A]]
-    def historyAndUnbounded: G[PastAndPresent[F, P, A]]
+    def historyAndUnbounded: G[HistoryAndUnbounded[F, P, A]]
     def history: G[Stream[F, A]]
 
     final def mapK[H[_]: Apply](f: G ~> H): StreamSelector[F, H, P, A] =
@@ -289,11 +287,11 @@ object RecordStream {
         whetherCommits: WhetherCommits[P],
     )(implicit val F: Concurrent[F], val G: Apply[G])
         extends StreamSelector[F, G, P, A] {
-      override def historyAndUnbounded: G[PastAndPresent[F, P, A]] =
+      override def historyAndUnbounded: G[HistoryAndUnbounded[F, P, A]] =
         history.product(unbounded).map { pp =>
-          whetherCommits.pastAndPresent(
+          whetherCommits.historyAndUnbounded(
             history = pp._1,
-            present = pp._2,
+            unbounded = pp._2,
           )
         }
     }
@@ -549,9 +547,9 @@ object RecordStream {
           commitMarkerAdjustment = true
         ).prefetch
           .evalMap(parseBatch(topical))
-      val present: NeedsConsumer[F, P[F, IncomingRecords[A]]] =
+      val unbounded: NeedsConsumer[F, P[F, IncomingRecords[A]]] =
         c => whetherCommits.extrude(recordStream(c, topical))
-      StreamSelector.Impl(history, present, whetherCommits)
+      StreamSelector.Impl(history, unbounded, whetherCommits)
     }
 
     private def assign[F[_]: Monad, A, B](
