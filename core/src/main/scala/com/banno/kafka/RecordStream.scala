@@ -209,59 +209,6 @@ object RecordStream {
     ): Resource[F, RecordStream[F, G[A]]]
   }
 
-  sealed trait Assigner[F[_], G[_], P[_[_], _]] {
-    private[RecordStream] def whetherCommits: WhetherCommits[P]
-
-    def presentWith[A, B](
-        topical: Topical[A, B],
-        reset: AutoOffsetReset,
-        offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]],
-    ): Resource[F, P[F, G[A]]]
-
-    final def present[A, B](
-        topical: Topical[A, B],
-        reset: AutoOffsetReset,
-        offsets: Map[TopicPartition, Long],
-    )(implicit F: Applicative[F]): Resource[F, P[F, G[A]]] =
-      presentWith(topical, reset, Kleisli.pure(offsets))
-
-    final def present[A, B](
-        topical: Topical[A, B]
-    )(implicit F: Applicative[F]): Resource[F, P[F, G[A]]] =
-      present(topical, AutoOffsetReset.earliest, Map.empty)
-
-    def pastAndPresentWith[A, B](
-        topical: Topical[A, B],
-        offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]],
-    ): Resource[F, PastAndPresent[F, P, G[A]]]
-
-    // If you are interested in the past, then how does AutoOffsetReset.latest
-    // make sense? Omitting the parameter until I see a clear reason for this.
-    final def pastAndPresent[A, B](
-        topical: Topical[A, B],
-        offsets: Map[TopicPartition, Long],
-    )(implicit F: Applicative[F]): Resource[F, PastAndPresent[F, P, G[A]]] =
-      pastAndPresentWith(topical, Kleisli.pure(offsets))
-
-    final def pastAndPresent[A, B](
-        topical: Topical[A, B]
-    )(implicit F: Applicative[F]): Resource[F, PastAndPresent[F, P, G[A]]] =
-      pastAndPresent(topical, Map.empty)
-
-    // If you are only interested in the past, then how does
-    // AutoOffsetReset.latest make sense? Omitting the parameter until I see a
-    // clear reason for this.
-    def history[A, B](
-        topical: Topical[A, B],
-        offsets: Map[TopicPartition, Long],
-    ): Resource[F, Stream[F, G[A]]]
-
-    final def history[A, B](
-        topical: Topical[A, B]
-    ): Resource[F, Stream[F, G[A]]] =
-      history(topical, Map.empty)
-  }
-
   private def toSeekTo(offsets: Map[TopicPartition, Long]): SeekTo =
     SeekTo.offsets(offsets, SeekTo.beginning)
 
@@ -375,42 +322,6 @@ object RecordStream {
       batched
         .to(topical, reset)
         .map(whetherCommits.chunk(topical))
-  }
-
-  private final class ChunkedAssigner[F[_]: Async, P[_[_], _]](
-      val batched: Assigner[F, IncomingRecords, P],
-  ) extends Assigner[F, Id, P] {
-    override def whetherCommits = batched.whetherCommits
-
-    override def presentWith[A, B](
-        topical: Topical[A, B],
-        reset: AutoOffsetReset,
-        offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
-    ): Resource[F, P[F, A]] =
-      batched
-        .presentWith(topical, reset, offsetsF)
-        .map(whetherCommits.chunk(topical))
-
-    override def pastAndPresentWith[A, B](
-        topical: Topical[A, B],
-        offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
-    ): Resource[F, PastAndPresent[F, P, A]] =
-      batched
-        .pastAndPresentWith(topical, offsetsF)
-        .map { pp =>
-          whetherCommits.pastAndPresent(
-            history = pp.history.flatMap(chunked),
-            present = whetherCommits.chunk[F, A, B](topical).apply(pp.present),
-          )
-        }
-
-    override def history[A, B](
-        topical: Topical[A, B],
-        offsets: Map[TopicPartition, Long],
-    ): Resource[F, Stream[F, A]] =
-      batched
-        .history(topical, offsets)
-        .map(_.flatMap(chunked))
   }
 
   sealed trait ConfigStage1 {
@@ -534,27 +445,6 @@ object RecordStream {
         )
     }
 
-  private object ChunkedAssigner {
-    def apply[F[_]: Async, P[_[_], _]](
-        kafkaBootstrapServers: BootstrapServers,
-        schemaRegistryUri: SchemaRegistryUrl,
-        clientId: String,
-        whetherCommits: WhetherCommits[P],
-        extraConfigs: Map[String, AnyRef],
-    ): ChunkedAssigner[F, P] =
-      new ChunkedAssigner(
-        Batched.AssignerImpl(
-          BaseConfigs(
-            kafkaBootstrapServers,
-            schemaRegistryUri,
-            clientId,
-            whetherCommits,
-            extraConfigs.toList
-          )
-        )
-      )
-  }
-
   def subscribe[F[_]: Async](
       kafkaBootstrapServers: BootstrapServers,
       schemaRegistryUri: SchemaRegistryUrl,
@@ -586,89 +476,6 @@ object RecordStream {
       groupId.id,
       groupId,
       extraConfigs: _*,
-    )
-
-  def assign[F[_]: Async](
-      kafkaBootstrapServers: BootstrapServers,
-      schemaRegistryUri: SchemaRegistryUrl,
-      clientId: String,
-  ): Assigner[F, Id, Stream] =
-    ChunkedAssigner(
-      kafkaBootstrapServers,
-      schemaRegistryUri,
-      clientId,
-      WhetherCommits.No,
-      Map.empty,
-    )
-
-  def assign[F[_]: Async](
-      kafkaBootstrapServers: BootstrapServers,
-      schemaRegistryUri: SchemaRegistryUrl,
-      groupId: GroupId,
-  ): Assigner[F, Id, RecordStream] =
-    ChunkedAssigner(
-      kafkaBootstrapServers,
-      schemaRegistryUri,
-      groupId.id,
-      WhetherCommits.May(groupId),
-      Map.empty,
-    )
-
-  def assign[F[_]: Async](
-      kafkaBootstrapServers: BootstrapServers,
-      schemaRegistryUri: SchemaRegistryUrl,
-      clientId: String,
-      groupId: GroupId,
-  ): Assigner[F, Id, RecordStream] =
-    ChunkedAssigner(
-      kafkaBootstrapServers,
-      schemaRegistryUri,
-      clientId,
-      WhetherCommits.May(groupId),
-      Map.empty,
-    )
-
-  def assign[F[_]: Async](
-      kafkaBootstrapServers: BootstrapServers,
-      schemaRegistryUri: SchemaRegistryUrl,
-      clientId: String,
-      extraConfigs: Map[String, AnyRef],
-  ): Assigner[F, Id, Stream] =
-    ChunkedAssigner(
-      kafkaBootstrapServers,
-      schemaRegistryUri,
-      clientId,
-      WhetherCommits.No,
-      extraConfigs,
-    )
-
-  def assign[F[_]: Async](
-      kafkaBootstrapServers: BootstrapServers,
-      schemaRegistryUri: SchemaRegistryUrl,
-      groupId: GroupId,
-      extraConfigs: Map[String, AnyRef],
-  ): Assigner[F, Id, RecordStream] =
-    ChunkedAssigner(
-      kafkaBootstrapServers,
-      schemaRegistryUri,
-      groupId.id,
-      WhetherCommits.May(groupId),
-      extraConfigs,
-    )
-
-  def assign[F[_]: Async](
-      kafkaBootstrapServers: BootstrapServers,
-      schemaRegistryUri: SchemaRegistryUrl,
-      clientId: String,
-      groupId: GroupId,
-      extraConfigs: Map[String, AnyRef],
-  ): Assigner[F, Id, RecordStream] =
-    ChunkedAssigner(
-      kafkaBootstrapServers,
-      schemaRegistryUri,
-      clientId,
-      WhetherCommits.May(groupId),
-      extraConfigs,
     )
 
   private def ephemeralTopicsSeekToEnd[F[_]: Monad](
@@ -770,81 +577,6 @@ object RecordStream {
         )
       }
 
-    private[RecordStream] case class AssignerImpl[F[_]: Async, P[_[_], _]](
-        baseConfigs: BaseConfigs[P]
-    ) extends Assigner[F, IncomingRecords, P] {
-      override def whetherCommits = baseConfigs.whetherCommits
-
-      private def historyImpl[A, B](
-          consumer: ConsumerApi[F, GenericRecord, GenericRecord],
-          topical: Topical[A, B],
-      ): Stream[F, IncomingRecords[A]] =
-        consumer
-          .recordsThroughAssignmentLastOffsetsOrZeros(
-            pollTimeout,
-            10,
-            commitMarkerAdjustment = true
-          )
-          .prefetch
-          .evalMap(parseBatch(topical))
-
-      private def presentImpl[A, B](
-          consumer: ConsumerApi[F, GenericRecord, GenericRecord],
-          topical: Topical[A, B],
-      ): P[F, IncomingRecords[A]] =
-        whetherCommits.extrude(recordStream(consumer, topical))
-
-      private def assign[A, B](
-          consumer: ConsumerApi[F, GenericRecord, GenericRecord],
-          topical: Topical[A, B],
-          seekToF: Kleisli[F, PartitionQueries[F], SeekTo]
-      ): F[Unit] =
-        for {
-          seekTo <- seekToF(consumer.partitionQueries)
-          () <- consumer.assignAndSeek(topical.names.map(_.show).toList, seekTo)
-          // By definition, no need to ever read old ephemera.
-          () <- topical.aschematic.traverse_(ephemeralTopicsSeekToEnd(consumer))
-        } yield ()
-
-      private def toSeekToF(
-          offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
-      ): Kleisli[F, PartitionQueries[F], SeekTo] =
-        offsetsF.map(SeekTo.offsets(_, SeekTo.beginning))
-
-      override def presentWith[A, B](
-          topical: Topical[A, B],
-          reset: AutoOffsetReset,
-          offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
-      ): Resource[F, P[F, IncomingRecords[A]]] =
-        baseConfigs.consumerApi(reset).evalMap { consumer =>
-          assign(consumer, topical, toSeekToF(offsetsF))
-            .as(presentImpl(consumer, topical))
-        }
-
-      override def pastAndPresentWith[A, B](
-          topical: Topical[A, B],
-          offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
-      ): Resource[F, PastAndPresent.Batched[F, P, A]] =
-        baseConfigs.consumerApi(AutoOffsetReset.earliest).evalMap { consumer =>
-          assign(consumer, topical, toSeekToF(offsetsF))
-            .as(
-              whetherCommits.pastAndPresent(
-                history = historyImpl(consumer, topical),
-                present = presentImpl(consumer, topical),
-              )
-            )
-        }
-
-      override def history[A, B](
-          topical: Topical[A, B],
-          offsets: Map[TopicPartition, Long],
-      ): Resource[F, Stream[F, IncomingRecords[A]]] =
-        baseConfigs.consumerApi(AutoOffsetReset.earliest).evalMap { consumer =>
-          assign(consumer, topical, toSeekToF(Kleisli.pure(offsets)))
-            .as(historyImpl(consumer, topical))
-        }
-    }
-
     def subscribe[F[_]: Async](
         kafkaBootstrapServers: BootstrapServers,
         schemaRegistryUri: SchemaRegistryUrl,
@@ -871,98 +603,6 @@ object RecordStream {
           schemaRegistryUri,
           clientId,
           WhetherCommits.May(groupId),
-        )
-      )
-
-    def assign[F[_]: Async](
-        kafkaBootstrapServers: BootstrapServers,
-        schemaRegistryUri: SchemaRegistryUrl,
-        clientId: String,
-    ): Assigner[F, IncomingRecords, Stream] =
-      AssignerImpl(
-        BaseConfigs(
-          kafkaBootstrapServers,
-          schemaRegistryUri,
-          clientId,
-          WhetherCommits.No,
-        )
-      )
-
-    def assign[F[_]: Async](
-        kafkaBootstrapServers: BootstrapServers,
-        schemaRegistryUri: SchemaRegistryUrl,
-        groupId: GroupId,
-    ): Assigner[F, IncomingRecords, RecordStream] =
-      AssignerImpl(
-        BaseConfigs(
-          kafkaBootstrapServers,
-          schemaRegistryUri,
-          groupId.id,
-          WhetherCommits.May(groupId),
-        )
-      )
-
-    def assign[F[_]: Async](
-        kafkaBootstrapServers: BootstrapServers,
-        schemaRegistryUri: SchemaRegistryUrl,
-        clientId: String,
-        groupId: GroupId,
-    ): Assigner[F, IncomingRecords, RecordStream] =
-      AssignerImpl(
-        BaseConfigs(
-          kafkaBootstrapServers,
-          schemaRegistryUri,
-          clientId,
-          WhetherCommits.May(groupId),
-        )
-      )
-
-    def assign[F[_]: Async](
-        kafkaBootstrapServers: BootstrapServers,
-        schemaRegistryUri: SchemaRegistryUrl,
-        clientId: String,
-        configs: Map[String, AnyRef],
-    ): Assigner[F, IncomingRecords, Stream] =
-      AssignerImpl(
-        BaseConfigs(
-          kafkaBootstrapServers,
-          schemaRegistryUri,
-          clientId,
-          WhetherCommits.No,
-          configs.toList
-        )
-      )
-
-    def assign[F[_]: Async](
-        kafkaBootstrapServers: BootstrapServers,
-        schemaRegistryUri: SchemaRegistryUrl,
-        groupId: GroupId,
-        configs: Map[String, AnyRef],
-    ): Assigner[F, IncomingRecords, RecordStream] =
-      AssignerImpl(
-        BaseConfigs(
-          kafkaBootstrapServers,
-          schemaRegistryUri,
-          groupId.id,
-          WhetherCommits.May(groupId),
-          configs.toList
-        )
-      )
-
-    def assign[F[_]: Async](
-        kafkaBootstrapServers: BootstrapServers,
-        schemaRegistryUri: SchemaRegistryUrl,
-        clientId: String,
-        groupId: GroupId,
-        configs: Map[String, AnyRef],
-    ): Assigner[F, IncomingRecords, RecordStream] =
-      AssignerImpl(
-        BaseConfigs(
-          kafkaBootstrapServers,
-          schemaRegistryUri,
-          clientId,
-          WhetherCommits.May(groupId),
-          configs.toList
         )
       )
   }
