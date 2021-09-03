@@ -307,7 +307,9 @@ object RecordStream {
         )(
           fa: Seeker[F, A]
         ): Seeker[F, B] =
-          ???
+          Impl { (seekToF: Kleisli[F, PartitionQueries[F], SeekTo]) =>
+            ff.seekBy(seekToF)(fa.seekBy(seekToF))
+          }(fa.F)
 
         override def map[A, B](fa: Seeker[F, A])(f: A => B): Seeker[F, B] =
           Impl { (seekToF: Kleisli[F, PartitionQueries[F], SeekTo]) =>
