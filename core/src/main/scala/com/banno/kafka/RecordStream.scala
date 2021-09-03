@@ -281,6 +281,12 @@ object RecordStream {
     ): A =
       seekBy(Kleisli.pure(seekTo))
 
+    final def seekToBeginning: A =
+      seekBy(Kleisli.pure(SeekTo.beginning))
+
+    final def seekToEnd: A =
+      seekBy(Kleisli.pure(SeekTo.end))
+
     final def offsetsBy(
         offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
     ): A =
@@ -293,19 +299,20 @@ object RecordStream {
 
   private object Seeker {
     final case class Impl[F[_], A](
-      apply: Kleisli[F, PartitionQueries[F], SeekTo] => A
-    )(implicit val F: Applicative[F]) extends Seeker[F, A] {
+        apply: Kleisli[F, PartitionQueries[F], SeekTo] => A
+    )(implicit val F: Applicative[F])
+        extends Seeker[F, A] {
       override def seekBy(
-        seekToF: Kleisli[F, PartitionQueries[F], SeekTo]
+          seekToF: Kleisli[F, PartitionQueries[F], SeekTo]
       ): A = apply(seekToF)
     }
 
     implicit def applyInstance[F[_]]: Apply[Seeker[F, *]] =
       new Apply[Seeker[F, *]] {
         override def ap[A, B](
-          ff: Seeker[F, A => B]
+            ff: Seeker[F, A => B]
         )(
-          fa: Seeker[F, A]
+            fa: Seeker[F, A]
         ): Seeker[F, B] =
           Impl { (seekToF: Kleisli[F, PartitionQueries[F], SeekTo]) =>
             ff.seekBy(seekToF)(fa.seekBy(seekToF))
@@ -337,11 +344,11 @@ object RecordStream {
 
   private object StreamSelector {
     final case class Impl[F[_], G[_], P[_[_], _], A](
-      history: G[Stream[F, A]],
-      present: G[P[F, A]],
-      whetherCommits: WhetherCommits[P],
-    )(implicit val F: Concurrent[F], val G: Apply[G],
-    ) extends StreamSelector[F, G, P, A] {
+        history: G[Stream[F, A]],
+        present: G[P[F, A]],
+        whetherCommits: WhetherCommits[P],
+    )(implicit val F: Concurrent[F], val G: Apply[G])
+        extends StreamSelector[F, G, P, A] {
       override def pastAndPresent: G[PastAndPresent[F, P, A]] =
         history.product(present).map { pp =>
           whetherCommits.pastAndPresent(
@@ -358,8 +365,8 @@ object RecordStream {
     StreamSelector[F, SeekResource[F, *], P, A]
 
   private def chunkedSelector[F[_]: Concurrent, G[_], P[_[_], _], A, B](
-    batched: StreamSelector[F, G, P, IncomingRecords[A]],
-    topical: Topical[A, B],
+      batched: StreamSelector[F, G, P, IncomingRecords[A]],
+      topical: Topical[A, B],
   ): StreamSelector[F, G, P, A] = {
     implicit val ap: Apply[G] = batched.G
     StreamSelector.Impl(
@@ -423,8 +430,8 @@ object RecordStream {
     def client(clientId: String): ConfigStage2[Stream]
     def group(groupId: GroupId): ConfigStage2[RecordStream]
     def clientAndGroup(
-      clientId: String,
-      groupId: GroupId
+        clientId: String,
+        groupId: GroupId
     ): ConfigStage2[RecordStream]
   }
 
@@ -448,7 +455,8 @@ object RecordStream {
       whetherCommits: WhetherCommits[P],
       extraConfigs: Seq[(String, AnyRef)] = Seq.empty,
   ) extends ConfigStage2[P] {
-    def consumerApiV2[F[_]: Async: ContextShift]: Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] = {
+    def consumerApiV2[F[_]: Async: ContextShift]
+        : Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] = {
       val configs: List[(String, AnyRef)] =
         whetherCommits.configs ++
           extraConfigs ++
@@ -506,8 +514,8 @@ object RecordStream {
   }
 
   def configure(
-    kafkaBootstrapServers: BootstrapServers,
-    schemaRegistryUri: SchemaRegistryUrl,
+      kafkaBootstrapServers: BootstrapServers,
+      schemaRegistryUri: SchemaRegistryUrl,
   ): ConfigStage1 =
     new ConfigStage1 {
       override def client(clientId: String): ConfigStage2[Stream] =
@@ -527,8 +535,8 @@ object RecordStream {
         )
 
       override def clientAndGroup(
-        clientId: String,
-        groupId: GroupId
+          clientId: String,
+          groupId: GroupId
       ): ConfigStage2[RecordStream] =
         BaseConfigs(
           kafkaBootstrapServers,
@@ -731,8 +739,8 @@ object RecordStream {
       Function[ConsumerApi[F, GenericRecord, GenericRecord], A]
 
     private[RecordStream] def streamSelectorViaConsumer[F[_]: Concurrent, P[_[_], _], A](
-      whetherCommits: WhetherCommits[P],
-      topical: Topical[A, ?],
+        whetherCommits: WhetherCommits[P],
+        topical: Topical[A, ?],
     ): StreamSelector[F, NeedsConsumer[F, *], P, IncomingRecords[A]] = {
       val history: NeedsConsumer[F, Stream[F, IncomingRecords[A]]] =
         _.recordsThroughAssignmentLastOffsetsOrZeros(
@@ -769,7 +777,7 @@ object RecordStream {
               (seekToF: Kleisli[F, PartitionQueries[F], SeekTo]) =>
                 baseConfigs.consumerApiV2[F].evalMap { consumer =>
                   assign(consumer, topical, seekToF)
-                  .as(fa(consumer))
+                    .as(fa(consumer))
                 }
             )
         }
@@ -812,7 +820,7 @@ object RecordStream {
         } yield ()
 
       private def toSeekToF(
-        offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
+          offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
       ): Kleisli[F, PartitionQueries[F], SeekTo] =
         offsetsF.map(SeekTo.offsets(_, SeekTo.beginning))
 
