@@ -47,9 +47,9 @@ sealed trait RecordStream[F[_], A] {
   def readProcessCommit[B](process: A => F[B]): Stream[F, B]
 }
 
-sealed trait PastAndPresent[F[_], P[_[_], _], A] {
+sealed trait HistoryAndUnbounded[F[_], P[_[_], _], A] {
   def history: Stream[F, A]
-  def present: P[F, A]
+  def unbounded: P[F, A]
 
   protected final def catchUp(f: A => F[Unit])(implicit F: Concurrent[F]): F[Unit] =
     history
@@ -57,68 +57,68 @@ sealed trait PastAndPresent[F[_], P[_[_], _], A] {
       .compile
       .drain
 
-  protected def presentStream: Stream[F, A]
+  protected def unboundedStream: Stream[F, A]
 
   final def catchUpThenStream(
       f: A => F[Unit]
   )(implicit F: Concurrent[F]): F[Stream[F, Unit]] =
-    catchUp(f).map(_ => presentStream.evalMap(f))
+    catchUp(f).map(_ => unboundedStream.evalMap(f))
 }
 
-sealed trait PastAndRecordStream[F[_], A] extends PastAndPresent[F, RecordStream, A] {
+sealed trait HistoryAndRecordStream[F[_], A] extends HistoryAndUnbounded[F, RecordStream, A] {
   def catchUpThenReadProcessCommit(
       f: A => F[Unit]
   ): F[Stream[F, Unit]]
 }
 
-object PastAndPresent {
-  type Incoming[F[_], P[_[_], _], K, V] = PastAndPresent[F, P, IncomingRecord[K, V]]
-  type Batched[F[_], P[_[_], _], A] = PastAndPresent[F, P, IncomingRecords[A]]
+object HistoryAndUnbounded {
+  type Incoming[F[_], P[_[_], _], K, V] = HistoryAndUnbounded[F, P, IncomingRecord[K, V]]
+  type Batched[F[_], P[_[_], _], A] = HistoryAndUnbounded[F, P, IncomingRecords[A]]
 }
 
-object PastAndStream {
-  type T[F[_], A] = PastAndPresent[F, Stream, A]
+object HistoryAndStream {
+  type T[F[_], A] = HistoryAndUnbounded[F, Stream, A]
   type Incoming[F[_], K, V] = T[F, IncomingRecord[K, V]]
   type Batched[F[_], A] = T[F, IncomingRecords[A]]
 
   private final case class Impl[F[_], A](
       history: Stream[F, A],
-      present: Stream[F, A]
-  ) extends PastAndPresent[F, Stream, A] {
-    override protected def presentStream: Stream[F, A] = present
+      unbounded: Stream[F, A]
+  ) extends HistoryAndUnbounded[F, Stream, A] {
+    override protected def unboundedStream: Stream[F, A] =unbounded
   }
 
   def apply[F[_], A](
       history: Stream[F, A],
-      present: Stream[F, A]
+      unbounded: Stream[F, A]
   ): T[F, A] =
-    Impl(history = history, present = present)
+    Impl(history = history, unbounded = unbounded)
 
   object Batched {
     type Incoming[F[_], K, V] = Batched[F, IncomingRecord[K, V]]
   }
 }
 
-object PastAndRecordStream {
-  type Incoming[F[_], K, V] = PastAndRecordStream[F, IncomingRecord[K, V]]
-  type Batched[F[_], A] = PastAndRecordStream[F, IncomingRecords[A]]
+object HistoryAndRecordStream {
+  type Incoming[F[_], K, V] = HistoryAndRecordStream[F, IncomingRecord[K, V]]
+  type Batched[F[_], A] = HistoryAndRecordStream[F, IncomingRecords[A]]
 
   private final case class Impl[F[_]: Concurrent, A](
       history: Stream[F, A],
-      present: RecordStream[F, A]
-  ) extends PastAndRecordStream[F, A] {
-    override protected def presentStream: Stream[F, A] = present.records
+      unbounded: RecordStream[F, A]
+  ) extends HistoryAndRecordStream[F, A] {
+    override protected def unboundedStream: Stream[F, A] = unbounded.records
     override def catchUpThenReadProcessCommit(
         f: A => F[Unit]
     ): F[Stream[F, Unit]] =
-      catchUp(f).map(_ => present.readProcessCommit(f))
+      catchUp(f).map(_ => unbounded.readProcessCommit(f))
   }
 
   def apply[F[_]: Concurrent, A](
       history: Stream[F, A],
-      present: RecordStream[F, A]
-  ): PastAndRecordStream[F, A] =
-    Impl(history = history, present = present)
+      unbounded: RecordStream[F, A]
+  ): HistoryAndRecordStream[F, A] =
+    Impl(history = history, unbounded = unbounded)
 
   object Batched {
     type Incoming[F[_], K, V] = Batched[F, IncomingRecord[K, V]]
@@ -150,10 +150,10 @@ object RecordStream {
         topical: Topical[A, B],
     ): P[F, IncomingRecords[A]] => P[F, A]
 
-    def pastAndPresent[F[_]: Concurrent, A](
+    def historyAndUnbounded[F[_]: Concurrent, A](
         history: Stream[F, A],
-        present: P[F, A]
-    ): PastAndPresent[F, P, A]
+        unbounded: P[F, A]
+    ): HistoryAndUnbounded[F, P, A]
 
     def configs: List[(String, AnyRef)]
   }
@@ -167,10 +167,10 @@ object RecordStream {
       ): Stream[F, IncomingRecords[A]] => Stream[F, A] =
         _.flatMap(chunked)
 
-      override def pastAndPresent[F[_]: Concurrent, A](
+      override def historyAndUnbounded[F[_]: Concurrent, A](
           history: Stream[F, A],
-          present: Stream[F, A]
-      ): PastAndPresent[F, Stream, A] = PastAndStream(history, present)
+          unbounded: Stream[F, A]
+      ): HistoryAndUnbounded[F, Stream, A] = HistoryAndStream(history, unbounded)
 
       override def configs: List[(String, AnyRef)] = List()
     }
@@ -189,10 +189,10 @@ object RecordStream {
             override def records: Stream[F, A] = rs.records.flatMap(chunked)
           }
 
-      override def pastAndPresent[F[_]: Concurrent, A](
+      override def historyAndUnbounded[F[_]: Concurrent, A](
           history: Stream[F, A],
-          present: RecordStream[F, A]
-      ): PastAndPresent[F, RecordStream, A] = PastAndRecordStream(history, present)
+          unbounded: RecordStream[F, A]
+      ): HistoryAndUnbounded[F, RecordStream, A] = HistoryAndRecordStream(history, unbounded)
 
       override def configs: List[(String, AnyRef)] = List(groupId)
     }
@@ -207,60 +207,112 @@ object RecordStream {
     ): Resource[F, RecordStream[F, G[A]]]
   }
 
-  sealed trait Assigner[F[_], G[_], P[_[_], _]] {
-    private[RecordStream] def whetherCommits: WhetherCommits[P]
+  private def toSeekTo(offsets: Map[TopicPartition, Long]): SeekTo =
+    SeekTo.offsets(offsets, SeekTo.beginning)
 
-    def presentWith[A, B](
-        topical: Topical[A, B],
-        reset: AutoOffsetReset,
-        offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]],
-    ): Resource[F, P[F, G[A]]]
+  private def toSeekToF[F[_]: Functor](
+      offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
+  ): Kleisli[F, PartitionQueries[F], SeekTo] =
+    offsetsF.map(toSeekTo)
 
-    final def present[A, B](
-        topical: Topical[A, B],
-        reset: AutoOffsetReset,
-        offsets: Map[TopicPartition, Long],
-    )(implicit F: Applicative[F]): Resource[F, P[F, G[A]]] =
-      presentWith(topical, reset, Kleisli.pure(offsets))
+  sealed trait Seeker[F[_], A] {
+    protected implicit val F: Applicative[F]
 
-    final def present[A, B](
-        topical: Topical[A, B]
-    )(implicit F: Applicative[F]): Resource[F, P[F, G[A]]] =
-      present(topical, AutoOffsetReset.earliest, Map.empty)
+    final def offsets(
+        offsets: Map[TopicPartition, Long]
+    ): A =
+      seekTo(toSeekTo(offsets))
 
-    def pastAndPresentWith[A, B](
-        topical: Topical[A, B],
-        offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]],
-    ): Resource[F, PastAndPresent[F, P, G[A]]]
+    final def seekTo(
+        seekTo: SeekTo
+    ): A =
+      seekBy(Kleisli.pure(seekTo))
 
-    // If you are interested in the past, then how does AutoOffsetReset.latest
-    // make sense? Omitting the parameter until I see a clear reason for this.
-    final def pastAndPresent[A, B](
-        topical: Topical[A, B],
-        offsets: Map[TopicPartition, Long],
-    )(implicit F: Applicative[F]): Resource[F, PastAndPresent[F, P, G[A]]] =
-      pastAndPresentWith(topical, Kleisli.pure(offsets))
+    final def seekToBeginning: A =
+      seekBy(Kleisli.pure(SeekTo.beginning))
 
-    final def pastAndPresent[A, B](
-        topical: Topical[A, B]
-    )(implicit F: Applicative[F]): Resource[F, PastAndPresent[F, P, G[A]]] =
-      pastAndPresent(topical, Map.empty)
+    final def seekToEnd: A =
+      seekBy(Kleisli.pure(SeekTo.end))
 
-    // If you are only interested in the past, then how does
-    // AutoOffsetReset.latest make sense? Omitting the parameter until I see a
-    // clear reason for this.
-    def history[A, B](
-        topical: Topical[A, B],
-        offsets: Map[TopicPartition, Long],
-    ): Resource[F, Stream[F, G[A]]]
+    final def offsetsBy(
+        offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
+    ): A =
+      seekBy(toSeekToF(offsetsF))
 
-    final def history[A, B](
-        topical: Topical[A, B]
-    ): Resource[F, Stream[F, G[A]]] =
-      history(topical, Map.empty)
+    def seekBy(
+        seekToF: Kleisli[F, PartitionQueries[F], SeekTo]
+    ): A
   }
 
-  private final case class ChunkedSubscriber[F[_]: Concurrent](
+  private object Seeker {
+    final case class Impl[F[_], A](
+        apply: Kleisli[F, PartitionQueries[F], SeekTo] => A
+    )(implicit val F: Applicative[F])
+        extends Seeker[F, A] {
+      override def seekBy(
+          seekToF: Kleisli[F, PartitionQueries[F], SeekTo]
+      ): A = apply(seekToF)
+    }
+
+    implicit def functor[F[_]]: Functor[Seeker[F, *]] =
+      new Functor[Seeker[F, *]] {
+        override def map[A, B](fa: Seeker[F, A])(f: A => B): Seeker[F, B] =
+          Impl { (seekToF: Kleisli[F, PartitionQueries[F], SeekTo]) =>
+            f(fa.seekBy(seekToF))
+          }(fa.F)
+      }
+  }
+
+  sealed trait StreamSelector[F[_], G[_], P[_[_], _], A] {
+    private[RecordStream] def whetherCommits: WhetherCommits[P]
+    private[RecordStream] implicit val F: Concurrent[F]
+    private[RecordStream] implicit val G: Apply[G]
+
+    def unbounded: G[P[F, A]]
+    def historyAndUnbounded: G[HistoryAndUnbounded[F, P, A]]
+    def history: G[Stream[F, A]]
+
+    final def mapK[H[_]: Apply](f: G ~> H): StreamSelector[F, H, P, A] =
+      StreamSelector.Impl(
+        f(history),
+        f(unbounded),
+        whetherCommits,
+      )
+  }
+
+  private object StreamSelector {
+    final case class Impl[F[_], G[_], P[_[_], _], A](
+        history: G[Stream[F, A]],
+        unbounded: G[P[F, A]],
+        whetherCommits: WhetherCommits[P],
+    )(implicit val F: Concurrent[F], val G: Apply[G])
+        extends StreamSelector[F, G, P, A] {
+      override def historyAndUnbounded: G[HistoryAndUnbounded[F, P, A]] =
+        history.product(unbounded).map { pp =>
+          whetherCommits.historyAndUnbounded(
+            history = pp._1,
+            unbounded = pp._2,
+          )
+        }
+    }
+  }
+
+  type SeekAndSelect[F[_], P[_[_], _], A] =
+    Seeker[F, StreamSelector[F, Resource[F, *], P, A]]
+
+  private def chunkedSelector[F[_]: Concurrent, G[_], P[_[_], _], A, B](
+      batched: StreamSelector[F, G, P, IncomingRecords[A]],
+      topical: Topical[A, B],
+  ): StreamSelector[F, G, P, A] = {
+    implicit val ap: Apply[G] = batched.G
+    StreamSelector.Impl(
+      batched.history.map(_.flatMap(chunked)),
+      batched.unbounded.map(batched.whetherCommits.chunk(topical)),
+      batched.whetherCommits,
+    )
+  }
+
+  private final case class ChunkedSubscriber[F[_]: Async](
       val batched: Subscriber[F, IncomingRecords],
   ) extends Subscriber[F, Id] {
     override def whetherCommits = batched.whetherCommits
@@ -274,60 +326,26 @@ object RecordStream {
         .map(whetherCommits.chunk(topical))
   }
 
-  private final class ChunkedAssigner[F[_]: Concurrent, P[_[_], _]](
-      val batched: Assigner[F, IncomingRecords, P],
-  ) extends Assigner[F, Id, P] {
-    override def whetherCommits = batched.whetherCommits
-
-    override def presentWith[A, B](
-        topical: Topical[A, B],
-        reset: AutoOffsetReset,
-        offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
-    ): Resource[F, P[F, A]] =
-      batched
-        .presentWith(topical, reset, offsetsF)
-        .map(whetherCommits.chunk(topical))
-
-    override def pastAndPresentWith[A, B](
-        topical: Topical[A, B],
-        offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
-    ): Resource[F, PastAndPresent[F, P, A]] =
-      batched
-        .pastAndPresentWith(topical, offsetsF)
-        .map { pp =>
-          whetherCommits.pastAndPresent(
-            history = pp.history.flatMap(chunked),
-            present = whetherCommits.chunk[F, A, B](topical).apply(pp.present),
-          )
-        }
-
-    def history[A, B](
-        topical: Topical[A, B],
-        offsets: Map[TopicPartition, Long],
-    ): Resource[F, Stream[F, A]] =
-      batched
-        .history(topical, offsets)
-        .map(_.flatMap(chunked))
-  }
-
   sealed trait ConfigStage1 {
     def client(clientId: String): ConfigStage2[Stream]
     def group(groupId: GroupId): ConfigStage2[RecordStream]
     def clientAndGroup(
-      clientId: String,
-      groupId: GroupId
+        clientId: String,
+        groupId: GroupId
     ): ConfigStage2[RecordStream]
   }
 
   sealed trait ConfigStage2[P[_[_], _]] {
-    def untyped(configs: Seq[(String, AnyRef)]): ConfigStage2[P]
+    def untypedExtras(configs: Seq[(String, AnyRef)]): ConfigStage2[P]
 
     def batched: ConfigStage3[P, IncomingRecords]
     def chunked: ConfigStage3[P, Id]
   }
 
   sealed trait ConfigStage3[P[_[_], _], G[_]] {
-    def assign[F[_]: Concurrent: ContextShift]: Assigner[F, G, P]
+    def assign[F[_]: Concurrent: ContextShift, A](
+        topical: Topical[A, ?]
+    ): SeekAndSelect[F, P, G[A]]
   }
 
   private final case class BaseConfigs[P[_[_], _]](
@@ -337,6 +355,22 @@ object RecordStream {
       whetherCommits: WhetherCommits[P],
       extraConfigs: Seq[(String, AnyRef)] = Seq.empty,
   ) extends ConfigStage2[P] {
+    def consumerApiV2[F[_]: Async: ContextShift]
+        : Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] = {
+      val configs: List[(String, AnyRef)] =
+        whetherCommits.configs ++
+          extraConfigs ++
+          List(
+            kafkaBootstrapServers,
+            schemaRegistryUri,
+            EnableAutoCommit(false),
+            IsolationLevel.ReadCommitted,
+            ClientId(clientId),
+            MetricReporters[ConsumerPrometheusReporter],
+          )
+      ConsumerApi.Avro.Generic.resource[F](configs: _*)
+    }
+
     def consumerApi[F[_]: Async: ContextShift](
         reset: AutoOffsetReset
     ): Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] = {
@@ -355,26 +389,35 @@ object RecordStream {
       ConsumerApi.Avro.Generic.resource[F](configs: _*)
     }
 
-    override def untyped(configs: Seq[(String, AnyRef)]) =
+    override def untypedExtras(configs: Seq[(String, AnyRef)]) =
       copy(extraConfigs = configs)
 
-    private def batchedAssign[F[_]: Concurrent: ContextShift]: Assigner[F, IncomingRecords, P] =
-      Batched.AssignerImpl(this)
-
-    override def batched: ConfigStage3[P, IncomingRecords] =
+    override val batched: ConfigStage3[P, IncomingRecords] = {
+      val configs = this
       new ConfigStage3[P, IncomingRecords] {
-        override def assign[F[_]: Concurrent: ContextShift] = batchedAssign
+        override def assign[F[_]: Concurrent: ContextShift, A](
+            topical: Topical[A, ?]
+        ) = Batched.assignAndSeek(configs, topical)
       }
+    }
 
     override val chunked: ConfigStage3[P, Id] =
       new ConfigStage3[P, Id] {
-        override def assign[F[_]: Concurrent: ContextShift] = new ChunkedAssigner(batchedAssign)
+        override def assign[F[_]: Concurrent: ContextShift, A](
+            topical: Topical[A, ?]
+        ) =
+          Seeker.functor.map(batched.assign(topical))(
+            chunkedSelector(
+              _,
+              topical
+            )
+          )
       }
   }
 
   def configure(
-    kafkaBootstrapServers: BootstrapServers,
-    schemaRegistryUri: SchemaRegistryUrl,
+      kafkaBootstrapServers: BootstrapServers,
+      schemaRegistryUri: SchemaRegistryUrl,
   ): ConfigStage1 =
     new ConfigStage1 {
       override def client(clientId: String): ConfigStage2[Stream] =
@@ -394,8 +437,8 @@ object RecordStream {
         )
 
       override def clientAndGroup(
-        clientId: String,
-        groupId: GroupId
+          clientId: String,
+          groupId: GroupId
       ): ConfigStage2[RecordStream] =
         BaseConfigs(
           kafkaBootstrapServers,
@@ -404,27 +447,6 @@ object RecordStream {
           WhetherCommits.May(groupId),
         )
     }
-
-  private object ChunkedAssigner {
-    def apply[F[_]: Concurrent: ContextShift, P[_[_], _]](
-        kafkaBootstrapServers: BootstrapServers,
-        schemaRegistryUri: SchemaRegistryUrl,
-        clientId: String,
-        whetherCommits: WhetherCommits[P],
-        extraConfigs: Map[String, AnyRef],
-    ): ChunkedAssigner[F, P] =
-      new ChunkedAssigner(
-        Batched.AssignerImpl(
-          BaseConfigs(
-            kafkaBootstrapServers,
-            schemaRegistryUri,
-            clientId,
-            whetherCommits,
-            extraConfigs.toList
-          )
-        )
-      )
-  }
 
   def subscribe[F[_]: Concurrent: ContextShift](
       kafkaBootstrapServers: BootstrapServers,
@@ -457,89 +479,6 @@ object RecordStream {
       groupId.id,
       groupId,
       extraConfigs: _*,
-    )
-
-  def assign[F[_]: Concurrent: ContextShift](
-      kafkaBootstrapServers: BootstrapServers,
-      schemaRegistryUri: SchemaRegistryUrl,
-      clientId: String,
-  ): Assigner[F, Id, Stream] =
-    ChunkedAssigner(
-      kafkaBootstrapServers,
-      schemaRegistryUri,
-      clientId,
-      WhetherCommits.No,
-      Map.empty,
-    )
-
-  def assign[F[_]: Concurrent: ContextShift](
-      kafkaBootstrapServers: BootstrapServers,
-      schemaRegistryUri: SchemaRegistryUrl,
-      groupId: GroupId,
-  ): Assigner[F, Id, RecordStream] =
-    ChunkedAssigner(
-      kafkaBootstrapServers,
-      schemaRegistryUri,
-      groupId.id,
-      WhetherCommits.May(groupId),
-      Map.empty,
-    )
-
-  def assign[F[_]: Concurrent: ContextShift](
-      kafkaBootstrapServers: BootstrapServers,
-      schemaRegistryUri: SchemaRegistryUrl,
-      clientId: String,
-      groupId: GroupId,
-  ): Assigner[F, Id, RecordStream] =
-    ChunkedAssigner(
-      kafkaBootstrapServers,
-      schemaRegistryUri,
-      clientId,
-      WhetherCommits.May(groupId),
-      Map.empty,
-    )
-
-  def assign[F[_]: Concurrent: ContextShift](
-      kafkaBootstrapServers: BootstrapServers,
-      schemaRegistryUri: SchemaRegistryUrl,
-      clientId: String,
-      extraConfigs: Map[String, AnyRef],
-  ): Assigner[F, Id, Stream] =
-    ChunkedAssigner(
-      kafkaBootstrapServers,
-      schemaRegistryUri,
-      clientId,
-      WhetherCommits.No,
-      extraConfigs,
-    )
-
-  def assign[F[_]: Concurrent: ContextShift](
-      kafkaBootstrapServers: BootstrapServers,
-      schemaRegistryUri: SchemaRegistryUrl,
-      groupId: GroupId,
-      extraConfigs: Map[String, AnyRef],
-  ): Assigner[F, Id, RecordStream] =
-    ChunkedAssigner(
-      kafkaBootstrapServers,
-      schemaRegistryUri,
-      groupId.id,
-      WhetherCommits.May(groupId),
-      extraConfigs,
-    )
-
-  def assign[F[_]: Concurrent: ContextShift](
-      kafkaBootstrapServers: BootstrapServers,
-      schemaRegistryUri: SchemaRegistryUrl,
-      clientId: String,
-      groupId: GroupId,
-      extraConfigs: Map[String, AnyRef],
-  ): Assigner[F, Id, RecordStream] =
-    ChunkedAssigner(
-      kafkaBootstrapServers,
-      schemaRegistryUri,
-      clientId,
-      WhetherCommits.May(groupId),
-      extraConfigs,
     )
 
   private def ephemeralTopicsSeekToEnd[F[_]: Monad](
@@ -594,81 +533,53 @@ object RecordStream {
         }
     }
 
-    private[RecordStream] case class AssignerImpl[F[_]: Concurrent: ContextShift, P[_[_], _]](
-        baseConfigs: BaseConfigs[P]
-    ) extends Assigner[F, IncomingRecords, P] {
-      override def whetherCommits = baseConfigs.whetherCommits
+    private[RecordStream] type NeedsConsumer[F[_], A] =
+      Function[ConsumerApi[F, GenericRecord, GenericRecord], A]
 
-      private def historyImpl[A, B](
-          consumer: ConsumerApi[F, GenericRecord, GenericRecord],
-          topical: Topical[A, B],
-      ): Stream[F, IncomingRecords[A]] =
-        consumer
-          .recordsThroughAssignmentLastOffsetsOrZeros(
-            pollTimeout,
-            10,
-            commitMarkerAdjustment = true
-          )
-          .prefetch
+    private[RecordStream] def streamSelectorViaConsumer[F[_]: Concurrent, P[_[_], _], A](
+        whetherCommits: WhetherCommits[P],
+        topical: Topical[A, ?],
+    ): StreamSelector[F, NeedsConsumer[F, *], P, IncomingRecords[A]] = {
+      val history: NeedsConsumer[F, Stream[F, IncomingRecords[A]]] =
+        _.recordsThroughAssignmentLastOffsetsOrZeros(
+          pollTimeout,
+          10,
+          commitMarkerAdjustment = true
+        ).prefetch
           .evalMap(parseBatch(topical))
-
-      private def presentImpl[A, B](
-          consumer: ConsumerApi[F, GenericRecord, GenericRecord],
-          topical: Topical[A, B],
-      ): P[F, IncomingRecords[A]] =
-        whetherCommits.extrude(recordStream(consumer, topical))
-
-      private def assign[A, B](
-          consumer: ConsumerApi[F, GenericRecord, GenericRecord],
-          topical: Topical[A, B],
-          seekToF: Kleisli[F, PartitionQueries[F], SeekTo]
-      ): F[Unit] =
-        for {
-          seekTo <- seekToF(PartitionQueries(consumer))
-          () <- consumer.assignAndSeek(topical.names.map(_.show).toList, seekTo)
-          // By definition, no need to ever read old ephemera.
-          () <- topical.aschematic.traverse_(ephemeralTopicsSeekToEnd(consumer))
-        } yield ()
-
-      private def toSeekToF(
-        offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
-      ): Kleisli[F, PartitionQueries[F], SeekTo] =
-        offsetsF.map(SeekTo.offsets(_, SeekTo.beginning))
-
-      override def presentWith[A, B](
-          topical: Topical[A, B],
-          reset: AutoOffsetReset,
-          offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
-      ): Resource[F, P[F, IncomingRecords[A]]] =
-        baseConfigs.consumerApi(reset).evalMap { consumer =>
-          assign(consumer, topical, toSeekToF(offsetsF))
-            .as(presentImpl(consumer, topical))
-        }
-
-      override def pastAndPresentWith[A, B](
-          topical: Topical[A, B],
-          offsetsF: Kleisli[F, PartitionQueries[F], Map[TopicPartition, Long]]
-      ): Resource[F, PastAndPresent.Batched[F, P, A]] =
-        baseConfigs.consumerApi(AutoOffsetReset.earliest).evalMap { consumer =>
-          assign(consumer, topical, toSeekToF(offsetsF))
-            .as(
-              whetherCommits.pastAndPresent(
-                history = historyImpl(consumer, topical),
-                present = presentImpl(consumer, topical),
-              )
-            )
-        }
-
-      override def history[A, B](
-          topical: Topical[A, B],
-          offsets: Map[TopicPartition, Long],
-      ): Resource[F, Stream[F, IncomingRecords[A]]] =
-        baseConfigs.consumerApi(AutoOffsetReset.earliest).evalMap { consumer =>
-          assign(consumer, topical, toSeekToF(Kleisli.pure(offsets)))
-            .as(historyImpl(consumer, topical))
-        }
+      val unbounded: NeedsConsumer[F, P[F, IncomingRecords[A]]] =
+        c => whetherCommits.extrude(recordStream(c, topical))
+      StreamSelector.Impl(history, unbounded, whetherCommits)
     }
 
+    private def assign[F[_]: Monad, A, B](
+        consumer: ConsumerApi[F, GenericRecord, GenericRecord],
+        topical: Topical[A, B],
+        seekToF: Kleisli[F, PartitionQueries[F], SeekTo],
+    ): F[Unit] =
+      for {
+        seekTo <- seekToF(PartitionQueries(consumer))
+        () <- consumer.assignAndSeek(topical.names.map(_.show).toList, seekTo)
+        // By definition, no need to ever read old ephemera.
+        () <- topical.aschematic.traverse_(ephemeralTopicsSeekToEnd(consumer))
+      } yield ()
+
+    private[RecordStream] def assignAndSeek[F[_]: Concurrent: ContextShift, P[_[_], _], X](
+        baseConfigs: BaseConfigs[P],
+        topical: Topical[X, ?],
+    ): SeekAndSelect[F, P, IncomingRecords[X]] =
+      Seeker.Impl { (seekToF: Kleisli[F, PartitionQueries[F], SeekTo]) =>
+        streamSelectorViaConsumer(baseConfigs.whetherCommits, topical).mapK(
+          new ~>[NeedsConsumer[F, *], Resource[F, *]] {
+            override def apply[A](fa: NeedsConsumer[F, A]): Resource[F, A] =
+              baseConfigs.consumerApiV2[F].evalMap { consumer =>
+                assign(consumer, topical, seekToF)
+                  .as(fa(consumer))
+              }
+          }
+        )
+      }
+
     def subscribe[F[_]: Concurrent: ContextShift](
         kafkaBootstrapServers: BootstrapServers,
         schemaRegistryUri: SchemaRegistryUrl,
@@ -695,98 +606,6 @@ object RecordStream {
           schemaRegistryUri,
           clientId,
           WhetherCommits.May(groupId),
-        )
-      )
-
-    def assign[F[_]: Concurrent: ContextShift](
-        kafkaBootstrapServers: BootstrapServers,
-        schemaRegistryUri: SchemaRegistryUrl,
-        clientId: String,
-    ): Assigner[F, IncomingRecords, Stream] =
-      AssignerImpl(
-        BaseConfigs(
-          kafkaBootstrapServers,
-          schemaRegistryUri,
-          clientId,
-          WhetherCommits.No,
-        )
-      )
-
-    def assign[F[_]: Concurrent: ContextShift](
-        kafkaBootstrapServers: BootstrapServers,
-        schemaRegistryUri: SchemaRegistryUrl,
-        groupId: GroupId,
-    ): Assigner[F, IncomingRecords, RecordStream] =
-      AssignerImpl(
-        BaseConfigs(
-          kafkaBootstrapServers,
-          schemaRegistryUri,
-          groupId.id,
-          WhetherCommits.May(groupId),
-        )
-      )
-
-    def assign[F[_]: Concurrent: ContextShift](
-        kafkaBootstrapServers: BootstrapServers,
-        schemaRegistryUri: SchemaRegistryUrl,
-        clientId: String,
-        groupId: GroupId,
-    ): Assigner[F, IncomingRecords, RecordStream] =
-      AssignerImpl(
-        BaseConfigs(
-          kafkaBootstrapServers,
-          schemaRegistryUri,
-          clientId,
-          WhetherCommits.May(groupId),
-        )
-      )
-
-    def assign[F[_]: Concurrent: ContextShift](
-        kafkaBootstrapServers: BootstrapServers,
-        schemaRegistryUri: SchemaRegistryUrl,
-        clientId: String,
-        configs: Map[String, AnyRef],
-    ): Assigner[F, IncomingRecords, Stream] =
-      AssignerImpl(
-        BaseConfigs(
-          kafkaBootstrapServers,
-          schemaRegistryUri,
-          clientId,
-          WhetherCommits.No,
-          configs.toList
-        )
-      )
-
-    def assign[F[_]: Concurrent: ContextShift](
-        kafkaBootstrapServers: BootstrapServers,
-        schemaRegistryUri: SchemaRegistryUrl,
-        groupId: GroupId,
-        configs: Map[String, AnyRef],
-    ): Assigner[F, IncomingRecords, RecordStream] =
-      AssignerImpl(
-        BaseConfigs(
-          kafkaBootstrapServers,
-          schemaRegistryUri,
-          groupId.id,
-          WhetherCommits.May(groupId),
-          configs.toList
-        )
-      )
-
-    def assign[F[_]: Concurrent: ContextShift](
-        kafkaBootstrapServers: BootstrapServers,
-        schemaRegistryUri: SchemaRegistryUrl,
-        clientId: String,
-        groupId: GroupId,
-        configs: Map[String, AnyRef],
-    ): Assigner[F, IncomingRecords, RecordStream] =
-      AssignerImpl(
-        BaseConfigs(
-          kafkaBootstrapServers,
-          schemaRegistryUri,
-          clientId,
-          WhetherCommits.May(groupId),
-          configs.toList
         )
       )
   }
