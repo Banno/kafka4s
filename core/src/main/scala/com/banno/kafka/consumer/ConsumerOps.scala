@@ -102,7 +102,7 @@ object SeekTo {
       case OffsetsBeforeLast(count, commitMarkerAdjustment, default) => 
         for {
           last <- consumer.lastOffsets(partitions, commitMarkerAdjustment)
-          () <- seek(consumer, partitions, Offsets(last.view.mapValues(_ - count).toMap, default))
+          () <- seek(consumer, partitions, Offsets(last.view.mapValues(o => 0L.max(o - count)).toMap, default))
         } yield ()
     }
 }
