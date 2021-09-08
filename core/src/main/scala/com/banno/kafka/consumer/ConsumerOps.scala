@@ -42,6 +42,7 @@ object SeekTo {
   private case class Timestamp(timestamp: Long, default: SeekTo) extends SeekTo
   private case class Committed(default: SeekTo) extends SeekTo
   private case class Offsets(offsets: Map[TopicPartition, Long], default: SeekTo) extends SeekTo
+  private case class OffsetsBeforeLast(count: Long, commitMarkerAdjustment: Boolean, default: SeekTo) extends SeekTo
 
   def beginning: SeekTo = Beginning
   def end: SeekTo = End
@@ -51,6 +52,12 @@ object SeekTo {
   def committed(default: SeekTo): SeekTo = Committed(default)
   def offsets(offsets: Map[TopicPartition, Long], default: SeekTo): SeekTo =
     Offsets(offsets, default)
+  def timestampBeforeNow[F[_]: Clock: Functor](duration: FiniteDuration, default: SeekTo): F[SeekTo] =
+    Clock[F].realTime(MILLISECONDS).map(now => 
+      timestamp(now - duration.toMillis, default)
+    )
+  def offsetsBeforeLast(count: Long, commitMarkerAdjustment: Boolean, default: SeekTo): SeekTo = 
+    OffsetsBeforeLast(count, commitMarkerAdjustment, default)
 
   def seek[F[_]: Monad](
       consumer: ConsumerApi[F, _, _],
@@ -91,6 +98,11 @@ object SeekTo {
             partitions,
             Offsets(committed.view.mapValues(_.offset).toMap, default)
           )
+        } yield ()
+      case OffsetsBeforeLast(count, commitMarkerAdjustment, default) => 
+        for {
+          last <- consumer.lastOffsets(partitions, commitMarkerAdjustment)
+          () <- seek(consumer, partitions, Offsets(last.view.mapValues(_ - count).toMap, default))
         } yield ()
     }
 }
