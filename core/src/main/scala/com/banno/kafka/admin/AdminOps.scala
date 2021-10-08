@@ -36,7 +36,7 @@ case class AdminOps[F[_]](admin: AdminApi[F]) {
   /** Attempts to create all specified topics, and returns the result for each topic name. 
    * Right(()) means the topic was created successfully.
    * Note that if the topic already exists, the result will be Left(TopicExistsException), which makes this operation idempotent for each topic. */
-  def createTopics(newTopics: NewTopic*)(implicit F: Sync[F]): F[Map[String, Either[Throwable, Unit]]] = 
+  def createTopicsAndGetResults(newTopics: NewTopic*)(implicit F: Sync[F]): F[Map[String, Either[Throwable, Unit]]] = 
     for {
       result <- admin.createTopics(newTopics)
       allResults <- result.values().asScala.toList.traverse{case (topic, future) => Sync[F].blocking(future.get()).attempt.map((topic, _))}
