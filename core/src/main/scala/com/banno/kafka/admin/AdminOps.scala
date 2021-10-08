@@ -19,6 +19,7 @@ package com.banno.kafka.admin
 import cats.syntax.all._
 import cats.effect.Sync
 import org.apache.kafka.clients.admin._
+import scala.jdk.CollectionConverters._
 
 case class AdminOps[F[_]](admin: AdminApi[F]) {
 
@@ -31,5 +32,14 @@ case class AdminOps[F[_]](admin: AdminApi[F]) {
       ns <- F.delay(ltr.names().get())
       ctr <- admin.createTopics(newTopics.filterNot(t => ns.contains(t.name)))
     } yield ctr
+
+  /** Attempts to create all specified topics, and returns the result for each topic name. 
+   * Right(()) means the topic was created successfully.
+   * Note that if the topic already exists, the result will be Left(TopicExistsException), which makes this operation idempotent for each topic. */
+  def createTopics(newTopics: NewTopic*)(implicit F: Sync[F]): F[Map[String, Either[Throwable, Unit]]] = 
+    for {
+      result <- admin.createTopics(newTopics)
+      allResults <- result.values().asScala.toList.traverse{case (topic, future) => Sync[F].blocking(future.get()).attempt.map((topic, _))}
+    } yield allResults.map{case (t, e) => (t, e.map(_ => ()))}.toMap
 
 }
