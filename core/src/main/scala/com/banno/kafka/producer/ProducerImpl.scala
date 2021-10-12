@@ -85,7 +85,7 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
     F.delay(sendRaw(record)).map(_.get())
 
   /** Similar to sendSync, except the returned F[_] is completed asynchronously, usually on the producer's I/O thread.
-    * TODO does this have different blocking semantics than sendSync? */
+    */
   def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata] =
     F.async(k => F.blocking(sendRaw(record, k)).as(none))
 }
