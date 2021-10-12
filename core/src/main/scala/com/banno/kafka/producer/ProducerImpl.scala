@@ -74,7 +74,7 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
     * If your program requires confirmation of record persistence before proceeding, you should call
     * sendSync or sendAsync. */
   def sendAndForget(record: ProducerRecord[K, V]): F[Unit] =
-    F.delay(sendRaw(record)).void //discard the returned JFuture[RecordMetadata]
+    F.blocking(sendRaw(record)).void //discard the returned JFuture[RecordMetadata]
 
   /** The returned F[_] completes after Kafka accepts the write, and the RecordMetadata is available.
     * This operation is completely synchronous and blocking: it calls get() on the returned Java Future.
@@ -82,10 +82,10 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
     * You should use this method if your program should not proceed until Kafka accepts the write,
     * or you need to use the RecordMetadata, or you need to explicitly handle any possible error. */
   def sendSync(record: ProducerRecord[K, V]): F[RecordMetadata] =
-    F.delay(sendRaw(record)).map(_.get())
+    F.blocking(sendRaw(record).get())
 
   /** Similar to sendSync, except the returned F[_] is completed asynchronously, usually on the producer's I/O thread.
-    * TODO does this have different blocking semantics than sendSync? */
+   **/
   def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata] =
     F.async_(sendRaw(record, _))
 }
