@@ -469,7 +469,7 @@ object PrometheusMetricsReporterApi {
             ignore
 
           case id =>
-            log.error(
+            log.warn(
               s"Could not create Prometheus collector for unknown Kafka producer metric: $id"
             )
         }
@@ -919,7 +919,7 @@ object PrometheusMetricsReporterApi {
             ignore
 
           case id =>
-            log.error(
+            log.warn(
               s"Could not create Prometheus collector for unknown Kafka consumer metric: $id"
             )
         }
