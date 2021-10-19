@@ -827,6 +827,16 @@ object PrometheusMetricsReporterApi {
             ignore
           case MetricId("consumer-metrics", "last-poll-seconds-ago", List("client-id")) =>
             ignore
+          case MetricId("consumer-metrics", "idle-connection-close-total", List("client-id")) => ignore
+          case MetricId("consumer-metrics", "idle-connection-close-rate", List("client-id")) => ignore
+          case MetricId("consumer-metrics", "reverse-connection-added-total", List("client-id")) => ignore
+          case MetricId("consumer-metrics", "reverse-connection-added-rate", List("client-id")) => ignore
+          case MetricId("consumer-metrics", "reverse-connection-removed-total", List("client-id")) => ignore
+          case MetricId("consumer-metrics", "reverse-connection-removed-rate", List("client-id")) => ignore
+          case MetricId("consumer-metrics", "failed-handshake-total", List("client-id")) => ignore
+          case MetricId("consumer-metrics", "failed-handshake-rate", List("client-id")) => ignore
+          case MetricId("consumer-metrics", "handshake-time-ns-max", List("client-id")) => ignore
+          case MetricId("consumer-metrics", "handshake-time-ns-avg", List("client-id")) => ignore
           case MetricId(
               "consumer-coordinator-metrics",
               "partition-lost-latency-max",
