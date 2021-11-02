@@ -1,7 +1,7 @@
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
 val V = new {
-  val scalaVersion = "2.13.6"
+  val scalaVersion = "2.13.7"
   val crossScalaVersions = List()
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
