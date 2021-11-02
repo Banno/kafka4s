@@ -143,5 +143,5 @@ object AdminApi {
       bootstrapServers: String,
       topics: NewTopic*
   ): F[CreateTopicsResult] =
-    createTopicsIdempotent[F](bootstrapServers, topics.toIterable)
+    createTopicsIdempotent[F](bootstrapServers, topics.toSeq)
 }
