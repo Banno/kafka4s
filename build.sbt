@@ -25,7 +25,7 @@ val V = new {
   val munitCE3 = "1.0.7"
   val scalatest = "3.2.10"
   val scalatestPlus = "3.2.3.0"
-  val simpleClient = "0.11.0"
+  val simpleClient = "0.13.0"
 }
 
 lazy val kafka4s = project
