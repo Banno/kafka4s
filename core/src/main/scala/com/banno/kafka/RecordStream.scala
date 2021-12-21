@@ -339,6 +339,8 @@ object RecordStream {
   }
 
   sealed trait ConfigStage2[P[_[_], _]] {
+    def autoOffsetResetLatest: ConfigStage2[P]
+    def autoOffsetResetEarliest: ConfigStage2[P]
     def untypedExtras(configs: Seq[(String, AnyRef)]): ConfigStage2[P]
 
     def batched: ConfigStage3[P, IncomingRecords]
@@ -357,25 +359,11 @@ object RecordStream {
       clientId: String,
       whetherCommits: WhetherCommits[P],
       extraConfigs: Seq[(String, AnyRef)] = Seq.empty,
+      reset: AutoOffsetReset = AutoOffsetReset.none,
   ) extends ConfigStage2[P] {
-    def consumerApiV2[F[_]: Async]: Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] = {
-      val configs: List[(String, AnyRef)] =
-        whetherCommits.configs ++
-          extraConfigs ++
-          List(
-            kafkaBootstrapServers,
-            schemaRegistryUri,
-            EnableAutoCommit(false),
-            IsolationLevel.ReadCommitted,
-            ClientId(clientId),
-            MetricReporters[ConsumerPrometheusReporter],
-          )
-      ConsumerApi.Avro.Generic.resource[F](configs: _*)
-    }
-
-    def consumerApi[F[_]: Async](
-        reset: AutoOffsetReset
-    ): Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] = {
+    def consumerApi[
+      F[_]: Async
+    ]: Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] = {
       val configs: List[(String, AnyRef)] =
         whetherCommits.configs ++
           extraConfigs ++
@@ -390,6 +378,12 @@ object RecordStream {
           )
       ConsumerApi.Avro.Generic.resource[F](configs: _*)
     }
+
+    override def autoOffsetResetLatest: ConfigStage2[P] =
+      copy(reset = AutoOffsetReset.latest)
+
+    override def autoOffsetResetEarliest: ConfigStage2[P] =
+      copy(reset = AutoOffsetReset.earliest)
 
     override def untypedExtras(configs: Seq[(String, AnyRef)]) =
       copy(extraConfigs = configs)
@@ -528,7 +522,7 @@ object RecordStream {
           topical: Topical[A, B],
           reset: AutoOffsetReset,
       ): Resource[F, RecordStream[F, IncomingRecords[A]]] =
-        baseConfigs.consumerApi(reset).evalMap { consumer =>
+        baseConfigs.copy(reset=reset).consumerApi.evalMap { consumer =>
           consumer
             .subscribe(topical.names.map(_.show).toList)
             .as(recordStream(consumer, topical))
@@ -575,7 +569,7 @@ object RecordStream {
         streamSelectorViaConsumer(baseConfigs.whetherCommits, topical).mapK(
           new ~>[NeedsConsumer[F, *], Resource[F, *]] {
             override def apply[A](fa: NeedsConsumer[F, A]): Resource[F, A] =
-              baseConfigs.consumerApiV2[F].evalMap { consumer =>
+              baseConfigs.consumerApi[F].evalMap { consumer =>
                 assign(consumer, topical, seekToF)
                   .as(fa(consumer))
               }
