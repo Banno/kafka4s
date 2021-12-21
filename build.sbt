@@ -152,7 +152,7 @@ lazy val commonSettings = Seq(
   ),
   Test / sourceGenerators += (Test / avroScalaGenerate).taskValue,
   watchSources ++= ((Test / avroSourceDirectories).value ** "*.avdl").get,
-  testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oS"),
+  Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oS"),
 )
 
 lazy val contributors = Seq(
