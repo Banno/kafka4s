@@ -159,12 +159,11 @@ object RecordStream {
     final def chunkHistoryAndUnbounded[F[_]: Async, A](
         topical: Topical[A, ?],
         streams: HistoryAndUnbounded[F, P, IncomingRecords[A]]
-    ): HistoryAndUnbounded[F, P, A] = {
+    ): HistoryAndUnbounded[F, P, A] =
       historyAndUnbounded(
         streams.history.flatMap(chunked),
         chunk(topical, streams.unbounded)
       )
-    }
 
     def configs: List[(String, AnyRef)]
   }
@@ -255,10 +254,11 @@ object RecordStream {
 
   private object Seeker {
     final case class Impl[F[_], A](
-      apply: Kleisli[F, PartitionQueries[F], SeekTo] => A
-    )(implicit val F: Applicative[F]) extends Seeker[F, A] {
+        apply: Kleisli[F, PartitionQueries[F], SeekTo] => A
+    )(implicit val F: Applicative[F])
+        extends Seeker[F, A] {
       override def seekBy(
-        seekToF: Kleisli[F, PartitionQueries[F], SeekTo]
+          seekToF: Kleisli[F, PartitionQueries[F], SeekTo]
       ): A = apply(seekToF)
     }
 
@@ -305,8 +305,8 @@ object RecordStream {
     Seeker[F, StreamSelector[F, Resource[F, *], P, A]]
 
   private def chunkedSelector[F[_]: Async, G[_], P[_[_], _], A, B](
-    batched: StreamSelector[F, G, P, IncomingRecords[A]],
-    topical: Topical[A, B],
+      batched: StreamSelector[F, G, P, IncomingRecords[A]],
+      topical: Topical[A, B],
   ): StreamSelector[F, G, P, A] = {
     implicit val ap: Functor[G] = batched.G
     StreamSelector.Impl(
@@ -362,7 +362,7 @@ object RecordStream {
       reset: AutoOffsetReset = AutoOffsetReset.none,
   ) extends ConfigStage2[P] {
     def consumerApi[
-      F[_]: Async
+        F[_]: Async
     ]: Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] = {
       val configs: List[(String, AnyRef)] =
         whetherCommits.configs ++
@@ -522,7 +522,7 @@ object RecordStream {
           topical: Topical[A, B],
           reset: AutoOffsetReset,
       ): Resource[F, RecordStream[F, IncomingRecords[A]]] =
-        baseConfigs.copy(reset=reset).consumerApi.evalMap { consumer =>
+        baseConfigs.copy(reset = reset).consumerApi.evalMap { consumer =>
           consumer
             .subscribe(topical.names.map(_.show).toList)
             .as(recordStream(consumer, topical))
@@ -533,8 +533,8 @@ object RecordStream {
       Function[ConsumerApi[F, GenericRecord, GenericRecord], A]
 
     private[RecordStream] def streamSelectorViaConsumer[F[_]: Async, P[_[_], _], A](
-      whetherCommits: WhetherCommits[P],
-      topical: Topical[A, ?],
+        whetherCommits: WhetherCommits[P],
+        topical: Topical[A, ?],
     ): StreamSelector[F, NeedsConsumer[F, *], P, IncomingRecords[A]] = {
       val history: NeedsConsumer[F, Stream[F, IncomingRecords[A]]] =
         _.recordsThroughAssignmentLastOffsetsOrZeros(
@@ -545,7 +545,9 @@ object RecordStream {
           .evalMap(parseBatch(topical))
       val unbounded: NeedsConsumer[F, P[F, IncomingRecords[A]]] =
         c => whetherCommits.extrude(recordStream(c, topical))
-      val hAndU = history.product(unbounded).map(hAndU => whetherCommits.historyAndUnbounded(hAndU._1, hAndU._2))
+      val hAndU = history
+        .product(unbounded)
+        .map(hAndU => whetherCommits.historyAndUnbounded(hAndU._1, hAndU._2))
       StreamSelector.Impl(hAndU, whetherCommits)
     }
 
