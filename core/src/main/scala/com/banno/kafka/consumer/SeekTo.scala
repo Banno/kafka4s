@@ -27,23 +27,47 @@ import org.apache.kafka.common.*
 sealed trait SeekTo
 
 object SeekTo {
+  sealed trait Attempt
 
-  private case object Beginning extends SeekTo
-  private case object End extends SeekTo
-  private case class Timestamps(timestamps: Map[TopicPartition, Long], default: SeekTo)
-      extends SeekTo
-  private case class Timestamp(timestamp: Long, default: SeekTo) extends SeekTo
-  private case class Committed(default: SeekTo) extends SeekTo
-  private case class Offsets(offsets: Map[TopicPartition, Long], default: SeekTo) extends SeekTo
+  private case class Timestamps(timestamps: Map[TopicPartition, Long]) extends Attempt
+  private case class Timestamp(timestamp: Long) extends Attempt
+  private object Committed extends Attempt
+  private case class Offsets(offsets: Map[TopicPartition, Long]) extends Attempt
 
-  def beginning: SeekTo = Beginning
-  def end: SeekTo = End
+  sealed trait FinalFallback
+
+  private case object Beginning extends FinalFallback
+  private case object End extends FinalFallback
+
+  private case class Impl(
+    attempts: List[Attempt],
+    fallback: FinalFallback
+  ) extends SeekTo
+
+  private def firstAttemptThen(attempt: Attempt, seekTo: SeekTo): SeekTo =
+    seekTo match {
+      case s: Impl => s.copy(attempts = attempt :: s.attempts)
+    }
+
+  def apply(attempts: Attempt*)(fallback: FinalFallback): SeekTo =
+    Impl(attempts.toList, fallback)
+
+  def beginning: SeekTo = Impl(List.empty, Beginning)
+
+  def end: SeekTo = Impl(List.empty, End)
+
   def timestamps(timestamps: Map[TopicPartition, Long], default: SeekTo): SeekTo =
-    Timestamps(timestamps, default)
-  def timestamp(timestamp: Long, default: SeekTo): SeekTo = Timestamp(timestamp, default)
-  def committed(default: SeekTo): SeekTo = Committed(default)
+    firstAttemptThen(Timestamps(timestamps), default)
+
+  def timestamp(timestamp: Long, default: SeekTo): SeekTo =
+    firstAttemptThen(Timestamp(timestamp), default)
+
+  def committed(default: SeekTo): SeekTo =
+    firstAttemptThen(Committed, default)
+
   def offsets(offsets: Map[TopicPartition, Long], default: SeekTo): SeekTo =
-    Offsets(offsets, default)
+    firstAttemptThen(Offsets(offsets), default)
+
   def timestampBeforeNow[F[_]: Clock: Functor](duration: FiniteDuration, default: SeekTo): F[SeekTo] =
     Clock[F].realTime.map(now =>
       timestamp(now.toMillis - duration.toMillis, default))
@@ -54,38 +78,38 @@ object SeekTo {
       seekTo: SeekTo
   ): F[Unit] =
     seekTo match {
-      case Beginning =>
+      case Impl(List(), Beginning) =>
         consumer.seekToBeginning(partitions)
-      case End =>
+      case Impl(List(), End) =>
         consumer.seekToEnd(partitions)
-      case Offsets(offsets, default) =>
+      case Impl(Offsets(offsets) :: attempts, default) =>
         partitions.toList.traverse_(
           tp =>
             offsets
               .get(tp)
               //p could be mapped to an explicit null value
               .flatMap(Option(_))
-              .fold(SeekTo.seek(consumer, List(tp), default))(o => consumer.seek(tp, o))
+              .fold(SeekTo.seek(consumer, List(tp), Impl(attempts, default)))(o => consumer.seek(tp, o))
         )
-      case Timestamps(ts, default) =>
+      case Impl(Timestamps(ts) :: attempts, default) =>
         for {
           offsets <- consumer.partitionQueries.offsetsForTimes(ts)
           () <- seek(
             consumer,
             partitions,
-            Offsets(offsets.view.mapValues(_.offset).toMap, default)
+            Impl(Offsets(offsets.view.mapValues(_.offset).toMap) :: attempts, default)
           )
         } yield ()
-      case Timestamp(timestamp, default) =>
+      case Impl(Timestamp(timestamp) :: attempts, default) =>
         val timestamps = partitions.map(p => (p, timestamp)).toMap
-        seek(consumer, partitions, Timestamps(timestamps, default))
-      case Committed(default) =>
+        seek(consumer, partitions, Impl(Timestamps(timestamps) :: attempts, default))
+      case Impl(Committed :: attempts, default) =>
         for {
           committed <- consumer.partitionQueries.committed(partitions.toSet)
           () <- seek(
             consumer,
             partitions,
-            Offsets(committed.view.mapValues(_.offset).toMap, default)
+            Impl(Offsets(committed.view.mapValues(_.offset).toMap) :: attempts, default)
           )
         } yield ()
     }
