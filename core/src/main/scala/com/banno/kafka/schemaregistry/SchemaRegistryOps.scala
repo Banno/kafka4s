@@ -35,7 +35,9 @@ case class SchemaRegistryOps[F[_]](registry: SchemaRegistryApi[F]) {
   def registerValue[V: SchemaFor](topic: String): F[Int] =
     register[V](valueSubject(topic))
 
-  def register[K: SchemaFor, V: SchemaFor](topic: String)(implicit F: FlatMap[F]): F[(Int, Int)] =
+  def register[K: SchemaFor, V: SchemaFor](
+      topic: String
+  )(implicit F: FlatMap[F]): F[(Int, Int)] =
     for {
       k <- registerKey[K](topic)
       v <- registerValue[V](topic)

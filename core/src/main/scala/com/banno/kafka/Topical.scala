@@ -31,8 +31,7 @@ trait AschematicTopic {
   def purpose: TopicPurpose
 }
 
-/**
-  * A Kafka topic or aggregation of topics.
+/** A Kafka topic or aggregation of topics.
   */
 trait Topical[A, B] {
   def parse(cr: ConsumerRecord[GenericRecord, GenericRecord]): Try[A]

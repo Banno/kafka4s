@@ -31,12 +31,15 @@ object ProducerPrometheusReporter {
     * allows multiple Kafka producers in the same JVM to each instantiate
     * ProducerPrometheusReporter, while all still using the same Prometheus
     * collectors and registry properly. Metrics from multiple producers are
-    * distinguished by the `client_id` label. */
+    * distinguished by the `client_id` label.
+    */
   val reporter: MetricsReporterApi[IO] =
     PrometheusMetricsReporterApi.producer[IO]().unsafeRunSync()
 }
 
-/** Kafka producer will instantiate this class via reflection.
-  * Specify this producer config:
-  * metric.reporters=com.banno.kafka.metrics.prometheus.ProducerPrometheusReporter. */
-class ProducerPrometheusReporter extends IOMetricsReporter(ProducerPrometheusReporter.reporter)
+/** Kafka producer will instantiate this class via reflection. Specify this
+  * producer config:
+  * metric.reporters=com.banno.kafka.metrics.prometheus.ProducerPrometheusReporter.
+  */
+class ProducerPrometheusReporter
+    extends IOMetricsReporter(ProducerPrometheusReporter.reporter)

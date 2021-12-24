@@ -43,7 +43,7 @@ trait ConsumerApi[F[_], K, V] {
   def commitAsync: F[Unit]
   def commitAsync(
       offsets: Map[TopicPartition, OffsetAndMetadata],
-      callback: OffsetCommitCallback
+      callback: OffsetCommitCallback,
   ): F[Unit]
   def commitAsync(callback: OffsetCommitCallback): F[Unit]
   def commitSync: F[Unit]
@@ -62,7 +62,10 @@ trait ConsumerApi[F[_], K, V] {
   def seekToBeginning(partitions: Iterable[TopicPartition]): F[Unit]
   def seekToEnd(partitions: Iterable[TopicPartition]): F[Unit]
   def subscribe(topics: Iterable[String]): F[Unit]
-  def subscribe(topics: Iterable[String], callback: ConsumerRebalanceListener): F[Unit]
+  def subscribe(
+      topics: Iterable[String],
+      callback: ConsumerRebalanceListener,
+  ): F[Unit]
   def subscribe(pattern: Pattern): F[Unit]
   def subscribe(pattern: Pattern, callback: ConsumerRebalanceListener): F[Unit]
   def subscription: F[Set[String]]
@@ -87,19 +90,23 @@ trait ConsumerApi[F[_], K, V] {
         f(self.commitAsync)
       override def commitAsync(
           offsets: Map[TopicPartition, OffsetAndMetadata],
-          callback: OffsetCommitCallback
+          callback: OffsetCommitCallback,
       ): G[Unit] =
         f(self.commitAsync(offsets, callback))
       override def commitAsync(callback: OffsetCommitCallback): G[Unit] =
         f(self.commitAsync(callback))
       override def commitSync: G[Unit] =
         f(self.commitSync)
-      override def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): G[Unit] =
+      override def commitSync(
+          offsets: Map[TopicPartition, OffsetAndMetadata]
+      ): G[Unit] =
         f(self.commitSync(offsets))
 
       override def listTopics: G[Map[String, Seq[PartitionInfo]]] =
         f(self.listTopics)
-      override def listTopics(timeout: FiniteDuration): G[Map[String, Seq[PartitionInfo]]] =
+      override def listTopics(
+          timeout: FiniteDuration
+      ): G[Map[String, Seq[PartitionInfo]]] =
         f(self.listTopics(timeout))
       override def metrics: G[Map[MetricName, Metric]] =
         f(self.metrics)
@@ -116,7 +123,9 @@ trait ConsumerApi[F[_], K, V] {
         f(self.resume(partitions))
       override def seek(partition: TopicPartition, offset: Long): G[Unit] =
         f(self.seek(partition, offset))
-      override def seekToBeginning(partitions: Iterable[TopicPartition]): G[Unit] =
+      override def seekToBeginning(
+          partitions: Iterable[TopicPartition]
+      ): G[Unit] =
         f(self.seekToBeginning(partitions))
       override def seekToEnd(partitions: Iterable[TopicPartition]): G[Unit] =
         f(self.seekToEnd(partitions))
@@ -124,12 +133,15 @@ trait ConsumerApi[F[_], K, V] {
         f(self.subscribe(topics))
       override def subscribe(
           topics: Iterable[String],
-          callback: ConsumerRebalanceListener
+          callback: ConsumerRebalanceListener,
       ): G[Unit] =
         f(self.subscribe(topics, callback))
       override def subscribe(pattern: Pattern): G[Unit] =
         f(self.subscribe(pattern))
-      override def subscribe(pattern: Pattern, callback: ConsumerRebalanceListener): G[Unit] =
+      override def subscribe(
+          pattern: Pattern,
+          callback: ConsumerRebalanceListener,
+      ): G[Unit] =
         f(self.subscribe(pattern, callback))
       override def subscription: G[Set[String]] =
         f(self.subscription)
@@ -157,8 +169,7 @@ object ShiftingConsumer {
 object Avro4sConsumer {
   def apply[F[_]: Functor, K, V](
       c: ConsumerApi[F, GenericRecord, GenericRecord]
-  )(
-      implicit
+  )(implicit
       kfr: FromRecord[K],
       vfr: FromRecord[V],
   ): ConsumerApi[F, K, V] =
@@ -172,7 +183,7 @@ object ConsumerApi {
           fab: ConsumerApi[F, A, B]
       )(
           f: A => C,
-          g: B => D
+          g: B => D,
       ): ConsumerApi[F, C, D] =
         new ConsumerApi[F, C, D] {
           override def assign(partitions: Iterable[TopicPartition]): F[Unit] =
@@ -189,19 +200,23 @@ object ConsumerApi {
             fab.commitAsync
           override def commitAsync(
               offsets: Map[TopicPartition, OffsetAndMetadata],
-              callback: OffsetCommitCallback
+              callback: OffsetCommitCallback,
           ): F[Unit] =
             fab.commitAsync(offsets, callback)
           override def commitAsync(callback: OffsetCommitCallback): F[Unit] =
             fab.commitAsync(callback)
           override def commitSync: F[Unit] =
             fab.commitSync
-          override def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] =
+          override def commitSync(
+              offsets: Map[TopicPartition, OffsetAndMetadata]
+          ): F[Unit] =
             fab.commitSync(offsets)
 
           override def listTopics: F[Map[String, Seq[PartitionInfo]]] =
             fab.listTopics
-          override def listTopics(timeout: FiniteDuration): F[Map[String, Seq[PartitionInfo]]] =
+          override def listTopics(
+              timeout: FiniteDuration
+          ): F[Map[String, Seq[PartitionInfo]]] =
             fab.listTopics(timeout)
           override def metrics: F[Map[MetricName, Metric]] =
             fab.metrics
@@ -218,20 +233,27 @@ object ConsumerApi {
             fab.resume(partitions)
           override def seek(partition: TopicPartition, offset: Long): F[Unit] =
             fab.seek(partition, offset)
-          override def seekToBeginning(partitions: Iterable[TopicPartition]): F[Unit] =
+          override def seekToBeginning(
+              partitions: Iterable[TopicPartition]
+          ): F[Unit] =
             fab.seekToBeginning(partitions)
-          override def seekToEnd(partitions: Iterable[TopicPartition]): F[Unit] =
+          override def seekToEnd(
+              partitions: Iterable[TopicPartition]
+          ): F[Unit] =
             fab.seekToEnd(partitions)
           override def subscribe(topics: Iterable[String]): F[Unit] =
             fab.subscribe(topics)
           override def subscribe(
               topics: Iterable[String],
-              callback: ConsumerRebalanceListener
+              callback: ConsumerRebalanceListener,
           ): F[Unit] =
             fab.subscribe(topics, callback)
           override def subscribe(pattern: Pattern): F[Unit] =
             fab.subscribe(pattern)
-          override def subscribe(pattern: Pattern, callback: ConsumerRebalanceListener): F[Unit] =
+          override def subscribe(
+              pattern: Pattern,
+              callback: ConsumerRebalanceListener,
+          ): F[Unit] =
             fab.subscribe(pattern, callback)
           override def subscription: F[Set[String]] =
             fab.subscription
@@ -253,21 +275,29 @@ object ConsumerApi {
       valueDeserializer: Deserializer[V],
       configs: (String, AnyRef)*
   ): F[KafkaConsumer[K, V]] =
-    Sync[F].delay(new KafkaConsumer[K, V](configs.toMap.asJava, keyDeserializer, valueDeserializer))
+    Sync[F].delay(
+      new KafkaConsumer[K, V](
+        configs.toMap.asJava,
+        keyDeserializer,
+        valueDeserializer,
+      )
+    )
 
   object BlockingContext {
 
     def resource[F[_]: Sync]: Resource[F, ExecutionContextExecutorService] =
       Resource.make(
         Sync[F].delay(
-          ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor(new ThreadFactory {
-            val factory = Executors.defaultThreadFactory()
-            def newThread(r: Runnable): Thread = {
-              val t = factory.newThread(r)
-              t.setName("kafka4s-consumer")
-              t
-            }
-          }))
+          ExecutionContext.fromExecutorService(
+            Executors.newSingleThreadExecutor(new ThreadFactory {
+              val factory = Executors.defaultThreadFactory()
+              def newThread(r: Runnable): Thread = {
+                val t = factory.newThread(r)
+                t.setName("kafka4s-consumer")
+                t
+              }
+            })
+          )
         )
       )(a => Sync[F].delay(a.shutdown()))
   }
@@ -277,18 +307,25 @@ object ConsumerApi {
       valueDeserializer: Deserializer[V],
       configs: (String, AnyRef)*
   ): Resource[F, ConsumerApi[F, K, V]] =
-    BlockingContext.resource.flatMap(
-      e =>
-        Resource.make(
-          createKafkaConsumer[F, K, V](keyDeserializer, valueDeserializer, configs: _*)
-            .map(c => ShiftingConsumer(ConsumerImpl(c), e))
-        )(_.close)
+    BlockingContext.resource.flatMap(e =>
+      Resource.make(
+        createKafkaConsumer[F, K, V](
+          keyDeserializer,
+          valueDeserializer,
+          configs: _*
+        )
+          .map(c => ShiftingConsumer(ConsumerImpl(c), e))
+      )(_.close)
     )
 
   def resource[F[_]: Async, K: Deserializer, V: Deserializer](
       configs: (String, AnyRef)*
   ): Resource[F, ConsumerApi[F, K, V]] =
-    resource[F, K, V](implicitly[Deserializer[K]], implicitly[Deserializer[V]], configs: _*)
+    resource[F, K, V](
+      implicitly[Deserializer[K]],
+      implicitly[Deserializer[V]],
+      configs: _*
+    )
 
   object ByteArray {
     def resource[F[_]: Async](
@@ -302,17 +339,16 @@ object ConsumerApi {
     def resource[F[_]: Async, K, V](
         configs: (String, AnyRef)*
     ): Resource[F, ConsumerApi[F, K, V]] =
-      BlockingContext.resource.flatMap(
-        e =>
-          Resource.make(
-            createKafkaConsumer[F, K, V](
-              (
-                configs.toMap +
-                  KeyDeserializerClass(classOf[KafkaAvroDeserializer]) +
-                  ValueDeserializerClass(classOf[KafkaAvroDeserializer])
-              ).toSeq: _*
-            ).map(c => ShiftingConsumer(ConsumerImpl(c), e))
-          )(_.close)
+      BlockingContext.resource.flatMap(e =>
+        Resource.make(
+          createKafkaConsumer[F, K, V](
+            (
+              configs.toMap +
+              KeyDeserializerClass(classOf[KafkaAvroDeserializer]) +
+              ValueDeserializerClass(classOf[KafkaAvroDeserializer])
+            ).toSeq: _*
+          ).map(c => ShiftingConsumer(ConsumerImpl(c), e))
+        )(_.close)
       )
 
     object Generic {
@@ -333,7 +369,9 @@ object ConsumerApi {
       def resource[F[_]: Async, K, V](
           configs: (String, AnyRef)*
       ): Resource[F, ConsumerApi[F, K, V]] =
-        ConsumerApi.Avro.resource[F, K, V]((configs.toMap + SpecificAvroReader(true)).toSeq: _*)
+        ConsumerApi.Avro.resource[F, K, V](
+          (configs.toMap + SpecificAvroReader(true)).toSeq: _*
+        )
     }
   }
 
@@ -353,13 +391,21 @@ object ConsumerApi {
         configs: (String, AnyRef)*
     ): Resource[F, ConsumerApi[F, K, V]] =
       Resource.make(
-        createKafkaConsumer[F, K, V](keyDeserializer, valueDeserializer, configs: _*)
+        createKafkaConsumer[F, K, V](
+          keyDeserializer,
+          valueDeserializer,
+          configs: _*
+        )
           .map(ConsumerImpl.create(_))
       )(_.close)
 
     def resource[F[_]: Sync, K: Deserializer, V: Deserializer](
         configs: (String, AnyRef)*
     ): Resource[F, ConsumerApi[F, K, V]] =
-      resource[F, K, V](implicitly[Deserializer[K]], implicitly[Deserializer[V]], configs: _*)
+      resource[F, K, V](
+        implicitly[Deserializer[K]],
+        implicitly[Deserializer[V]],
+        configs: _*
+      )
   }
 }

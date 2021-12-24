@@ -24,14 +24,15 @@ import org.apache.kafka.clients.admin._
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
-case class AdminImpl[F[_]](a: AdminClient)(implicit F: Sync[F]) extends AdminApi[F] {
+case class AdminImpl[F[_]](a: AdminClient)(implicit F: Sync[F])
+    extends AdminApi[F] {
   def alterReplicaLogDirs(
       replicaAssignment: Map[TopicPartitionReplica, String]
   ): F[AlterReplicaLogDirsResult] =
     F.delay(a.alterReplicaLogDirs(replicaAssignment.asJava))
   def alterReplicaLogDirs(
       replicaAssignment: Map[TopicPartitionReplica, String],
-      options: AlterReplicaLogDirsOptions
+      options: AlterReplicaLogDirsOptions,
   ): F[AlterReplicaLogDirsResult] =
     F.delay(a.alterReplicaLogDirs(replicaAssignment.asJava, options))
   def close: F[Unit] = F.delay(a.close())
@@ -39,52 +40,67 @@ case class AdminImpl[F[_]](a: AdminClient)(implicit F: Sync[F]) extends AdminApi
     F.delay(a.close(java.time.Duration.ofMillis(timeout.toMillis)))
   def createAcls(acls: Iterable[AclBinding]): F[CreateAclsResult] =
     F.delay(a.createAcls(acls.asJavaCollection))
-  def createAcls(acls: Iterable[AclBinding], options: CreateAclsOptions): F[CreateAclsResult] =
+  def createAcls(
+      acls: Iterable[AclBinding],
+      options: CreateAclsOptions,
+  ): F[CreateAclsResult] =
     F.delay(a.createAcls(acls.asJavaCollection, options))
-  def createPartitions(newPartitions: Map[String, NewPartitions]): F[CreatePartitionsResult] =
+  def createPartitions(
+      newPartitions: Map[String, NewPartitions]
+  ): F[CreatePartitionsResult] =
     F.delay(a.createPartitions(newPartitions.asJava))
   def createPartitions(
       newPartitions: Map[String, NewPartitions],
-      options: CreatePartitionsOptions
+      options: CreatePartitionsOptions,
   ): F[CreatePartitionsResult] =
     F.delay(a.createPartitions(newPartitions.asJava, options))
   def createTopics(newTopics: Iterable[NewTopic]): F[CreateTopicsResult] =
     F.delay(a.createTopics(newTopics.asJavaCollection))
   def createTopics(
       newTopics: Iterable[NewTopic],
-      options: CreateTopicsOptions
+      options: CreateTopicsOptions,
   ): F[CreateTopicsResult] =
     F.delay(a.createTopics(newTopics.asJavaCollection, options))
   def deleteAcls(filters: Iterable[AclBindingFilter]): F[DeleteAclsResult] =
     F.delay(a.deleteAcls(filters.asJavaCollection))
   def deleteAcls(
       filters: Iterable[AclBindingFilter],
-      options: DeleteAclsOptions
+      options: DeleteAclsOptions,
   ): F[DeleteAclsResult] =
     F.delay(a.deleteAcls(filters.asJavaCollection, options))
   def deleteTopics(topics: Iterable[String]): F[DeleteTopicsResult] =
     F.delay(a.deleteTopics(topics.asJavaCollection))
-  def deleteTopics(topics: Iterable[String], options: DeleteTopicsOptions): F[DeleteTopicsResult] =
+  def deleteTopics(
+      topics: Iterable[String],
+      options: DeleteTopicsOptions,
+  ): F[DeleteTopicsResult] =
     F.delay(a.deleteTopics(topics.asJavaCollection, options))
   def describeAcls(filter: AclBindingFilter): F[DescribeAclsResult] =
     F.delay(a.describeAcls(filter))
-  def describeAcls(filter: AclBindingFilter, options: DescribeAclsOptions): F[DescribeAclsResult] =
+  def describeAcls(
+      filter: AclBindingFilter,
+      options: DescribeAclsOptions,
+  ): F[DescribeAclsResult] =
     F.delay(a.describeAcls(filter, options))
   def describeCluster: F[DescribeClusterResult] = F.delay(a.describeCluster())
-  def describeCluster(options: DescribeClusterOptions): F[DescribeClusterResult] =
+  def describeCluster(
+      options: DescribeClusterOptions
+  ): F[DescribeClusterResult] =
     F.delay(a.describeCluster(options))
-  def describeConfigs(resources: Iterable[ConfigResource]): F[DescribeConfigsResult] =
+  def describeConfigs(
+      resources: Iterable[ConfigResource]
+  ): F[DescribeConfigsResult] =
     F.delay(a.describeConfigs(resources.asJavaCollection))
   def describeConfigs(
       resources: Iterable[ConfigResource],
-      options: DescribeConfigsOptions
+      options: DescribeConfigsOptions,
   ): F[DescribeConfigsResult] =
     F.delay(a.describeConfigs(resources.asJavaCollection, options))
   def describeLogDirs(brokers: Iterable[Int]): F[DescribeLogDirsResult] =
     F.delay(a.describeLogDirs(brokers.map(Int.box).asJavaCollection))
   def describeLogDirs(
       brokers: Iterable[Int],
-      options: DescribeLogDirsOptions
+      options: DescribeLogDirsOptions,
   ): F[DescribeLogDirsResult] =
     F.delay(a.describeLogDirs(brokers.map(Int.box).asJavaCollection, options))
   def describeReplicaLogDirs(
@@ -93,29 +109,37 @@ case class AdminImpl[F[_]](a: AdminClient)(implicit F: Sync[F]) extends AdminApi
     F.delay(a.describeReplicaLogDirs(replicas.asJavaCollection))
   def describeReplicaLogDirs(
       replicas: Iterable[TopicPartitionReplica],
-      options: DescribeReplicaLogDirsOptions
+      options: DescribeReplicaLogDirsOptions,
   ): F[DescribeReplicaLogDirsResult] =
     F.delay(a.describeReplicaLogDirs(replicas.asJavaCollection, options))
   def describeTopics(topicNames: Iterable[String]): F[DescribeTopicsResult] =
     F.delay(a.describeTopics(topicNames.asJavaCollection))
   def describeTopics(
       topicNames: Iterable[String],
-      options: DescribeTopicsOptions
+      options: DescribeTopicsOptions,
   ): F[DescribeTopicsResult] =
     F.delay(a.describeTopics(topicNames.asJavaCollection, options))
   def incrementalAlterConfigs(
       configs: Map[ConfigResource, Iterable[AlterConfigOp]]
   ): F[AlterConfigsResult] =
-    F.delay(a.incrementalAlterConfigs(configs.view.mapValues(_.asJavaCollection).toMap.asJava))
+    F.delay(
+      a.incrementalAlterConfigs(
+        configs.view.mapValues(_.asJavaCollection).toMap.asJava
+      )
+    )
   def incrementalAlterConfigs(
       configs: Map[ConfigResource, Iterable[AlterConfigOp]],
-      options: AlterConfigsOptions
+      options: AlterConfigsOptions,
   ): F[AlterConfigsResult] =
     F.delay(
-      a.incrementalAlterConfigs(configs.view.mapValues(_.asJavaCollection).toMap.asJava, options)
+      a.incrementalAlterConfigs(
+        configs.view.mapValues(_.asJavaCollection).toMap.asJava,
+        options,
+      )
     )
   def listTopics: F[ListTopicsResult] = F.delay(a.listTopics())
-  def listTopics(options: ListTopicsOptions): F[ListTopicsResult] = F.delay(a.listTopics(options))
+  def listTopics(options: ListTopicsOptions): F[ListTopicsResult] =
+    F.delay(a.listTopics(options))
 }
 
 object AdminImpl {

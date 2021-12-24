@@ -17,7 +17,10 @@
 package com.banno.kafka.schemaregistry
 
 import org.apache.avro.Schema
-import io.confluent.kafka.schemaregistry.client.{CachedSchemaRegistryClient, SchemaMetadata}
+import io.confluent.kafka.schemaregistry.client.{
+  CachedSchemaRegistryClient,
+  SchemaMetadata,
+}
 import io.confluent.kafka.schemaregistry.client.rest.RestService
 import cats.syntax.all._
 import cats.effect.Sync
@@ -57,12 +60,18 @@ trait SchemaRegistryApi[F[_]] {
 
   def register(subject: String, schema: ParsedSchema): F[Int]
 
-  @deprecated("Use testCompatibility(String,ParsedSchema) instead.", "3.0.0-M24")
+  @deprecated(
+    "Use testCompatibility(String,ParsedSchema) instead.",
+    "3.0.0-M24",
+  )
   def testCompatibility(subject: String, schema: Schema): F[Boolean]
 
   def testCompatibility(subject: String, schema: ParsedSchema): F[Boolean]
 
-  def updateCompatibility(subject: String, compatibility: CompatibilityLevel): F[String]
+  def updateCompatibility(
+      subject: String,
+      compatibility: CompatibilityLevel,
+  ): F[String]
 }
 
 object SchemaRegistryApi {
@@ -73,17 +82,27 @@ object SchemaRegistryApi {
       identityMapCapacity: Int,
       configs: Map[String, Object] = Map.empty,
   ): F[CachedSchemaRegistryClient] =
-    Sync[F].delay(new CachedSchemaRegistryClient(baseUrl, identityMapCapacity, configs.asJava))
+    Sync[F].delay(
+      new CachedSchemaRegistryClient(
+        baseUrl,
+        identityMapCapacity,
+        configs.asJava,
+      )
+    )
   def createClient[F[_]: Sync](
       baseUrls: Seq[String],
-      identityMapCapacity: Int
+      identityMapCapacity: Int,
   ): F[CachedSchemaRegistryClient] =
-    Sync[F].delay(new CachedSchemaRegistryClient(baseUrls.asJava, identityMapCapacity))
+    Sync[F].delay(
+      new CachedSchemaRegistryClient(baseUrls.asJava, identityMapCapacity)
+    )
   def createClient[F[_]: Sync](
       restService: RestService,
-      identityMapCapacity: Int
+      identityMapCapacity: Int,
   ): F[CachedSchemaRegistryClient] =
-    Sync[F].delay(new CachedSchemaRegistryClient(restService, identityMapCapacity))
+    Sync[F].delay(
+      new CachedSchemaRegistryClient(restService, identityMapCapacity)
+    )
 
   def apply[F[_]: Sync](
       baseUrl: String,
@@ -91,15 +110,23 @@ object SchemaRegistryApi {
   ): F[SchemaRegistryApi[F]] =
     createClient[F](baseUrl, identityMapCapacity = 1024, configs = configs)
       .map(SchemaRegistryImpl[F](_))
-  def apply[F[_]: Sync](baseUrl: String, identityMapCapacity: Int): F[SchemaRegistryApi[F]] =
+  def apply[F[_]: Sync](
+      baseUrl: String,
+      identityMapCapacity: Int,
+  ): F[SchemaRegistryApi[F]] =
     createClient[F](baseUrl, identityMapCapacity).map(SchemaRegistryImpl[F](_))
-  def apply[F[_]: Sync](baseUrls: Seq[String], identityMapCapacity: Int): F[SchemaRegistryApi[F]] =
+  def apply[F[_]: Sync](
+      baseUrls: Seq[String],
+      identityMapCapacity: Int,
+  ): F[SchemaRegistryApi[F]] =
     createClient[F](baseUrls, identityMapCapacity).map(SchemaRegistryImpl[F](_))
   def apply[F[_]: Sync](
       restService: RestService,
-      identityMapCapacity: Int
+      identityMapCapacity: Int,
   ): F[SchemaRegistryApi[F]] =
-    createClient[F](restService, identityMapCapacity).map(SchemaRegistryImpl[F](_))
+    createClient[F](restService, identityMapCapacity).map(
+      SchemaRegistryImpl[F](_)
+    )
 
   def register[F[_]: Sync, K: SchemaFor, V: SchemaFor](
       baseUrl: String,
@@ -111,7 +138,9 @@ object SchemaRegistryApi {
       k <- schemaRegistry.registerKey[K](topic)
       _ <- log.debug(s"Registered key schema for topic ${topic} at ${baseUrl}")
       v <- schemaRegistry.registerValue[V](topic)
-      _ <- log.debug(s"Registered value schema for topic ${topic} at ${baseUrl}")
+      _ <- log.debug(
+        s"Registered value schema for topic ${topic} at ${baseUrl}"
+      )
     } yield (k, v)
 
   sealed trait CompatibilityLevel {
@@ -119,7 +148,9 @@ object SchemaRegistryApi {
   }
 
   object CompatibilityLevel {
-    case class ParseFailure(message: String) extends RuntimeException with NoStackTrace
+    case class ParseFailure(message: String)
+        extends RuntimeException
+        with NoStackTrace
 
     case object Backward extends CompatibilityLevel {
       val asString = "BACKWARD"
@@ -161,6 +192,8 @@ object SchemaRegistryApi {
     }
 
     def unsafeFromString(s: String): CompatibilityLevel =
-      fromString(s).getOrElse(throw ParseFailure(s"Unable to parse CompatibilityLevel: $s"))
+      fromString(s).getOrElse(
+        throw ParseFailure(s"Unable to parse CompatibilityLevel: $s")
+      )
   }
 }

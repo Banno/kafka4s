@@ -28,18 +28,25 @@ object CurrentOffsetCounter {
       implicit F: Sync[F]
   ): F[ConsumerRecord[?, ?] => F[Unit]] =
     F.delay {
-        Counter
-          .build()
-          .name(prefix + "_current_offset")
-          .help("Counter for last consumed (not necessarily committed) offset of topic partition.")
-          .labelNames("client_id", "topic", "partition")
-          .register(cr)
-      }
-      .map { counter => (record: ConsumerRecord[?, ?]) =>
-        for {
-          value <- F.delay(counter.labels(clientId, record.topic, record.partition.toString).get)
-          delta = max(0, record.offset.toDouble - value)
-          _ <- F.delay(counter.labels(clientId, record.topic, record.partition.toString).inc(delta))
-        } yield ()
-      }
+      Counter
+        .build()
+        .name(prefix + "_current_offset")
+        .help(
+          "Counter for last consumed (not necessarily committed) offset of topic partition."
+        )
+        .labelNames("client_id", "topic", "partition")
+        .register(cr)
+    }.map { counter => (record: ConsumerRecord[?, ?]) =>
+      for {
+        value <- F.delay(
+          counter.labels(clientId, record.topic, record.partition.toString).get
+        )
+        delta = max(0, record.offset.toDouble - value)
+        _ <- F.delay(
+          counter
+            .labels(clientId, record.topic, record.partition.toString)
+            .inc(delta)
+        )
+      } yield ()
+    }
 }

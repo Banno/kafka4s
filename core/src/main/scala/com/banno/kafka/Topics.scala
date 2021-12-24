@@ -32,7 +32,8 @@ import shapeless._
 sealed trait Topics[A, B] extends Topical[A, B]
 
 object Topics {
-  final case class UnrecognizedTopic(record: Topic.CR) extends RuntimeException {
+  final case class UnrecognizedTopic(record: Topic.CR)
+      extends RuntimeException {
     override def getMessage(): String =
       s"Consumed a record from unrecognized topic ${record.topic()}"
   }
@@ -76,7 +77,7 @@ object Topics {
         configs: Map[String, Object] = Map.empty,
     ): F[Unit] =
       topic.registerSchemas(schemaRegistryUri, configs) *>
-        tailRegisterSchemas(schemaRegistryUri, configs)
+      tailRegisterSchemas(schemaRegistryUri, configs)
 
     final override def setUp[F[_]: Sync](
         bootstrapServers: BootstrapServers,
@@ -84,14 +85,16 @@ object Topics {
         configs: Map[String, Object] = Map.empty,
     ): F[Unit] =
       topic.setUp(bootstrapServers, schemaRegistryUri, configs) *>
-        tailSetUp(bootstrapServers, schemaRegistryUri, configs)
+      tailSetUp(bootstrapServers, schemaRegistryUri, configs)
   }
 
   private final case class SingletonTopics[K, V](
       topic: Topic[K, V]
   ) extends Impl[K, V, CNil, CNil] {
     override def aschematic: NonEmptyList[AschematicTopic] = topic.aschematic
-    override def tailParse(cr: Topic.CR): Try[CNil] = Failure(UnrecognizedTopic(cr))
+    override def tailParse(cr: Topic.CR): Try[CNil] = Failure(
+      UnrecognizedTopic(cr)
+    )
     override def tailCoparse(kv: CNil) = kv.impossible
     override def tailNextOffset(x: CNil) = x.impossible
     override def tailRegisterSchemas[F[_]: Sync](
@@ -142,9 +145,12 @@ object Topics {
   final case class Builder[A <: Coproduct, B <: Coproduct] private[Topics] (
       private val topics: Topics[A, B]
   ) {
-    def and[K: FromRecord: ToRecord: SchemaFor, V: FromRecord: ToRecord: SchemaFor](
+    def and[
+        K: FromRecord: ToRecord: SchemaFor,
+        V: FromRecord: ToRecord: SchemaFor,
+    ](
         topic: String,
-        purpose: TopicPurpose
+        purpose: TopicPurpose,
     ): Builder[IncomingRecord[K, V] :+: A, (K, V) :+: B] =
       and(Topic[K, V](topic, purpose))
 
@@ -161,9 +167,12 @@ object Topics {
   ): Builder[IncomingRecord[K, V] :+: CNil, (K, V) :+: CNil] =
     Builder(SingletonTopics(topic))
 
-  def of[K: FromRecord: ToRecord: SchemaFor, V: FromRecord: ToRecord: SchemaFor](
+  def of[
+      K: FromRecord: ToRecord: SchemaFor,
+      V: FromRecord: ToRecord: SchemaFor,
+  ](
       topic: String,
-      purpose: TopicPurpose
+      purpose: TopicPurpose,
   ): Builder[IncomingRecord[K, V] :+: CNil, (K, V) :+: CNil] =
     of(Topic[K, V](topic, purpose))
 }

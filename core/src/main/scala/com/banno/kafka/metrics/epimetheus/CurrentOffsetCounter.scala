@@ -27,7 +27,7 @@ object CurrentOffsetCounter {
   def apply[F[_]: Sync](
       cr: CollectorRegistry[F],
       prefix: Name,
-      clientId: String
+      clientId: String,
   ): F[IncomingRecordMetadata => F[Unit]] =
     Counter
       .labelled(
@@ -37,14 +37,14 @@ object CurrentOffsetCounter {
         Sized(
           Label("client_id"),
           Label("topic"),
-          Label("partition")
+          Label("partition"),
         ),
         (record: IncomingRecordMetadata) =>
           Sized(
             clientId,
             record.topicPartition.topic,
-            record.topicPartition.partition.toString()
-          )
+            record.topicPartition.partition.toString(),
+          ),
       )
       .map { counter => (record: IncomingRecordMetadata) =>
         for {

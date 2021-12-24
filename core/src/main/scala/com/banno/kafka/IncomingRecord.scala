@@ -43,7 +43,10 @@ sealed trait IncomingRecordMetadata {
   def headers: Map[String, Array[Byte]]
 
   final def topicPartition: TopicPartition =
-    new TopicPartition(topicPartitionOffset.topic, topicPartitionOffset.partition)
+    new TopicPartition(
+      topicPartitionOffset.topic,
+      topicPartitionOffset.partition,
+    )
   final def offset: Long = topicPartitionOffset.offset
   final def topic: String = topicPartitionOffset.topic
   final def partition: Int = topicPartitionOffset.partition
@@ -104,7 +107,7 @@ object IncomingRecord {
   private final case class Impl[K, V](
       key: K,
       value: V,
-      metadata: Metadata
+      metadata: Metadata,
   ) extends IncomingRecord[K, V]
 
   // Exposing this as the only constructor allows us to add more fields that are
@@ -119,14 +122,14 @@ object IncomingRecord {
         TopicPartitionOffset(cr.topic(), cr.partition(), cr.offset()),
         cr.nextOffset,
         cr.headers.asScala.map(h => (h.key, h.value)).toMap,
-      )
+      ),
     )
 
   implicit val bitraverse: Bitraverse[IncomingRecord] =
     new Bitraverse[IncomingRecord] {
       override def bifoldLeft[A, B, C](
           fab: IncomingRecord[A, B],
-          c: C
+          c: C,
       )(f: (C, A) => C, g: (C, B) => C): C =
         g(f(c, fab.key), fab.value)
 
@@ -134,7 +137,7 @@ object IncomingRecord {
       // lawful. If we really cared we could write tests.
       override def bifoldRight[A, B, C](
           fab: IncomingRecord[A, B],
-          c: Eval[C]
+          c: Eval[C],
       )(f: (A, Eval[C]) => Eval[C], g: (B, Eval[C]) => Eval[C]): Eval[C] =
         f(fab.key, g(fab.value, c))
 
@@ -155,13 +158,13 @@ object IncomingRecord {
     new Traverse[IncomingRecord[K, *]] {
       def foldLeft[A, B](
           fa: IncomingRecord[K, A],
-          b: B
+          b: B,
       )(f: (B, A) => B): B =
         f(b, fa.value)
 
       def foldRight[A, B](
           fa: IncomingRecord[K, A],
-          lb: Eval[B]
+          lb: Eval[B],
       )(f: (A, Eval[B]) => Eval[B]): Eval[B] =
         f(fa.value, lb)
 
@@ -187,7 +190,7 @@ object IncomingRecords {
 
   def parseWith[F[_]: ApplicativeThrow, A](
       cr: ConsumerRecords[GenericRecord, GenericRecord],
-      f: ConsumerRecord[GenericRecord, GenericRecord] => F[A]
+      f: ConsumerRecord[GenericRecord, GenericRecord] => F[A],
   ): F[IncomingRecords[A]] =
     cr.asScala.toList
       .traverse(f)

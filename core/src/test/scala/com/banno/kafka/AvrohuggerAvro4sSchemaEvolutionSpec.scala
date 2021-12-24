@@ -36,48 +36,70 @@ object Compatibility {
   val backward = new SchemaValidatorBuilder().canReadStrategy().validateLatest()
 
   // A new schema is backward transitive compatible if it can read data written with all previous schemas.
-  val backwardTransitive = new SchemaValidatorBuilder().canReadStrategy().validateAll()
+  val backwardTransitive =
+    new SchemaValidatorBuilder().canReadStrategy().validateAll()
 
   // A new schema is forward compatible if the previous schema can read data written with the new schema.
   // Use a strategy that validates that a schema can be read by existing schema(s) according to the Avro default schema resolution.
-  val forward = new SchemaValidatorBuilder().canBeReadStrategy().validateLatest()
+  val forward =
+    new SchemaValidatorBuilder().canBeReadStrategy().validateLatest()
 
   // A new schema is forward transitive compatible if all previous schemas can read data written with the new schema.
-  val forwardTransitive = new SchemaValidatorBuilder().canBeReadStrategy().validateAll()
+  val forwardTransitive =
+    new SchemaValidatorBuilder().canBeReadStrategy().validateAll()
 
   // A new schema is full compatible if it's both backward and forward compatible with the previous schema. In other words, the new schema can read data written with the previous schema, and the previous schema can read data written with the new schema.
   // Use a strategy that validates that a schema can read existing schema(s), and vice-versa, according to the Avro default schema resolution.
   val full = new SchemaValidatorBuilder().mutualReadStrategy().validateLatest()
 
   // A new schema is full transitive compatible if it's both backward and forward compatible with all previous schemas. In other words, the new schema can read data written with all previous schemas, and all previous schemas can read data written with the new schema.
-  val fullTransitive = new SchemaValidatorBuilder().mutualReadStrategy().validateAll()
+  val fullTransitive =
+    new SchemaValidatorBuilder().mutualReadStrategy().validateAll()
 
-  /** If newSchema is sn, then previousSchemas should be in reverse chronological order, i.e. [s1, s2, ..., sn-1] */
+  /** If newSchema is sn, then previousSchemas should be in reverse
+    * chronological order, i.e. [s1, s2, ..., sn-1]
+    */
   def compatible(
       validator: SchemaValidator,
       newSchema: Schema,
-      previousSchemas: Seq[Schema]
+      previousSchemas: Seq[Schema],
   ): Boolean =
     try {
-      validator.validate(newSchema, previousSchemas.reverse.asJava) // Validator checks in list order, but checks should occur in reverse chronological order
+      validator.validate(
+        newSchema,
+        previousSchemas.reverse.asJava,
+      ) // Validator checks in list order, but checks should occur in reverse chronological order
       true
     } catch {
       case _: SchemaValidationException => false
     }
 
-  def compatible(validator: SchemaValidator, newSchema: Schema, previousSchema: Schema): Boolean =
+  def compatible(
+      validator: SchemaValidator,
+      newSchema: Schema,
+      previousSchema: Schema,
+  ): Boolean =
     compatible(validator, newSchema, Seq(previousSchema))
   def backwardCompatible(newSchema: Schema, previousSchema: Schema): Boolean =
     compatible(backward, newSchema, previousSchema)
-  def backwardTransitiveCompatible(newSchema: Schema, previousSchema: Schema): Boolean =
+  def backwardTransitiveCompatible(
+      newSchema: Schema,
+      previousSchema: Schema,
+  ): Boolean =
     compatible(backwardTransitive, newSchema, previousSchema)
   def forwardCompatible(newSchema: Schema, previousSchema: Schema): Boolean =
     compatible(forward, newSchema, previousSchema)
-  def forwardTransitiveCompatible(newSchema: Schema, previousSchema: Schema): Boolean =
+  def forwardTransitiveCompatible(
+      newSchema: Schema,
+      previousSchema: Schema,
+  ): Boolean =
     compatible(forwardTransitive, newSchema, previousSchema)
   def fullCompatible(newSchema: Schema, previousSchema: Schema): Boolean =
     compatible(full, newSchema, previousSchema)
-  def fullTransitiveCompatible(newSchema: Schema, previousSchema: Schema): Boolean =
+  def fullTransitiveCompatible(
+      newSchema: Schema,
+      previousSchema: Schema,
+  ): Boolean =
     compatible(fullTransitive, newSchema, previousSchema)
 }
 
@@ -91,7 +113,8 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
   val deserializer = new KafkaAvroDeserializer(client)
   deserializer.configure(configs, false)
 
-  def randomString(size: Int): String = scala.util.Random.alphanumeric.take(size).mkString
+  def randomString(size: Int): String =
+    scala.util.Random.alphanumeric.take(size).mkString
   def testTopic: String = randomString(10)
 
   type ABC = A :+: B :+: C :+: CNil
@@ -109,12 +132,24 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
     val r2 = ReorderFields2("s", 1)
 
     val b1 = serializer.serialize(topic, rf1.to(r1))
-    assertEquals(rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r1)
-    assertEquals(rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r2)
+    assertEquals(
+      rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]),
+      r1,
+    )
+    assertEquals(
+      rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]),
+      r2,
+    )
 
     val b2 = serializer.serialize(topic, rf2.to(r2))
-    assertEquals(rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r1)
-    assertEquals(rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r2)
+    assertEquals(
+      rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]),
+      r1,
+    )
+    assertEquals(
+      rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]),
+      r2,
+    )
   }
 
   test("Renaming a field is neither backward nor forward compatible") {
@@ -130,7 +165,10 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
     val r2 = RenameField2(1)
 
     val b1 = serializer.serialize(topic, rf1.to(r1))
-    assertEquals(rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r1)
+    assertEquals(
+      rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]),
+      r1,
+    )
     assert(
       Try(
         rf2.from(
@@ -141,8 +179,17 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
 
     serializer.serialize(topic, rf2.to(r2))
     val b2 = serializer.serialize(topic, rf2.to(r2))
-    assert(Try(rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord])).isFailure)
-    assertEquals(rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r2)
+    assert(
+      Try(
+        rf1.from(
+          deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]
+        )
+      ).isFailure
+    )
+    assertEquals(
+      rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]),
+      r2,
+    )
   }
 
   test("Renaming the outer record is backward and forward compatible") {
@@ -158,12 +205,24 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
     val r2 = RenameOuterRecord2(1)
 
     val b1 = serializer.serialize(topic, rf1.to(r1))
-    assertEquals(rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r1)
-    assertEquals(rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r2)
+    assertEquals(
+      rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]),
+      r1,
+    )
+    assertEquals(
+      rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]),
+      r2,
+    )
 
     val b2 = serializer.serialize(topic, rf2.to(r2))
-    assertEquals(rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r1)
-    assertEquals(rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r2)
+    assertEquals(
+      rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]),
+      r1,
+    )
+    assertEquals(
+      rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]),
+      r2,
+    )
   }
 
   test("Renaming an inner record is backward and forward compatible") {
@@ -179,15 +238,29 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
     val r2 = RenameInnerRecord2(A2("s"))
 
     val b1 = serializer.serialize(topic, rf1.to(r1))
-    assertEquals(rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r1)
-    assertEquals(rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r2)
+    assertEquals(
+      rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]),
+      r1,
+    )
+    assertEquals(
+      rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]),
+      r2,
+    )
 
     val b2 = serializer.serialize(topic, rf2.to(r2))
-    assertEquals(rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r1)
-    assertEquals(rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r2)
+    assertEquals(
+      rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]),
+      r1,
+    )
+    assertEquals(
+      rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]),
+      r2,
+    )
   }
 
-  test("Adding a field without a default is forward, but not backward, compatible") {
+  test(
+    "Adding a field without a default is forward, but not backward, compatible"
+  ) {
     val s1 = SchemaFor[AddFieldWithoutDefault1].schema(DefaultFieldMapper)
     val s2 = SchemaFor[AddFieldWithoutDefault2].schema(DefaultFieldMapper)
     assertEquals(Compatibility.backwardCompatible(s2, s1), false)
@@ -200,7 +273,10 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
     val r2 = AddFieldWithoutDefault2(1, "s")
 
     val b1 = serializer.serialize(topic, rf1.to(r1))
-    assertEquals(rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r1)
+    assertEquals(
+      rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]),
+      r1,
+    )
     assert(
       Try(
         rf2.from(
@@ -210,8 +286,14 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
     )
 
     val b2 = serializer.serialize(topic, rf2.to(r2))
-    assertEquals(rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r1)
-    assertEquals(rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r2)
+    assertEquals(
+      rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]),
+      r1,
+    )
+    assertEquals(
+      rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]),
+      r2,
+    )
   }
 
   test("Adding a field with a default is backward and forward compatible") {
@@ -227,15 +309,29 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
     val r2 = AddFieldWithDefault2(1, "s")
 
     val b1 = serializer.serialize(topic, rf1.to(r1))
-    assertEquals(rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r1)
-    assertEquals(rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r2)
+    assertEquals(
+      rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]),
+      r1,
+    )
+    assertEquals(
+      rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]),
+      r2,
+    )
 
     val b2 = serializer.serialize(topic, rf2.to(r2))
-    assertEquals(rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r1)
-    assertEquals(rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r2)
+    assertEquals(
+      rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]),
+      r1,
+    )
+    assertEquals(
+      rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]),
+      r2,
+    )
   }
 
-  test("Removing a field without a default is backward, but not forward, compatible") {
+  test(
+    "Removing a field without a default is backward, but not forward, compatible"
+  ) {
     val s1 = SchemaFor[RemoveFieldWithoutDefault1].schema(DefaultFieldMapper)
     val s2 = SchemaFor[RemoveFieldWithoutDefault2].schema(DefaultFieldMapper)
     assertEquals(Compatibility.backwardCompatible(s2, s1), true)
@@ -248,8 +344,14 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
     val r2 = RemoveFieldWithoutDefault2(1)
 
     val b1 = serializer.serialize(topic, rf1.to(r1))
-    assertEquals(rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r1)
-    assertEquals(rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r2)
+    assertEquals(
+      rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]),
+      r1,
+    )
+    assertEquals(
+      rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]),
+      r2,
+    )
 
     val b2 = serializer.serialize(topic, rf2.to(r2))
     assert(
@@ -259,7 +361,10 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
         )
       ).isFailure
     )
-    assertEquals(rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r2)
+    assertEquals(
+      rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]),
+      r2,
+    )
   }
 
   test("Removing a field with a default is backward and forward compatible") {
@@ -275,12 +380,24 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
     val r2 = RemoveFieldWithDefault2(1)
 
     val b1 = serializer.serialize(topic, rf1.to(r1))
-    assertEquals(rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r1)
-    assertEquals(rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r2)
+    assertEquals(
+      rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]),
+      r1,
+    )
+    assertEquals(
+      rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]),
+      r2,
+    )
 
     val b2 = serializer.serialize(topic, rf2.to(r2))
-    assertEquals(rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r1)
-    assertEquals(rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r2)
+    assertEquals(
+      rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]),
+      r1,
+    )
+    assertEquals(
+      rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]),
+      r2,
+    )
   }
 
   test("Reordering union types is backward and forward compatible") {
@@ -296,12 +413,24 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
     val r2 = ReorderUnionTypes2(Right(A("s")))
 
     val b1 = serializer.serialize(topic, rf1.to(r1))
-    assertEquals(rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r1)
-    assertEquals(rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r2)
+    assertEquals(
+      rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]),
+      r1,
+    )
+    assertEquals(
+      rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]),
+      r2,
+    )
 
     val b2 = serializer.serialize(topic, rf2.to(r2))
-    assertEquals(rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r1)
-    assertEquals(rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r2)
+    assertEquals(
+      rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]),
+      r1,
+    )
+    assertEquals(
+      rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]),
+      r2,
+    )
   }
 
   test("Adding a union type is backward, but not forward compatible") {
@@ -318,13 +447,25 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
     val r3 = AddUnionType2(Coproduct[ABC](C(true)))
 
     val b1 = serializer.serialize(topic, rf1.to(r1))
-    assertEquals(rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r1)
-    assertEquals(rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r2)
+    assertEquals(
+      rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]),
+      r1,
+    )
+    assertEquals(
+      rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]),
+      r2,
+    )
 
-    //even though this change is not forward compatible, in practice a AddUnionType2 can be deserialized to AddUnionType1 as long as it doesn't contain the added type C
+    // even though this change is not forward compatible, in practice a AddUnionType2 can be deserialized to AddUnionType1 as long as it doesn't contain the added type C
     val b2 = serializer.serialize(topic, rf2.to(r2))
-    assertEquals(rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r1)
-    assertEquals(rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r2)
+    assertEquals(
+      rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]),
+      r1,
+    )
+    assertEquals(
+      rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]),
+      r2,
+    )
 
     val b3 = serializer.serialize(topic, rf2.to(r3))
     assert(
@@ -334,7 +475,10 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
         )
       ).isFailure
     )
-    assertEquals(rf2.from(deserializer.deserialize(topic, b3).asInstanceOf[GenericRecord]), r3)
+    assertEquals(
+      rf2.from(deserializer.deserialize(topic, b3).asInstanceOf[GenericRecord]),
+      r3,
+    )
   }
 
   test("Removing a union type is forward, but not backward compatible") {
@@ -350,17 +494,32 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
     val r2 = RemoveUnionType2(Left(A("s")))
     val r3 = RemoveUnionType1(Coproduct[ABC](C(true)))
 
-    //even though this change is not backward compatible, in practice a AddUnionType1 can be deserialized to AddUnionType2 as long as it doesn't contain the removed type C
+    // even though this change is not backward compatible, in practice a AddUnionType1 can be deserialized to AddUnionType2 as long as it doesn't contain the removed type C
     val b1 = serializer.serialize(topic, rf1.to(r1))
-    assertEquals(rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r1)
-    assertEquals(rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]), r2)
+    assertEquals(
+      rf1.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]),
+      r1,
+    )
+    assertEquals(
+      rf2.from(deserializer.deserialize(topic, b1).asInstanceOf[GenericRecord]),
+      r2,
+    )
 
     val b2 = serializer.serialize(topic, rf2.to(r2))
-    assertEquals(rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r1)
-    assertEquals(rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]), r2)
+    assertEquals(
+      rf1.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]),
+      r1,
+    )
+    assertEquals(
+      rf2.from(deserializer.deserialize(topic, b2).asInstanceOf[GenericRecord]),
+      r2,
+    )
 
     val b3 = serializer.serialize(topic, rf1.to(r3))
-    assertEquals(rf1.from(deserializer.deserialize(topic, b3).asInstanceOf[GenericRecord]), r3)
+    assertEquals(
+      rf1.from(deserializer.deserialize(topic, b3).asInstanceOf[GenericRecord]),
+      r3,
+    )
     assert(
       Try(
         rf2.from(
