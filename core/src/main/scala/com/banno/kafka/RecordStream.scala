@@ -162,12 +162,11 @@ object RecordStream {
     final def chunkHistoryAndUnbounded[F[_]: Async, A](
         topical: Topical[A, ?],
         streams: HistoryAndUnbounded[F, P, IncomingRecords[A]],
-    ): HistoryAndUnbounded[F, P, A] = {
+    ): HistoryAndUnbounded[F, P, A] =
       historyAndUnbounded(
         streams.history.flatMap(chunked),
         chunk(topical, streams.unbounded),
       )
-    }
 
     def configs: List[(String, AnyRef)]
   }
