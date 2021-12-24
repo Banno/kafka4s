@@ -62,6 +62,8 @@ jobs:
         with:
           path: ~/.sbt
           key: sbt-${{ hashFiles('**/build.sbt') }}
+      - name: Check formatting
+        run: sbt ++$SCALA_VERSION scalafmtCheckAll
       - name: Set up Ruby 2.6
         uses: actions/setup-ruby@v1
         with:
