@@ -47,61 +47,74 @@ trait AdminApi[F[_]] {
   ): F[AlterReplicaLogDirsResult]
   def alterReplicaLogDirs(
       replicaAssignment: Map[TopicPartitionReplica, String],
-      options: AlterReplicaLogDirsOptions
+      options: AlterReplicaLogDirsOptions,
   ): F[AlterReplicaLogDirsResult]
   def close: F[Unit]
   def close(duration: FiniteDuration): F[Unit]
   def createAcls(acls: Iterable[AclBinding]): F[CreateAclsResult]
-  def createAcls(acls: Iterable[AclBinding], options: CreateAclsOptions): F[CreateAclsResult]
-  def createPartitions(newPartitions: Map[String, NewPartitions]): F[CreatePartitionsResult]
+  def createAcls(
+      acls: Iterable[AclBinding],
+      options: CreateAclsOptions,
+  ): F[CreateAclsResult]
+  def createPartitions(
+      newPartitions: Map[String, NewPartitions]
+  ): F[CreatePartitionsResult]
   def createPartitions(
       newPartitions: Map[String, NewPartitions],
-      options: CreatePartitionsOptions
+      options: CreatePartitionsOptions,
   ): F[CreatePartitionsResult]
   def createTopics(newTopics: Iterable[NewTopic]): F[CreateTopicsResult]
   def createTopics(
       newTopics: Iterable[NewTopic],
-      options: CreateTopicsOptions
+      options: CreateTopicsOptions,
   ): F[CreateTopicsResult]
   def deleteAcls(filters: Iterable[AclBindingFilter]): F[DeleteAclsResult]
   def deleteAcls(
       filters: Iterable[AclBindingFilter],
-      options: DeleteAclsOptions
+      options: DeleteAclsOptions,
   ): F[DeleteAclsResult]
   def deleteTopics(topics: Iterable[String]): F[DeleteTopicsResult]
-  def deleteTopics(topics: Iterable[String], options: DeleteTopicsOptions): F[DeleteTopicsResult]
+  def deleteTopics(
+      topics: Iterable[String],
+      options: DeleteTopicsOptions,
+  ): F[DeleteTopicsResult]
   def describeAcls(filter: AclBindingFilter): F[DescribeAclsResult]
-  def describeAcls(filter: AclBindingFilter, options: DescribeAclsOptions): F[DescribeAclsResult]
+  def describeAcls(
+      filter: AclBindingFilter,
+      options: DescribeAclsOptions,
+  ): F[DescribeAclsResult]
   def describeCluster: F[DescribeClusterResult]
   def describeCluster(options: DescribeClusterOptions): F[DescribeClusterResult]
-  def describeConfigs(resources: Iterable[ConfigResource]): F[DescribeConfigsResult]
+  def describeConfigs(
+      resources: Iterable[ConfigResource]
+  ): F[DescribeConfigsResult]
   def describeConfigs(
       resources: Iterable[ConfigResource],
-      options: DescribeConfigsOptions
+      options: DescribeConfigsOptions,
   ): F[DescribeConfigsResult]
   def describeLogDirs(brokers: Iterable[Int]): F[DescribeLogDirsResult]
   def describeLogDirs(
       brokers: Iterable[Int],
-      options: DescribeLogDirsOptions
+      options: DescribeLogDirsOptions,
   ): F[DescribeLogDirsResult]
   def describeReplicaLogDirs(
       replicas: Iterable[TopicPartitionReplica]
   ): F[DescribeReplicaLogDirsResult]
   def describeReplicaLogDirs(
       replicas: Iterable[TopicPartitionReplica],
-      options: DescribeReplicaLogDirsOptions
+      options: DescribeReplicaLogDirsOptions,
   ): F[DescribeReplicaLogDirsResult]
   def describeTopics(topicNames: Iterable[String]): F[DescribeTopicsResult]
   def describeTopics(
       topicNames: Iterable[String],
-      options: DescribeTopicsOptions
+      options: DescribeTopicsOptions,
   ): F[DescribeTopicsResult]
   def incrementalAlterConfigs(
       configs: Map[ConfigResource, Iterable[AlterConfigOp]]
   ): F[AlterConfigsResult]
   def incrementalAlterConfigs(
       configs: Map[ConfigResource, Iterable[AlterConfigOp]],
-      options: AlterConfigsOptions
+      options: AlterConfigsOptions,
   ): F[AlterConfigsResult]
   def listTopics: F[ListTopicsResult]
   def listTopics(options: ListTopicsOptions): F[ListTopicsResult]
@@ -109,16 +122,24 @@ trait AdminApi[F[_]] {
 
 object AdminApi {
 
-  private[this] def createClient[F[_]: Sync](configs: Map[String, AnyRef]): F[AdminClient] =
+  private[this] def createClient[F[_]: Sync](
+      configs: Map[String, AnyRef]
+  ): F[AdminClient] =
     Sync[F].delay(AdminClient.create(configs.asJava))
-  private[this] def createClient[F[_]: Sync](configs: Properties): F[AdminClient] =
+  private[this] def createClient[F[_]: Sync](
+      configs: Properties
+  ): F[AdminClient] =
     Sync[F].delay(AdminClient.create(configs))
 
-  def resource[F[_]: Sync](configs: Map[String, AnyRef]): Resource[F, AdminApi[F]] =
+  def resource[F[_]: Sync](
+      configs: Map[String, AnyRef]
+  ): Resource[F, AdminApi[F]] =
     Resource.make(createClient[F](configs).map(AdminImpl.create[F](_)))(_.close)
   def resource[F[_]: Sync](configs: Properties): Resource[F, AdminApi[F]] =
     Resource.make(createClient[F](configs).map(AdminImpl.create[F](_)))(_.close)
-  def resource[F[_]: Sync](configs: (String, AnyRef)*): Resource[F, AdminApi[F]] =
+  def resource[F[_]: Sync](
+      configs: (String, AnyRef)*
+  ): Resource[F, AdminApi[F]] =
     resource[F](configs.toMap)
 
   def stream[F[_]: Sync](configs: Map[String, AnyRef]): Stream[F, AdminApi[F]] =

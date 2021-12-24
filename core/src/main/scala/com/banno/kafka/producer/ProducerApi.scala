@@ -45,17 +45,19 @@ trait ProducerApi[F[_], K, V] {
   def partitionsFor(topic: String): F[Seq[PartitionInfo]]
   def sendOffsetsToTransaction(
       offsets: Map[TopicPartition, OffsetAndMetadata],
-      consumerGroupId: String
+      consumerGroupId: String,
   ): F[Unit]
 
-  private[producer] def sendRaw(record: ProducerRecord[K, V]): JFuture[RecordMetadata]
   private[producer] def sendRaw(
-      record: ProducerRecord[K, V],
-      callback: Callback
+      record: ProducerRecord[K, V]
   ): JFuture[RecordMetadata]
   private[producer] def sendRaw(
       record: ProducerRecord[K, V],
-      callback: Either[Exception, RecordMetadata] => Unit
+      callback: Callback,
+  ): JFuture[RecordMetadata]
+  private[producer] def sendRaw(
+      record: ProducerRecord[K, V],
+      callback: Either[Exception, RecordMetadata] => Unit,
   ): Unit
 
   def sendAndForget(record: ProducerRecord[K, V]): F[Unit]
@@ -87,7 +89,7 @@ trait ProducerApi[F[_], K, V] {
         self.partitionsFor(topic)
       override def sendOffsetsToTransaction(
           offsets: Map[TopicPartition, OffsetAndMetadata],
-          consumerGroupId: String
+          consumerGroupId: String,
       ): F[Unit] =
         self.sendOffsetsToTransaction(offsets, consumerGroupId)
 
@@ -98,13 +100,13 @@ trait ProducerApi[F[_], K, V] {
 
       override private[producer] def sendRaw(
           record: ProducerRecord[A, B],
-          callback: Callback
+          callback: Callback,
       ): JFuture[RecordMetadata] =
         self.sendRaw(record.bimap(f, g), callback)
 
       override private[producer] def sendRaw(
           record: ProducerRecord[A, B],
-          callback: Either[Exception, RecordMetadata] => Unit
+          callback: Either[Exception, RecordMetadata] => Unit,
       ): Unit =
         self.sendRaw(record.bimap(f, g), callback)
 
@@ -123,7 +125,9 @@ trait ProducerApi[F[_], K, V] {
       override def abortTransaction: G[Unit] = f(self.abortTransaction)
       override def beginTransaction: G[Unit] = f(self.beginTransaction)
       override def close: G[Unit] = f(self.close)
-      override def close(timeout: FiniteDuration): G[Unit] = f(self.close(timeout))
+      override def close(timeout: FiniteDuration): G[Unit] = f(
+        self.close(timeout)
+      )
       override def commitTransaction: G[Unit] = f(self.commitTransaction)
       override def flush: G[Unit] = f(self.flush)
       override def initTransactions: G[Unit] = f(self.initTransactions)
@@ -132,7 +136,7 @@ trait ProducerApi[F[_], K, V] {
         f(self.partitionsFor(topic))
       override def sendOffsetsToTransaction(
           offsets: Map[TopicPartition, OffsetAndMetadata],
-          consumerGroupId: String
+          consumerGroupId: String,
       ): G[Unit] =
         f(self.sendOffsetsToTransaction(offsets, consumerGroupId))
 
@@ -142,12 +146,12 @@ trait ProducerApi[F[_], K, V] {
         self.sendRaw(record)
       override private[producer] def sendRaw(
           record: ProducerRecord[K, V],
-          callback: Callback
+          callback: Callback,
       ): JFuture[RecordMetadata] =
         self.sendRaw(record, callback)
       override private[producer] def sendRaw(
           record: ProducerRecord[K, V],
-          callback: Either[Exception, RecordMetadata] => Unit
+          callback: Either[Exception, RecordMetadata] => Unit,
       ): Unit =
         self.sendRaw(record, callback)
 
@@ -176,8 +180,7 @@ object ShiftingProducer {
 object Avro4sProducer {
   def apply[F[_], K, V](
       p: ProducerApi[F, GenericRecord, GenericRecord]
-  )(
-      implicit
+  )(implicit
       ktr: ToRecord[K],
       vtr: ToRecord[V],
   ): ProducerApi[F, K, V] =
@@ -196,7 +199,13 @@ object ProducerApi {
       valueSerializer: Serializer[V],
       configs: (String, AnyRef)*
   ): F[KafkaProducer[K, V]] =
-    Sync[F].delay(new KafkaProducer[K, V](configs.toMap.asJava, keySerializer, valueSerializer))
+    Sync[F].delay(
+      new KafkaProducer[K, V](
+        configs.toMap.asJava,
+        keySerializer,
+        valueSerializer,
+      )
+    )
 
   def resource[F[_]: Async, K, V](
       keySerializer: Serializer[K],
@@ -211,7 +220,11 @@ object ProducerApi {
   def resource[F[_]: Async, K: Serializer, V: Serializer](
       configs: (String, AnyRef)*
   ): Resource[F, ProducerApi[F, K, V]] =
-    resource[F, K, V](implicitly[Serializer[K]], implicitly[Serializer[V]], configs: _*)
+    resource[F, K, V](
+      implicitly[Serializer[K]],
+      implicitly[Serializer[V]],
+      configs: _*
+    )
 
   object Avro {
 
@@ -222,8 +235,8 @@ object ProducerApi {
         createKafkaProducer[F, K, V](
           (
             configs.toMap +
-              KeySerializerClass(classOf[KafkaAvroSerializer]) +
-              ValueSerializerClass(classOf[KafkaAvroSerializer])
+            KeySerializerClass(classOf[KafkaAvroSerializer]) +
+            ValueSerializerClass(classOf[KafkaAvroSerializer])
           ).toSeq: _*
         ).map(ProducerImpl.create[F, K, V](_))
       )(_.close)
@@ -237,7 +250,7 @@ object ProducerApi {
     }
 
     object Specific {
-      //TODO
+      // TODO
     }
   }
 

@@ -22,7 +22,9 @@ import org.apache.avro.Schema
 
 package object schemaregistry {
 
-  implicit def schemaRegistryOps[F[_]](r: SchemaRegistryApi[F]): SchemaRegistryOps[F] =
+  implicit def schemaRegistryOps[F[_]](
+      r: SchemaRegistryApi[F]
+  ): SchemaRegistryOps[F] =
     SchemaRegistryOps[F](r)
 
   implicit class SchemaOps(schema: Schema) {

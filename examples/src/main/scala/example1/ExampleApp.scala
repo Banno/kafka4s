@@ -36,13 +36,12 @@ final class ExampleApp[F[_]: Async] {
   val schemaRegistryUri = "http://kafka.local:8081"
 
   val producerRecords: Vector[ProducerRecord[CustomerId, Customer]] = (1 to 10)
-    .map(
-      a =>
-        new ProducerRecord(
-          topic.name,
-          CustomerId(a.toString),
-          Customer(s"name-${a}", s"address-${a}")
-        )
+    .map(a =>
+      new ProducerRecord(
+        topic.name,
+        CustomerId(a.toString),
+        Customer(s"name-${a}", s"address-${a}"),
+      )
     )
     .toVector
 
@@ -50,7 +49,7 @@ final class ExampleApp[F[_]: Async] {
     ProducerApi.Avro4s.resource[F, CustomerId, Customer](
       BootstrapServers(kafkaBootstrapServers),
       SchemaRegistryUrl(schemaRegistryUri),
-      ClientId("producer-example")
+      ClientId("producer-example"),
     )
 
   val consumerResource =
@@ -59,7 +58,7 @@ final class ExampleApp[F[_]: Async] {
       SchemaRegistryUrl(schemaRegistryUri),
       ClientId("consumer-example"),
       GroupId("consumer-example-group"),
-      EnableAutoCommit(false)
+      EnableAutoCommit(false),
     )
 
   val example: F[Unit] =
@@ -71,33 +70,41 @@ final class ExampleApp[F[_]: Async] {
 
       schemaRegistry <- SchemaRegistryApi(schemaRegistryUri)
       _ <- schemaRegistry.registerKey[CustomerId](topic.name)
-      _ <- Sync[F].delay(println(s"Registered key schema for topic ${topic.name}"))
-
-      _ <- schemaRegistry.registerValue[Customer](topic.name)
-      _ <- Sync[F].delay(println(s"Registered value schema for topic ${topic.name}"))
-
-      _ <- producerResource.use(
-        producer =>
-          producerRecords.traverse_(
-            pr =>
-              producer.sendSync(pr) *> Sync[F]
-                .delay(println(s"Wrote producer record: key ${pr.key} and value ${pr.value}"))
-          )
+      _ <- Sync[F].delay(
+        println(s"Registered key schema for topic ${topic.name}")
       )
 
-      _ <- consumerResource.use(
-        consumer =>
-          consumer.assign(topic.name, Map.empty[TopicPartition, Long]) *>
-            consumer
-              .recordStream(1.second)
-              .take(producerRecords.size.toLong)
-              .evalMap(
-                cr =>
-                  Sync[F]
-                    .delay(println(s"Read consumer record: key ${cr.key} and value ${cr.value}"))
+      _ <- schemaRegistry.registerValue[Customer](topic.name)
+      _ <- Sync[F].delay(
+        println(s"Registered value schema for topic ${topic.name}")
+      )
+
+      _ <- producerResource.use(producer =>
+        producerRecords.traverse_(pr =>
+          producer.sendSync(pr) *> Sync[F]
+            .delay(
+              println(
+                s"Wrote producer record: key ${pr.key} and value ${pr.value}"
               )
-              .compile
-              .drain
+            )
+        )
+      )
+
+      _ <- consumerResource.use(consumer =>
+        consumer.assign(topic.name, Map.empty[TopicPartition, Long]) *>
+        consumer
+          .recordStream(1.second)
+          .take(producerRecords.size.toLong)
+          .evalMap(cr =>
+            Sync[F]
+              .delay(
+                println(
+                  s"Read consumer record: key ${cr.key} and value ${cr.value}"
+                )
+              )
+          )
+          .compile
+          .drain
       )
 
       _ <- Sync[F].delay(println("Finished kafka4s example"))

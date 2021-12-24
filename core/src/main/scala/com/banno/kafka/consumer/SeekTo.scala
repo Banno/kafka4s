@@ -42,7 +42,8 @@ object SeekTo {
           queries: PartitionQueries[F],
           partitions: Iterable[TopicPartition],
       ): F[Map[TopicPartition, Long]] =
-        queries.offsetsForTimes(timestamps)
+        queries
+          .offsetsForTimes(timestamps)
           .map(_.view.mapValues(_.offset).toMap)
     }
 
@@ -60,7 +61,8 @@ object SeekTo {
           queries: PartitionQueries[F],
           partitions: Iterable[TopicPartition],
       ): F[Map[TopicPartition, Long]] =
-        queries.committed(partitions.toSet)
+        queries
+          .committed(partitions.toSet)
           .map(_.view.mapValues(_.offset).toMap)
     }
 
@@ -86,7 +88,7 @@ object SeekTo {
       Offsets(offsets)
 
     def timestampBeforeNow[F[_]: Clock: Functor](
-      duration: FiniteDuration
+        duration: FiniteDuration
     ): F[Attempt] =
       Clock[F].realTime.map(now => timestamp(now.toMillis - duration.toMillis))
   }
@@ -120,7 +122,7 @@ object SeekTo {
 
   private case class Impl(
       attempts: List[Attempt],
-      fallback: FinalFallback
+      fallback: FinalFallback,
   ) extends SeekTo
 
   private def firstAttemptThen(attempt: Attempt, seekTo: SeekTo): SeekTo =
@@ -135,7 +137,10 @@ object SeekTo {
 
   def end: SeekTo = Impl(List.empty, FinalFallback.end)
 
-  def timestamps(timestamps: Map[TopicPartition, Long], default: SeekTo): SeekTo =
+  def timestamps(
+      timestamps: Map[TopicPartition, Long],
+      default: SeekTo,
+  ): SeekTo =
     firstAttemptThen(Attempt.timestamps(timestamps), default)
 
   def timestamp(timestamp: Long, default: SeekTo): SeekTo =
@@ -149,14 +154,16 @@ object SeekTo {
 
   def timestampBeforeNow[F[_]: Clock: Functor](
       duration: FiniteDuration,
-      default: SeekTo
+      default: SeekTo,
   ): F[SeekTo] =
-    Clock[F].realTime.map(now => timestamp(now.toMillis - duration.toMillis, default))
+    Clock[F].realTime.map(now =>
+      timestamp(now.toMillis - duration.toMillis, default)
+    )
 
   def seek[F[_]: Monad](
       consumer: ConsumerApi[F, _, _],
       partitions: Iterable[TopicPartition],
-      seekTo: SeekTo
+      seekTo: SeekTo,
   ): F[Unit] =
     seekTo match {
       case Impl(List(), finalFallback) =>
@@ -167,7 +174,7 @@ object SeekTo {
             .toOffsets[F](consumer.partitionQueries, partitions)
             .flatMap(
               _.get(tp)
-              //p could be mapped to an explicit null value
+              // p could be mapped to an explicit null value
                 .flatMap(Option(_))
                 .fold(SeekTo.seek(consumer, List(tp), Impl(attempts, default)))(
                   consumer.seek(tp, _)

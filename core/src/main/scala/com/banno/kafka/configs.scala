@@ -20,12 +20,15 @@ import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.metrics.MetricsReporter
-import io.confluent.kafka.serializers.{AbstractKafkaAvroSerDeConfig, KafkaAvroDeserializerConfig}
+import io.confluent.kafka.serializers.{
+  AbstractKafkaAvroSerDeConfig,
+  KafkaAvroDeserializerConfig,
+}
 import scala.reflect.ClassTag
 import io.confluent.kafka.serializers.subject.{
   RecordNameStrategy => KRecordNameStrategy,
   TopicNameStrategy => KTopicNameStrategy,
-  TopicRecordNameStrategy => KTopicRecordNameStrategy
+  TopicRecordNameStrategy => KTopicRecordNameStrategy,
 }
 import scala.concurrent.duration.FiniteDuration
 
@@ -39,7 +42,8 @@ object BootstrapServers {
 }
 
 object ClientId {
-  def apply(id: String): (String, String) = CommonClientConfigs.CLIENT_ID_CONFIG -> id
+  def apply(id: String): (String, String) =
+    CommonClientConfigs.CLIENT_ID_CONFIG -> id
 }
 
 case class EnableIdempotence(e: Boolean)
@@ -60,7 +64,8 @@ object CompressionType {
 
 case class GroupId(id: String)
 object GroupId {
-  implicit def toConfig(g: GroupId): (String, AnyRef) = ConsumerConfig.GROUP_ID_CONFIG -> g.id
+  implicit def toConfig(g: GroupId): (String, AnyRef) =
+    ConsumerConfig.GROUP_ID_CONFIG -> g.id
 }
 
 case class AutoOffsetReset(aor: String)
@@ -132,37 +137,45 @@ object SpecificAvroReader {
 }
 
 object MetricReporters {
-  //TODO need to support multiple reporter types
+  // TODO need to support multiple reporter types
   def apply[T <: MetricsReporter](implicit ct: ClassTag[T]): (String, String) =
     CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG -> ct.runtimeClass.getName
 }
 
 object TransactionalId {
-  def apply(id: String): (String, AnyRef) = ProducerConfig.TRANSACTIONAL_ID_CONFIG -> id
+  def apply(id: String): (String, AnyRef) =
+    ProducerConfig.TRANSACTIONAL_ID_CONFIG -> id
 }
 
 object IsolationLevel {
-  val ReadCommitted
-      : (String, String) = (org.apache.kafka.clients.consumer.ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
-  val ReadUncommitted
-      : (String, String) = (org.apache.kafka.clients.consumer.ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_uncommitted")
+  val ReadCommitted: (String, String) =
+    (org.apache.kafka.clients.consumer.ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
+  val ReadUncommitted: (String, String) =
+    (org.apache.kafka.clients.consumer.ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_uncommitted")
 }
 
 object MaxPollRecords {
-  def apply(count: Int): (String, AnyRef) = ConsumerConfig.MAX_POLL_RECORDS_CONFIG -> count.toString
+  def apply(count: Int): (String, AnyRef) =
+    ConsumerConfig.MAX_POLL_RECORDS_CONFIG -> count.toString
 }
 
 object KeySubjectNameStrategy {
   val strategy = AbstractKafkaAvroSerDeConfig.KEY_SUBJECT_NAME_STRATEGY
-  val RecordNameStrategy: (String, AnyRef) = strategy -> classOf[KRecordNameStrategy].getName()
-  val TopicNameStrategy: (String, AnyRef) = strategy -> classOf[KTopicNameStrategy].getName()
-  val TopicRecordNameStrategy: (String, AnyRef) = strategy -> classOf[KTopicRecordNameStrategy]
-    .getName()
+  val RecordNameStrategy: (String, AnyRef) =
+    strategy -> classOf[KRecordNameStrategy].getName()
+  val TopicNameStrategy: (String, AnyRef) =
+    strategy -> classOf[KTopicNameStrategy].getName()
+  val TopicRecordNameStrategy: (String, AnyRef) =
+    strategy -> classOf[KTopicRecordNameStrategy]
+      .getName()
 }
 object ValueSubjectNameStrategy {
   val strategy = AbstractKafkaAvroSerDeConfig.VALUE_SUBJECT_NAME_STRATEGY
-  val RecordNameStrategy: (String, AnyRef) = strategy -> classOf[KRecordNameStrategy].getName()
-  val TopicNameStrategy: (String, AnyRef) = strategy -> classOf[KTopicNameStrategy].getName()
-  val TopicRecordNameStrategy: (String, AnyRef) = strategy -> classOf[KTopicRecordNameStrategy]
-    .getName()
+  val RecordNameStrategy: (String, AnyRef) =
+    strategy -> classOf[KRecordNameStrategy].getName()
+  val TopicNameStrategy: (String, AnyRef) =
+    strategy -> classOf[KTopicNameStrategy].getName()
+  val TopicRecordNameStrategy: (String, AnyRef) =
+    strategy -> classOf[KTopicRecordNameStrategy]
+      .getName()
 }

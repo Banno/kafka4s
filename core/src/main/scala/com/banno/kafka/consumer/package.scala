@@ -20,13 +20,19 @@ import cats._
 import fs2.Stream
 
 package object consumer {
-  implicit def partitionQueriesOps[F[_]](c: PartitionQueries[F]): PartitionQueriesOps[F] =
+  implicit def partitionQueriesOps[F[_]](
+      c: PartitionQueries[F]
+  ): PartitionQueriesOps[F] =
     PartitionQueriesOps[F](c)
 
-  implicit def consumerOps[F[_], K, V](c: ConsumerApi[F, K, V]): ConsumerOps[F, K, V] =
+  implicit def consumerOps[F[_], K, V](
+      c: ConsumerApi[F, K, V]
+  ): ConsumerOps[F, K, V] =
     ConsumerOps[F, K, V](c)
 
-  implicit def recordStreamOps[F[_]: ApplicativeThrow, A](s: Stream[F, A]): RecordStreamOps[F, A] =
+  implicit def recordStreamOps[F[_]: ApplicativeThrow, A](
+      s: Stream[F, A]
+  ): RecordStreamOps[F, A] =
     RecordStreamOps[F, A](s)
 
 }

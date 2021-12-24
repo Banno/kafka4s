@@ -36,7 +36,9 @@ import org.apache.kafka.clients.consumer._
 import org.apache.kafka.clients.producer.ProducerRecord
 import com.sksamuel.avro4s.ToRecord
 
-trait Topic[K, V] extends Topical[IncomingRecord[K, V], (K, V)] with AschematicTopic {
+trait Topic[K, V]
+    extends Topical[IncomingRecord[K, V], (K, V)]
+    with AschematicTopic {
   final override def aschematic: NonEmptyList[AschematicTopic] =
     NonEmptyList.one(this)
 }
@@ -67,7 +69,8 @@ object Topic {
 
   private def parse1[K: FromRecord, V: FromRecord](cr: CR): Try[(K, V)] = {
     val tryKey = fromGeneric[K](cr.key).adaptError(ParseFailed(Key, cr, _))
-    val tryValue = fromGeneric[V](cr.value).adaptError(ParseFailed(Value, cr, _))
+    val tryValue =
+      fromGeneric[V](cr.value).adaptError(ParseFailed(Value, cr, _))
     tryKey.product(tryValue)
   }
 
@@ -85,9 +88,12 @@ object Topic {
     }
   }
 
-  def apply[K: FromRecord: ToRecord: SchemaFor, V: FromRecord: ToRecord: SchemaFor](
+  def apply[
+      K: FromRecord: ToRecord: SchemaFor,
+      V: FromRecord: ToRecord: SchemaFor,
+  ](
       topic: String,
-      topicPurpose: TopicPurpose
+      topicPurpose: TopicPurpose,
   ): Topic[K, V] =
     new Topic[K, V] {
       override def coparse(
@@ -111,7 +117,7 @@ object Topic {
         new NewTopic(
           topic,
           purpose.partitions,
-          purpose.replicationFactor
+          purpose.replicationFactor,
           // The .configs(...) method performs mutation, but as long as we keep it
           // local to the method that has done the `new`, the result is referentially
           // transparent.
@@ -138,7 +144,7 @@ object Topic {
           _ <- AdminApi.createTopicsIdempotent(
             bootstrapServers.bs,
             List(config),
-            configs
+            configs,
           )
           _ <- registerSchemas(schemaRegistryUri, configs)
         } yield ()
@@ -146,7 +152,9 @@ object Topic {
 
   implicit def invariant[K]: Invariant[Topic[K, *]] =
     new Invariant[Topic[K, *]] {
-      override def imap[A, B](fa: Topic[K, A])(f: A => B)(g: B => A): Topic[K, B] =
+      override def imap[A, B](
+          fa: Topic[K, A]
+      )(f: A => B)(g: B => A): Topic[K, B] =
         new Topic[K, B] {
           override def parse(
               cr: ConsumerRecord[GenericRecord, GenericRecord]

@@ -31,11 +31,15 @@ object ConsumerPrometheusReporter {
     * allows multiple Kafka consumers in the same JVM to each instantiate
     * ConsumerPrometheusReporter, while all still using the same Prometheus
     * collectors and registry properly. Metrics from multiple consumers are
-    * distinguished by the `client_id` label. */
+    * distinguished by the `client_id` label.
+    */
   val reporter: MetricsReporterApi[IO] =
     PrometheusMetricsReporterApi.consumer[IO]().unsafeRunSync()
 }
 
-/** Kafka consumer will instantiate this class via reflection.
-  * Specify this consumer config: metric.reporters=com.banno.kafka.metrics.prometheus.ConsumerPrometheusReporter. */
-class ConsumerPrometheusReporter extends IOMetricsReporter(ConsumerPrometheusReporter.reporter)
+/** Kafka consumer will instantiate this class via reflection. Specify this
+  * consumer config:
+  * metric.reporters=com.banno.kafka.metrics.prometheus.ConsumerPrometheusReporter.
+  */
+class ConsumerPrometheusReporter
+    extends IOMetricsReporter(ConsumerPrometheusReporter.reporter)

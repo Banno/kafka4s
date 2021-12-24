@@ -60,17 +60,23 @@ object TopicPurpose {
           case TopicContentType.Ephemera => 2.toShort
           case TopicContentType.Negligible => 1.toShort
           case _ => 3.toShort
-        }
+        },
       )
   }
 
-  def mediumScale(configs: TopicConfig, contentType: TopicContentType): TopicPurpose =
+  def mediumScale(
+      configs: TopicConfig,
+      contentType: TopicContentType,
+  ): TopicPurpose =
     Impl(partitions = 5, configs, contentType)
 
   /** If the topic is small, there is not much need to scale it, so the
     * simplicity of one partition should suffice.
     */
-  def lowScale(configs: TopicConfig, contentType: TopicContentType): TopicPurpose =
+  def lowScale(
+      configs: TopicConfig,
+      contentType: TopicContentType,
+  ): TopicPurpose =
     Impl(partitions = 1, configs, contentType)
 
   /** A state topic by default doesn't need to keep history; compact
@@ -78,10 +84,10 @@ object TopicPurpose {
   val smallState: TopicPurpose =
     lowScale(
       cleanupPolicy(compact) |+|
-        minCleanableDirtyRatio(0.01) |+|
-        segmentMegabytes(1) |+|
-        segmentDuration(10.minutes),
-      TopicContentType.State
+      minCleanableDirtyRatio(0.01) |+|
+      segmentMegabytes(1) |+|
+      segmentDuration(10.minutes),
+      TopicContentType.State,
     )
 
   /** A state topic by default doesn't need to keep history; compact.
@@ -89,10 +95,10 @@ object TopicPurpose {
   val mediumState: TopicPurpose =
     lowScale(
       cleanupPolicy(compact) |+|
-        minCleanableDirtyRatio(0.10) |+|
-        segmentMegabytes(100) |+|
-        segmentDuration(1.day),
-      TopicContentType.State
+      minCleanableDirtyRatio(0.10) |+|
+      segmentMegabytes(100) |+|
+      segmentDuration(1.day),
+      TopicContentType.State,
     )
 
   /** Because this is a command topic, we do not need infinite retention. OTOH
@@ -100,19 +106,22 @@ object TopicPurpose {
     * retaining it longer than needed, because there just won't be that much
     * data there; retain for 30 days.
     */
-  val smallCommand: TopicPurpose = lowScale(retention(30.days), TopicContentType.Commands)
+  val smallCommand: TopicPurpose =
+    lowScale(retention(30.days), TopicContentType.Commands)
 
   /** Medium scale with infinite retention.
     */
-  val event: TopicPurpose = mediumScale(infiniteRetention, TopicContentType.Events)
+  val event: TopicPurpose =
+    mediumScale(infiniteRetention, TopicContentType.Events)
 
-  /** Medium scale with one hour retention and a replication factor of only
-    * two.
+  /** Medium scale with one hour retention and a replication factor of only two.
     */
   val ephemeron: TopicPurpose =
     mediumScale(retention(1.hour), TopicContentType.Ephemera)
 
-  /** Low scale, 1 partition, 1 replica, 1 hour retention. For data that is negligible (e.g. test topic). */
+  /** Low scale, 1 partition, 1 replica, 1 hour retention. For data that is
+    * negligible (e.g. test topic).
+    */
   val negligible: TopicPurpose =
     lowScale(retention(1.hour), TopicContentType.Negligible)
 }
