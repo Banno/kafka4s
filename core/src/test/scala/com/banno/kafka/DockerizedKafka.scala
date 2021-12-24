@@ -34,7 +34,7 @@ trait DockerizedKafka {
       topic <- Sync[F].delay(unsafeRandomId)
       _ <- AdminApi.createTopicsIdempotent[F](
         bootstrapServer,
-        List(new NewTopic(topic, partitionCount, 1.toShort))
+        List(new NewTopic(topic, partitionCount, 1.toShort)),
       )
     } yield topic
 

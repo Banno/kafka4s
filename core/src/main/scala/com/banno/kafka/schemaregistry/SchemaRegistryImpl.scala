@@ -17,14 +17,18 @@
 package com.banno.kafka.schemaregistry
 
 import org.apache.avro.Schema
-import io.confluent.kafka.schemaregistry.client.{SchemaMetadata, SchemaRegistryClient}
+import io.confluent.kafka.schemaregistry.client.{
+  SchemaMetadata,
+  SchemaRegistryClient,
+}
 import cats.effect.Sync
 import io.confluent.kafka.schemaregistry.ParsedSchema
 
 import scala.jdk.CollectionConverters._
 
-case class SchemaRegistryImpl[F[_]](c: SchemaRegistryClient)(implicit F: Sync[F])
-    extends SchemaRegistryApi[F] {
+case class SchemaRegistryImpl[F[_]](c: SchemaRegistryClient)(implicit
+    F: Sync[F]
+) extends SchemaRegistryApi[F] {
   import SchemaRegistryApi._
 
   def getAllSubjects: F[Iterable[String]] =
@@ -44,7 +48,9 @@ case class SchemaRegistryImpl[F[_]](c: SchemaRegistryClient)(implicit F: Sync[F]
   def getSchemaBySubjectAndId(subject: String, id: Int): F[ParsedSchema] =
     F.delay(c.getSchemaBySubjectAndId(subject, id))
 
-  def getCompatibility(subject: String): F[SchemaRegistryApi.CompatibilityLevel] =
+  def getCompatibility(
+      subject: String
+  ): F[SchemaRegistryApi.CompatibilityLevel] =
     F.delay(CompatibilityLevel.unsafeFromString(c.getCompatibility(subject)))
 
   def getLatestSchemaMetadata(subject: String): F[SchemaMetadata] =
@@ -67,13 +73,19 @@ case class SchemaRegistryImpl[F[_]](c: SchemaRegistryClient)(implicit F: Sync[F]
   def register(subject: String, schema: ParsedSchema): F[Int] =
     F.delay(c.register(subject, schema))
 
-  @deprecated("Use testCompatibility(String,ParsedSchema) instead.", "3.0.0-M24")
+  @deprecated(
+    "Use testCompatibility(String,ParsedSchema) instead.",
+    "3.0.0-M24",
+  )
   def testCompatibility(subject: String, schema: Schema): F[Boolean] =
     F.delay(c.testCompatibility(subject, schema))
 
   def testCompatibility(subject: String, schema: ParsedSchema): F[Boolean] =
     F.delay(c.testCompatibility(subject, schema))
 
-  def updateCompatibility(subject: String, compatibility: CompatibilityLevel): F[String] =
+  def updateCompatibility(
+      subject: String,
+      compatibility: CompatibilityLevel,
+  ): F[String] =
     F.delay(c.updateCompatibility(subject, compatibility.asString))
 }

@@ -30,7 +30,7 @@ trait PartitionQueries[F[_]] {
   ): F[Map[TopicPartition, Long]]
   def beginningOffsets(
       partitions: Iterable[TopicPartition],
-      timeout: FiniteDuration
+      timeout: FiniteDuration,
   ): F[Map[TopicPartition, Long]]
 
   def committed(
@@ -42,7 +42,7 @@ trait PartitionQueries[F[_]] {
   ): F[Map[TopicPartition, Long]]
   def endOffsets(
       partitions: Iterable[TopicPartition],
-      timeout: FiniteDuration
+      timeout: FiniteDuration,
   ): F[Map[TopicPartition, Long]]
 
   def offsetsForTimes(
@@ -50,13 +50,13 @@ trait PartitionQueries[F[_]] {
   ): F[Map[TopicPartition, OffsetAndTimestamp]]
   def offsetsForTimes(
       timestampsToSearch: Map[TopicPartition, Long],
-      timeout: FiniteDuration
+      timeout: FiniteDuration,
   ): F[Map[TopicPartition, OffsetAndTimestamp]]
 
   def partitionsFor(topic: String): F[Seq[PartitionInfo]]
   def partitionsFor(
       topic: String,
-      timeout: FiniteDuration
+      timeout: FiniteDuration,
   ): F[Seq[PartitionInfo]]
 
   final def mapK[G[_]](f: F ~> G): PartitionQueries[G] = {
@@ -69,7 +69,7 @@ trait PartitionQueries[F[_]] {
 
       override def beginningOffsets(
           partitions: Iterable[TopicPartition],
-          timeout: FiniteDuration
+          timeout: FiniteDuration,
       ): G[Map[TopicPartition, Long]] =
         f(self.beginningOffsets(partitions, timeout))
 
@@ -84,7 +84,7 @@ trait PartitionQueries[F[_]] {
         f(self.endOffsets(partitions))
       override def endOffsets(
           partitions: Iterable[TopicPartition],
-          timeout: FiniteDuration
+          timeout: FiniteDuration,
       ): G[Map[TopicPartition, Long]] =
         f(self.endOffsets(partitions, timeout))
 
@@ -94,7 +94,7 @@ trait PartitionQueries[F[_]] {
         f(self.offsetsForTimes(timestampsToSearch))
       override def offsetsForTimes(
           timestampsToSearch: Map[TopicPartition, Long],
-          timeout: FiniteDuration
+          timeout: FiniteDuration,
       ): G[Map[TopicPartition, OffsetAndTimestamp]] =
         f(self.offsetsForTimes(timestampsToSearch, timeout))
 
@@ -102,7 +102,7 @@ trait PartitionQueries[F[_]] {
         f(self.partitionsFor(topic))
       override def partitionsFor(
           topic: String,
-          timeout: FiniteDuration
+          timeout: FiniteDuration,
       ): G[Seq[PartitionInfo]] =
         f(self.partitionsFor(topic, timeout))
     }
@@ -129,14 +129,13 @@ object PartitionQueries {
 
       override def beginningOffsets(
           partitions: Iterable[TopicPartition],
-          timeout: FiniteDuration
+          timeout: FiniteDuration,
       ): F[Map[TopicPartition, Long]] =
         Sync[F].delay(
           c.beginningOffsets(
-              partitions.asJavaCollection,
-              java.time.Duration.ofMillis(timeout.toMillis)
-            )
-            .asScala
+            partitions.asJavaCollection,
+            java.time.Duration.ofMillis(timeout.toMillis),
+          ).asScala
             .toMap
             .view
             .mapValues(Long.unbox)
@@ -153,17 +152,26 @@ object PartitionQueries {
             .toMap
         )
 
-      override def endOffsets(partitions: Iterable[TopicPartition]): F[Map[TopicPartition, Long]] =
+      override def endOffsets(
+          partitions: Iterable[TopicPartition]
+      ): F[Map[TopicPartition, Long]] =
         Sync[F].delay(
-          c.endOffsets(partitions.asJavaCollection).asScala.toMap.view.mapValues(Long.unbox).toMap
+          c.endOffsets(partitions.asJavaCollection)
+            .asScala
+            .toMap
+            .view
+            .mapValues(Long.unbox)
+            .toMap
         )
       override def endOffsets(
           partitions: Iterable[TopicPartition],
-          timeout: FiniteDuration
+          timeout: FiniteDuration,
       ): F[Map[TopicPartition, Long]] =
         Sync[F].delay(
-          c.endOffsets(partitions.asJavaCollection, java.time.Duration.ofMillis(timeout.toMillis))
-            .asScala
+          c.endOffsets(
+            partitions.asJavaCollection,
+            java.time.Duration.ofMillis(timeout.toMillis),
+          ).asScala
             .toMap
             .view
             .mapValues(Long.unbox)
@@ -174,30 +182,35 @@ object PartitionQueries {
           timestampsToSearch: Map[TopicPartition, Long]
       ): F[Map[TopicPartition, OffsetAndTimestamp]] =
         Sync[F].delay(
-          c.offsetsForTimes(timestampsToSearch.view.mapValues(Long.box).toMap.asJava)
-            .asScala
+          c.offsetsForTimes(
+            timestampsToSearch.view.mapValues(Long.box).toMap.asJava
+          ).asScala
             .filter(valueIsNotNull)
             .toMap
         )
       override def offsetsForTimes(
           timestampsToSearch: Map[TopicPartition, Long],
-          timeout: FiniteDuration
+          timeout: FiniteDuration,
       ): F[Map[TopicPartition, OffsetAndTimestamp]] =
         Sync[F].delay(
           c.offsetsForTimes(
-              timestampsToSearch.view.mapValues(Long.box).toMap.asJava,
-              java.time.Duration.ofMillis(timeout.toMillis)
-            )
-            .asScala
+            timestampsToSearch.view.mapValues(Long.box).toMap.asJava,
+            java.time.Duration.ofMillis(timeout.toMillis),
+          ).asScala
             .filter(valueIsNotNull)
             .toMap
         )
 
       override def partitionsFor(topic: String): F[Seq[PartitionInfo]] =
         Sync[F].delay(c.partitionsFor(topic).asScala.toSeq)
-      override def partitionsFor(topic: String, timeout: FiniteDuration): F[Seq[PartitionInfo]] =
+      override def partitionsFor(
+          topic: String,
+          timeout: FiniteDuration,
+      ): F[Seq[PartitionInfo]] =
         Sync[F].delay(
-          c.partitionsFor(topic, java.time.Duration.ofMillis(timeout.toMillis)).asScala.toSeq
+          c.partitionsFor(topic, java.time.Duration.ofMillis(timeout.toMillis))
+            .asScala
+            .toSeq
         )
     }
 }

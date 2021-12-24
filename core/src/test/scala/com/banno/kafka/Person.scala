@@ -18,13 +18,15 @@ package com.banno.kafka
 
 import scala.annotation.switch
 
-case class Person(var name: String) extends org.apache.avro.specific.SpecificRecordBase {
+case class Person(var name: String)
+    extends org.apache.avro.specific.SpecificRecordBase {
   def this() = this("")
   def get(field$ : Int): AnyRef =
     (field$ : @switch) match {
-      case 0 => {
-        name
-      }.asInstanceOf[AnyRef]
+      case 0 =>
+        {
+          name
+        }.asInstanceOf[AnyRef]
       case _ => new org.apache.avro.AvroRuntimeException("Bad index")
     }
   def put(field$ : Int, value: Any): Unit = {

@@ -46,7 +46,8 @@ object TopicConfig {
   // TODO do we need to make sure that
   // cleanupPolicy(compact) |+| cleanupPolicy(delete) === cleanupPolicy(compact, delete)?
   def cleanupPolicy(policies: CleanupPolicy*): TopicConfig = {
-    val p = policies.map { case CleanupPolicyImpl(s) => s }.distinct.intercalate(",")
+    val p =
+      policies.map { case CleanupPolicyImpl(s) => s }.distinct.intercalate(",")
     of(CLEANUP_POLICY_CONFIG, p)
   }
 

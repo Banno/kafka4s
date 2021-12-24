@@ -23,10 +23,12 @@ import munit._
 class BifunctorSpec extends DisciplineSuite {
   checkAll(
     "ProducerRecordBifunctor",
-    BifunctorTests(ProducerRecordBifunctor).bifunctor[Int, Int, Int, String, String, String]
+    BifunctorTests(ProducerRecordBifunctor)
+      .bifunctor[Int, Int, Int, String, String, String],
   )
   checkAll(
     "ConsumerRecordBifunctor",
-    BifunctorTests(ConsumerRecordBifunctor).bifunctor[Int, Int, Int, String, String, String]
+    BifunctorTests(ConsumerRecordBifunctor)
+      .bifunctor[Int, Int, Int, String, String, String],
   )
 }

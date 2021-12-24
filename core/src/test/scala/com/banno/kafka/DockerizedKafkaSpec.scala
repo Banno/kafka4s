@@ -31,12 +31,17 @@ trait DockerizedKafkaSpec extends BeforeAndAfterAll { this: Suite =>
   val schemaRegistryUrl = "http://localhost:8091"
 
   override def beforeAll(): Unit =
-    log.info(s"Using docker-machine Kafka cluster for ${getClass.getName}").unsafeRunSync()
+    log
+      .info(s"Using docker-machine Kafka cluster for ${getClass.getName}")
+      .unsafeRunSync()
 
   override def afterAll(): Unit =
-    log.info(s"Used docker-machine Kafka cluster for ${getClass.getName}").unsafeRunSync()
+    log
+      .info(s"Used docker-machine Kafka cluster for ${getClass.getName}")
+      .unsafeRunSync()
 
-  def randomId: String = Gen.listOfN(10, Gen.alphaChar).map(_.mkString).sample.get
+  def randomId: String =
+    Gen.listOfN(10, Gen.alphaChar).map(_.mkString).sample.get
   def genGroupId: String = randomId
   def genTopic: String = randomId
   def createTopic(partitionCount: Int = 1): String = {
@@ -44,7 +49,7 @@ trait DockerizedKafkaSpec extends BeforeAndAfterAll { this: Suite =>
     AdminApi
       .createTopicsIdempotent[IO](
         bootstrapServer,
-        List(new NewTopic(topic, partitionCount, 1.toShort))
+        List(new NewTopic(topic, partitionCount, 1.toShort)),
       )
       .unsafeRunSync()
     topic
