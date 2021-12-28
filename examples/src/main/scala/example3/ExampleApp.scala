@@ -41,7 +41,11 @@ final class ExampleApp[F[_]: Async] {
       _ <- AdminApi.createTopicsIdempotent[F](kafkaBootstrapServers, topic)
 
       writeStream = Stream
-        .resource(ProducerApi.resource[F, Int, Int](BootstrapServers(kafkaBootstrapServers)))
+        .resource(
+          ProducerApi.resource[F, Int, Int](
+            BootstrapServers(kafkaBootstrapServers)
+          )
+        )
         .flatMap { producer =>
           Stream
             .awakeDelay[F](1 second)
@@ -59,7 +63,7 @@ final class ExampleApp[F[_]: Async] {
               BootstrapServers(kafkaBootstrapServers),
               GroupId("example3"),
               AutoOffsetReset.earliest,
-              EnableAutoCommit(true)
+              EnableAutoCommit(true),
             )
         )
         .evalTap(_.subscribe(topic.name))

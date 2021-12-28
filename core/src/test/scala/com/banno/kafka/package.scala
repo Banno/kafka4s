@@ -42,9 +42,13 @@ package object test {
     } yield new ConsumerRecord(t, p, o, k, v)
   }
 
-  //these things are necessary for EqSpec
+  // these things are necessary for EqSpec
   implicit def producerRecordCogen[K, V]: Cogen[ProducerRecord[K, V]] =
-    Cogen(pr => pr.key.toString.length.toLong + pr.value.toString.length.toLong) // ¯\_(ツ)_/¯
+    Cogen(pr =>
+      pr.key.toString.length.toLong + pr.value.toString.length.toLong
+    ) // ¯\_(ツ)_/¯
   implicit def consumerRecordCogen[K, V]: Cogen[ConsumerRecord[K, V]] =
-    Cogen(cr => cr.key.toString.length.toLong + cr.value.toString.length.toLong) // ¯\_(ツ)_/¯
+    Cogen(cr =>
+      cr.key.toString.length.toLong + cr.value.toString.length.toLong
+    ) // ¯\_(ツ)_/¯
 }

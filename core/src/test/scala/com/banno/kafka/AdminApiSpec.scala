@@ -32,8 +32,12 @@ class AdminApiSpec extends CatsEffectSuite with DockerizedKafka {
         topicName <- Sync[F].delay(unsafeRandomId)
         ltr1 <- admin.listTopics
         ns1 <- Sync[F].delay(ltr1.names().get())
-        _ <- admin.createTopicsIdempotent(List(new NewTopic(topicName, 1, 1.toShort)))
-        _ <- admin.createTopicsIdempotent(List(new NewTopic(topicName, 1, 1.toShort)))
+        _ <- admin.createTopicsIdempotent(
+          List(new NewTopic(topicName, 1, 1.toShort))
+        )
+        _ <- admin.createTopicsIdempotent(
+          List(new NewTopic(topicName, 1, 1.toShort))
+        )
         _ <- Temporal[F].sleep(1.second) // TODO: Better fix
         ltr2 <- admin.listTopics
         ns2 <- Sync[F].delay(ltr2.names.get())

@@ -24,8 +24,10 @@ import scala.jdk.CollectionConverters._
 
 /** Adapts our pure MetricsReporterApi to Kafka's impure MetricsReporter. The
   * end of the universe for metrics reporters. Actual reporters should extend
-  * this, so Kafka client can instantiate it via reflection. */
-abstract class IOMetricsReporter(reporter: MetricsReporterApi[IO]) extends MetricsReporter {
+  * this, so Kafka client can instantiate it via reflection.
+  */
+abstract class IOMetricsReporter(reporter: MetricsReporterApi[IO])
+    extends MetricsReporter {
   // Chris Davenport: "You have walked into horrible territory. Like, the worst
   // territory I have ever seen." Given that, this is the right thing to do.
   // However, there is also a potentially different way to shim in this

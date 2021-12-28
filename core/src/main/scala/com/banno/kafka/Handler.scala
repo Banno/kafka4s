@@ -32,7 +32,7 @@ object Handler {
 
   def double[F[_]: Applicative, A](
       f: A => F[Unit],
-      g: A => F[Unit]
+      g: A => F[Unit],
   ): A => F[Unit] = x => f(x) *> g(x)
 
   final case class Builder[F[_], A <: Coproduct] private[Handler] (
@@ -63,7 +63,9 @@ object Handler {
       def finis: List[A] => F[Unit] = build
     }
 
-    def combine[F[_]: Monad, A](leftmost: List[A] => F[Unit]): Builder[F, A :+: CNil] =
+    def combine[F[_]: Monad, A](
+        leftmost: List[A] => F[Unit]
+    ): Builder[F, A :+: CNil] =
       Builder(xs => leftmost(xs.map(_.eliminate(identity, _.impossible))))
   }
 
@@ -95,13 +97,13 @@ object Extractor {
 object Adapt {
   def apply[F[_], K, V, W[_]](
       handle: Product2[K, V] => F[Unit],
-      extractor: Extractor[W]
+      extractor: Extractor[W],
   ): IncomingRecord[K, W[V]] => F[Unit] =
     handle.compose(_.map(extractor.extract))
 
   def apply[F[_], K, V, W](
       handle: Product2[K, V] => F[Unit],
-      adapter: W => V
+      adapter: W => V,
   ): Product2[K, W] => F[Unit] =
     handle.compose(kv => (kv._1, adapter(kv._2)))
 }

@@ -6,8 +6,8 @@ val V = new {
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
   val cats = "2.7.0"
-  val catsEffect = "3.3.0"
-  val confluent = "7.0.1"
+  val catsEffect = "3.3.1"
+  val confluent = "6.2.2"
   val curator = "5.2.0"
   val disciplineMunit = "1.0.9"
   val epimetheus = "0.5.0-M2"
@@ -17,7 +17,7 @@ val V = new {
   val kindProjector = "0.13.2"
   val log4cats = "2.1.1"
   val log4j = "1.7.31"
-  val logback = "1.2.7"
+  val logback = "1.2.9"
   val scalacheck = "1.15.4"
   val scalacheckEffect = "0.6.0"
   val scalacheckMagnolia = "0.6.0"
@@ -152,7 +152,7 @@ lazy val commonSettings = Seq(
   ),
   Test / sourceGenerators += (Test / avroScalaGenerate).taskValue,
   watchSources ++= ((Test / avroSourceDirectories).value ** "*.avdl").get,
-  testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oS"),
+  Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oS"),
 )
 
 lazy val contributors = Seq(

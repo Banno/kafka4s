@@ -65,15 +65,18 @@ sealed trait HistoryAndUnbounded[F[_], P[_[_], _], A] {
     catchUp(f).map(_ => unboundedStream.evalMap(f))
 }
 
-sealed trait HistoryAndRecordStream[F[_], A] extends HistoryAndUnbounded[F, RecordStream, A] {
+sealed trait HistoryAndRecordStream[F[_], A]
+    extends HistoryAndUnbounded[F, RecordStream, A] {
   def catchUpThenReadProcessCommit(
       f: A => F[Unit]
   ): F[Stream[F, Unit]]
 }
 
 object HistoryAndUnbounded {
-  type Incoming[F[_], P[_[_], _], K, V] = HistoryAndUnbounded[F, P, IncomingRecord[K, V]]
-  type Batched[F[_], P[_[_], _], A] = HistoryAndUnbounded[F, P, IncomingRecords[A]]
+  type Incoming[F[_], P[_[_], _], K, V] =
+    HistoryAndUnbounded[F, P, IncomingRecord[K, V]]
+  type Batched[F[_], P[_[_], _], A] =
+    HistoryAndUnbounded[F, P, IncomingRecords[A]]
 }
 
 object HistoryAndStream {
@@ -83,14 +86,14 @@ object HistoryAndStream {
 
   private final case class Impl[F[_], A](
       history: Stream[F, A],
-      unbounded: Stream[F, A]
+      unbounded: Stream[F, A],
   ) extends HistoryAndUnbounded[F, Stream, A] {
     override protected def unboundedStream: Stream[F, A] = unbounded
   }
 
   def apply[F[_], A](
       history: Stream[F, A],
-      unbounded: Stream[F, A]
+      unbounded: Stream[F, A],
   ): T[F, A] =
     Impl(history = history, unbounded = unbounded)
 
@@ -105,7 +108,7 @@ object HistoryAndRecordStream {
 
   private final case class Impl[F[_]: Async, A](
       history: Stream[F, A],
-      unbounded: RecordStream[F, A]
+      unbounded: RecordStream[F, A],
   ) extends HistoryAndRecordStream[F, A] {
     override protected def unboundedStream: Stream[F, A] = unbounded.records
     override def catchUpThenReadProcessCommit(
@@ -116,7 +119,7 @@ object HistoryAndRecordStream {
 
   def apply[F[_]: Async, A](
       history: Stream[F, A],
-      unbounded: RecordStream[F, A]
+      unbounded: RecordStream[F, A],
   ): HistoryAndRecordStream[F, A] =
     Impl(history = history, unbounded = unbounded)
 
@@ -130,7 +133,7 @@ object RecordStream {
   type Batched[F[_], A] = RecordStream[F, IncomingRecords[A]]
 
   private abstract class Impl[F[_]: Applicative, A](
-      val consumer: ConsumerApi[F, GenericRecord, GenericRecord],
+      val consumer: ConsumerApi[F, GenericRecord, GenericRecord]
   ) extends RecordStream[F, A] {
     def readProcessCommit[B](process: A => F[B]): Stream[F, B] =
       records.evalMap { x =>
@@ -153,25 +156,25 @@ object RecordStream {
 
     def historyAndUnbounded[F[_]: Async, A](
         history: Stream[F, A],
-        unbounded: P[F, A]
+        unbounded: P[F, A],
     ): HistoryAndUnbounded[F, P, A]
 
     final def chunkHistoryAndUnbounded[F[_]: Async, A](
         topical: Topical[A, ?],
-        streams: HistoryAndUnbounded[F, P, IncomingRecords[A]]
-    ): HistoryAndUnbounded[F, P, A] = {
+        streams: HistoryAndUnbounded[F, P, IncomingRecords[A]],
+    ): HistoryAndUnbounded[F, P, A] =
       historyAndUnbounded(
         streams.history.flatMap(chunked),
-        chunk(topical, streams.unbounded)
+        chunk(topical, streams.unbounded),
       )
-    }
 
     def configs: List[(String, AnyRef)]
   }
 
   private object WhetherCommits {
     object No extends WhetherCommits[Stream] {
-      override def extrude[F[_], A](x: RecordStream[F, A]): Stream[F, A] = x.records
+      override def extrude[F[_], A](x: RecordStream[F, A]): Stream[F, A] =
+        x.records
 
       override def chunk[F[_]: Applicative, A](
           topical: Topical[A, ?],
@@ -181,14 +184,17 @@ object RecordStream {
 
       override def historyAndUnbounded[F[_]: Async, A](
           history: Stream[F, A],
-          unbounded: Stream[F, A]
-      ): HistoryAndUnbounded[F, Stream, A] = HistoryAndStream(history, unbounded)
+          unbounded: Stream[F, A],
+      ): HistoryAndUnbounded[F, Stream, A] =
+        HistoryAndStream(history, unbounded)
 
       override def configs: List[(String, AnyRef)] = List()
     }
 
-    final case class May(groupId: GroupId) extends WhetherCommits[RecordStream] {
-      override def extrude[F[_], A](x: RecordStream[F, A]): RecordStream[F, A] = x
+    final case class May(groupId: GroupId)
+        extends WhetherCommits[RecordStream] {
+      override def extrude[F[_], A](x: RecordStream[F, A]): RecordStream[F, A] =
+        x
 
       override def chunk[F[_]: Applicative, A](
           topical: Topical[A, ?],
@@ -203,8 +209,9 @@ object RecordStream {
 
       override def historyAndUnbounded[F[_]: Async, A](
           history: Stream[F, A],
-          unbounded: RecordStream[F, A]
-      ): HistoryAndUnbounded[F, RecordStream, A] = HistoryAndRecordStream(history, unbounded)
+          unbounded: RecordStream[F, A],
+      ): HistoryAndUnbounded[F, RecordStream, A] =
+        HistoryAndRecordStream(history, unbounded)
 
       override def configs: List[(String, AnyRef)] = List(groupId)
     }
@@ -255,10 +262,11 @@ object RecordStream {
 
   private object Seeker {
     final case class Impl[F[_], A](
-      apply: Kleisli[F, PartitionQueries[F], SeekTo] => A
-    )(implicit val F: Applicative[F]) extends Seeker[F, A] {
+        apply: Kleisli[F, PartitionQueries[F], SeekTo] => A
+    )(implicit val F: Applicative[F])
+        extends Seeker[F, A] {
       override def seekBy(
-        seekToF: Kleisli[F, PartitionQueries[F], SeekTo]
+          seekToF: Kleisli[F, PartitionQueries[F], SeekTo]
       ): A = apply(seekToF)
     }
 
@@ -305,18 +313,20 @@ object RecordStream {
     Seeker[F, StreamSelector[F, Resource[F, *], P, A]]
 
   private def chunkedSelector[F[_]: Async, G[_], P[_[_], _], A, B](
-    batched: StreamSelector[F, G, P, IncomingRecords[A]],
-    topical: Topical[A, B],
+      batched: StreamSelector[F, G, P, IncomingRecords[A]],
+      topical: Topical[A, B],
   ): StreamSelector[F, G, P, A] = {
     implicit val ap: Functor[G] = batched.G
     StreamSelector.Impl(
-      batched.historyAndUnbounded.map(batched.whetherCommits.chunkHistoryAndUnbounded(topical, _)),
+      batched.historyAndUnbounded.map(
+        batched.whetherCommits.chunkHistoryAndUnbounded(topical, _)
+      ),
       batched.whetherCommits,
     )
   }
 
   private final case class ChunkedSubscriber[F[_]: Async](
-      val batched: Subscriber[F, IncomingRecords],
+      val batched: Subscriber[F, IncomingRecords]
   ) extends Subscriber[F, Id] {
     override def whetherCommits = batched.whetherCommits
 
@@ -334,11 +344,13 @@ object RecordStream {
     def group(groupId: GroupId): ConfigStage2[RecordStream]
     def clientAndGroup(
         clientId: String,
-        groupId: GroupId
+        groupId: GroupId,
     ): ConfigStage2[RecordStream]
   }
 
   sealed trait ConfigStage2[P[_[_], _]] {
+    def autoOffsetResetLatest: ConfigStage2[P]
+    def autoOffsetResetEarliest: ConfigStage2[P]
     def untypedExtras(configs: Seq[(String, AnyRef)]): ConfigStage2[P]
 
     def batched: ConfigStage3[P, IncomingRecords]
@@ -357,39 +369,31 @@ object RecordStream {
       clientId: String,
       whetherCommits: WhetherCommits[P],
       extraConfigs: Seq[(String, AnyRef)] = Seq.empty,
+      reset: AutoOffsetReset = AutoOffsetReset.none,
   ) extends ConfigStage2[P] {
-    def consumerApiV2[F[_]: Async]: Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] = {
+    def consumerApi[
+        F[_]: Async
+    ]: Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] = {
       val configs: List[(String, AnyRef)] =
         whetherCommits.configs ++
-          extraConfigs ++
-          List(
-            kafkaBootstrapServers,
-            schemaRegistryUri,
-            EnableAutoCommit(false),
-            IsolationLevel.ReadCommitted,
-            ClientId(clientId),
-            MetricReporters[ConsumerPrometheusReporter],
-          )
+        extraConfigs ++
+        List(
+          kafkaBootstrapServers,
+          schemaRegistryUri,
+          EnableAutoCommit(false),
+          reset,
+          IsolationLevel.ReadCommitted,
+          ClientId(clientId),
+          MetricReporters[ConsumerPrometheusReporter],
+        )
       ConsumerApi.Avro.Generic.resource[F](configs: _*)
     }
 
-    def consumerApi[F[_]: Async](
-        reset: AutoOffsetReset
-    ): Resource[F, ConsumerApi[F, GenericRecord, GenericRecord]] = {
-      val configs: List[(String, AnyRef)] =
-        whetherCommits.configs ++
-          extraConfigs ++
-          List(
-            kafkaBootstrapServers,
-            schemaRegistryUri,
-            EnableAutoCommit(false),
-            reset,
-            IsolationLevel.ReadCommitted,
-            ClientId(clientId),
-            MetricReporters[ConsumerPrometheusReporter],
-          )
-      ConsumerApi.Avro.Generic.resource[F](configs: _*)
-    }
+    override def autoOffsetResetLatest: ConfigStage2[P] =
+      copy(reset = AutoOffsetReset.latest)
+
+    override def autoOffsetResetEarliest: ConfigStage2[P] =
+      copy(reset = AutoOffsetReset.earliest)
 
     override def untypedExtras(configs: Seq[(String, AnyRef)]) =
       copy(extraConfigs = configs)
@@ -411,7 +415,7 @@ object RecordStream {
           Seeker.functor.map(batched.assign(topical))(
             chunkedSelector(
               _,
-              topical
+              topical,
             )
           )
       }
@@ -440,7 +444,7 @@ object RecordStream {
 
       override def clientAndGroup(
           clientId: String,
-          groupId: GroupId
+          groupId: GroupId,
       ): ConfigStage2[RecordStream] =
         BaseConfigs(
           kafkaBootstrapServers,
@@ -455,7 +459,7 @@ object RecordStream {
       schemaRegistryUri: SchemaRegistryUrl,
       clientId: String,
       groupId: GroupId,
-      extraConfigs: (String, AnyRef)*,
+      extraConfigs: (String, AnyRef)*
   ): Subscriber[F, Id] =
     new ChunkedSubscriber(
       Batched.SubscriberImpl(
@@ -473,18 +477,18 @@ object RecordStream {
       kafkaBootstrapServers: BootstrapServers,
       schemaRegistryUri: SchemaRegistryUrl,
       groupId: GroupId,
-      extraConfigs: (String, AnyRef)*,
+      extraConfigs: (String, AnyRef)*
   ): Subscriber[F, Id] =
     subscribe(
       kafkaBootstrapServers,
       schemaRegistryUri,
       groupId.id,
       groupId,
-      extraConfigs: _*,
+      extraConfigs: _*
     )
 
   private def ephemeralTopicsSeekToEnd[F[_]: Monad](
-      consumer: ConsumerApi[F, GenericRecord, GenericRecord],
+      consumer: ConsumerApi[F, GenericRecord, GenericRecord]
   ): AschematicTopic => F[Unit] =
     topic =>
       topic.purpose.contentType match {
@@ -528,7 +532,7 @@ object RecordStream {
           topical: Topical[A, B],
           reset: AutoOffsetReset,
       ): Resource[F, RecordStream[F, IncomingRecords[A]]] =
-        baseConfigs.consumerApi(reset).evalMap { consumer =>
+        baseConfigs.copy(reset = reset).consumerApi.evalMap { consumer =>
           consumer
             .subscribe(topical.names.map(_.show).toList)
             .as(recordStream(consumer, topical))
@@ -538,20 +542,25 @@ object RecordStream {
     private[RecordStream] type NeedsConsumer[F[_], A] =
       Function[ConsumerApi[F, GenericRecord, GenericRecord], A]
 
-    private[RecordStream] def streamSelectorViaConsumer[F[_]: Async, P[_[_], _], A](
-      whetherCommits: WhetherCommits[P],
-      topical: Topical[A, ?],
+    private[RecordStream] def streamSelectorViaConsumer[F[_]: Async, P[
+        _[_],
+        _,
+    ], A](
+        whetherCommits: WhetherCommits[P],
+        topical: Topical[A, ?],
     ): StreamSelector[F, NeedsConsumer[F, *], P, IncomingRecords[A]] = {
       val history: NeedsConsumer[F, Stream[F, IncomingRecords[A]]] =
         _.recordsThroughAssignmentLastOffsetsOrZeros(
           pollTimeout,
           10,
-          commitMarkerAdjustment = true
+          commitMarkerAdjustment = true,
         ).prefetch
           .evalMap(parseBatch(topical))
       val unbounded: NeedsConsumer[F, P[F, IncomingRecords[A]]] =
         c => whetherCommits.extrude(recordStream(c, topical))
-      val hAndU = history.product(unbounded).map(hAndU => whetherCommits.historyAndUnbounded(hAndU._1, hAndU._2))
+      val hAndU = history
+        .product(unbounded)
+        .map(hAndU => whetherCommits.historyAndUnbounded(hAndU._1, hAndU._2))
       StreamSelector.Impl(hAndU, whetherCommits)
     }
 
@@ -575,7 +584,7 @@ object RecordStream {
         streamSelectorViaConsumer(baseConfigs.whetherCommits, topical).mapK(
           new ~>[NeedsConsumer[F, *], Resource[F, *]] {
             override def apply[A](fa: NeedsConsumer[F, A]): Resource[F, A] =
-              baseConfigs.consumerApiV2[F].evalMap { consumer =>
+              baseConfigs.consumerApi[F].evalMap { consumer =>
                 assign(consumer, topical, seekToF)
                   .as(fa(consumer))
               }
