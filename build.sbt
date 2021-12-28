@@ -51,8 +51,10 @@ lazy val core = project
     libraryDependencies ++= Seq(
       "org.apache.curator" % "curator-test" % V.curator % "test",
       ("org.apache.kafka" %% "kafka" % V.kafka % "test").classifier("test"),
-      ("org.apache.kafka" % "kafka-clients" % V.kafka % "test").classifier("test"),
-      ("org.apache.kafka" % "kafka-streams" % V.kafka % "test").classifier("test"),
+      ("org.apache.kafka" % "kafka-clients" % V.kafka % "test")
+        .classifier("test"),
+      ("org.apache.kafka" % "kafka-streams" % V.kafka % "test")
+        .classifier("test"),
       ("org.apache.kafka" % "kafka-streams-test-utils" % V.kafka % "test"),
       "ch.qos.logback" % "logback-classic" % V.logback % "test",
       "org.slf4j" % "log4j-over-slf4j" % V.log4j % "test",
@@ -67,7 +69,7 @@ lazy val core = project
       "org.typelevel" %% "cats-effect" % V.catsEffect,
       "org.typelevel" %% "cats-laws" % V.cats % "test",
       "org.typelevel" %% "discipline-munit" % V.disciplineMunit % "test",
-    )
+    ),
   )
 
 lazy val examples = project
@@ -117,12 +119,20 @@ lazy val site = project
         file("CHANGELOG.md") -> ExtraMdFileConfig(
           "changelog.md",
           "page",
-          Map("title" -> "changelog", "section" -> "changelog", "position" -> "100"),
+          Map(
+            "title" -> "changelog",
+            "section" -> "changelog",
+            "position" -> "100",
+          ),
         ),
         file("CODE_OF_CONDUCT.md") -> ExtraMdFileConfig(
           "code-of-conduct.md",
           "page",
-          Map("title" -> "code of conduct", "section" -> "code of conduct", "position" -> "101"),
+          Map(
+            "title" -> "code of conduct",
+            "section" -> "code of conduct",
+            "position" -> "101",
+          ),
         ),
         file("LICENSE") -> ExtraMdFileConfig(
           "license.md",
@@ -138,7 +148,8 @@ lazy val commonSettings = Seq(
   crossScalaVersions := V.crossScalaVersions,
   resolvers += "confluent".at("https://packages.confluent.io/maven/"),
   addCompilerPlugin(
-    ("org.typelevel" %% "kind-projector" % V.kindProjector).cross(CrossVersion.full),
+    ("org.typelevel" %% "kind-projector" % V.kindProjector)
+      .cross(CrossVersion.full)
   ),
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % V.betterMonadicFor),
   libraryDependencies ++= Seq(
@@ -184,9 +195,11 @@ inThisBuild(
     },
     organizationName := "Jack Henry & Associates, Inc.®",
     startYear := Some(2019),
-    licenses += ("Apache-2.0", new URL("https://www.apache.org/licenses/LICENSE-2.0.txt")),
+    licenses += ("Apache-2.0", new URL(
+      "https://www.apache.org/licenses/LICENSE-2.0.txt"
+    )),
     homepage := Some(url("https://github.com/banno/kafka4s")),
-  ),
+  )
 )
 
 addCommandAlias("fmt", "scalafmtSbt;scalafmtAll;")
