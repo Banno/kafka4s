@@ -174,7 +174,7 @@ object SeekTo {
             .toOffsets[F](consumer.partitionQueries, partitions)
             .flatMap(
               _.get(tp)
-              // p could be mapped to an explicit null value
+                // p could be mapped to an explicit null value
                 .flatMap(Option(_))
                 .fold(SeekTo.seek(consumer, List(tp), Impl(attempts, default)))(
                   consumer.seek(tp, _)
