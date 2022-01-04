@@ -190,9 +190,6 @@ inThisBuild(
       "-Xlog-free-terms",
       "-Xlog-free-types",
     ),
-    pomIncludeRepository := { _ =>
-      false
-    },
     organizationName := "Jack Henry & Associates, Inc.®",
     startYear := Some(2019),
     licenses += ("Apache-2.0", new URL(
