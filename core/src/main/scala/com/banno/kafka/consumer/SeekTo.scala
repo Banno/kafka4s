@@ -162,13 +162,11 @@ object SeekTo {
   def offsets(offsets: Map[TopicPartition, Long], default: SeekTo): SeekTo =
     firstAttemptThen(Attempt.offsets(offsets), default)
 
-  def timestampBeforeNow[F[_]: Clock: Functor](
+  def timestampBeforeNow(
       duration: FiniteDuration,
       default: SeekTo,
-  ): F[SeekTo] =
-    Clock[F].realTime.map(now =>
-      timestamp(now.toMillis - duration.toMillis, default)
-    )
+  ): SeekTo =
+    firstAttemptThen(Attempt.timestampBeforeNow(duration), default)
 
   def seek[F[_]: Monad: Clock](
       consumer: ConsumerApi[F, _, _],
