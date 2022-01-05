@@ -28,7 +28,7 @@ sealed trait SeekTo
 
 object SeekTo {
   sealed trait Attempt {
-    private[SeekTo] def toOffsets[F[_]: Applicative](
+    private[SeekTo] def toOffsets[F[_]: Monad: Clock](
         queries: PartitionQueries[F],
         partitions: Iterable[TopicPartition],
     ): F[Map[TopicPartition, Long]]
@@ -38,7 +38,7 @@ object SeekTo {
     private case class Timestamps(
         timestamps: Map[TopicPartition, Long]
     ) extends Attempt {
-      override def toOffsets[F[_]: Applicative](
+      override def toOffsets[F[_]: Monad: Clock](
           queries: PartitionQueries[F],
           partitions: Iterable[TopicPartition],
       ): F[Map[TopicPartition, Long]] =
@@ -48,7 +48,7 @@ object SeekTo {
     }
 
     private case class Timestamp(timestamp: Long) extends Attempt {
-      override def toOffsets[F[_]: Applicative](
+      override def toOffsets[F[_]: Monad: Clock](
           queries: PartitionQueries[F],
           partitions: Iterable[TopicPartition],
       ): F[Map[TopicPartition, Long]] =
@@ -56,8 +56,20 @@ object SeekTo {
           .toOffsets(queries, partitions)
     }
 
+    private case class TimestampBeforeNow(duration: FiniteDuration)
+        extends Attempt {
+      override def toOffsets[F[_]: Monad: Clock](
+          queries: PartitionQueries[F],
+          partitions: Iterable[TopicPartition],
+      ): F[Map[TopicPartition, Long]] =
+        Clock[F].realTime.flatMap(now =>
+          timestamp(now.toMillis - duration.toMillis)
+            .toOffsets(queries, partitions)
+        )
+    }
+
     private object Committed extends Attempt {
-      override def toOffsets[F[_]: Applicative](
+      override def toOffsets[F[_]: Monad: Clock](
           queries: PartitionQueries[F],
           partitions: Iterable[TopicPartition],
       ): F[Map[TopicPartition, Long]] =
@@ -69,7 +81,7 @@ object SeekTo {
     private case class Offsets(
         offsets: Map[TopicPartition, Long]
     ) extends Attempt {
-      override def toOffsets[F[_]: Applicative](
+      override def toOffsets[F[_]: Monad: Clock](
           queries: PartitionQueries[F],
           partitions: Iterable[TopicPartition],
       ): F[Map[TopicPartition, Long]] =
@@ -87,10 +99,8 @@ object SeekTo {
     def offsets(offsets: Map[TopicPartition, Long]): Attempt =
       Offsets(offsets)
 
-    def timestampBeforeNow[F[_]: Clock: Functor](
-        duration: FiniteDuration
-    ): F[Attempt] =
-      Clock[F].realTime.map(now => timestamp(now.toMillis - duration.toMillis))
+    def timestampBeforeNow(duration: FiniteDuration): Attempt =
+      TimestampBeforeNow(duration)
   }
 
   sealed trait FinalFallback {
@@ -160,7 +170,7 @@ object SeekTo {
       timestamp(now.toMillis - duration.toMillis, default)
     )
 
-  def seek[F[_]: Monad](
+  def seek[F[_]: Monad: Clock](
       consumer: ConsumerApi[F, _, _],
       partitions: Iterable[TopicPartition],
       seekTo: SeekTo,
