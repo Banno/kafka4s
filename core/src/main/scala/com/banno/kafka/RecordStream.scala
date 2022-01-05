@@ -564,7 +564,7 @@ object RecordStream {
       StreamSelector.Impl(hAndU, whetherCommits)
     }
 
-    private def assign[F[_]: Monad, A, B](
+    private def assign[F[_]: Monad: Clock, A, B](
         consumer: ConsumerApi[F, GenericRecord, GenericRecord],
         topical: Topical[A, B],
         seekToF: Kleisli[F, PartitionQueries[F], SeekTo],
