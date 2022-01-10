@@ -6,8 +6,8 @@ val V = new {
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
   val cats = "2.7.0"
-  val catsEffect = "3.3.3"
-  val confluent = "7.0.1"
+  val catsEffect = "3.3.4"
+  val confluent = "6.2.2"
   val curator = "5.2.0"
   val disciplineMunit = "1.0.9"
   val epimetheus = "0.5.0-M2"
@@ -190,9 +190,6 @@ inThisBuild(
       "-Xlog-free-terms",
       "-Xlog-free-types",
     ),
-    pomIncludeRepository := { _ =>
-      false
-    },
     organizationName := "Jack Henry & Associates, Inc.®",
     startYear := Some(2019),
     licenses += ("Apache-2.0", new URL(
