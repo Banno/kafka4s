@@ -110,7 +110,7 @@ object IncomingRecord {
       metadata: Metadata,
   ) extends IncomingRecord[K, V]
 
-  // Exposing this as the only constructor allows us to add more fields that are
+  // Exposing this constructor allows us to add more fields that are
   // on the consumer record to the incoming record in a backwards-compatible
   // manner.
   def of[K, V](cr: ConsumerRecord[K, V]): IncomingRecord[K, V] =
@@ -122,6 +122,18 @@ object IncomingRecord {
         TopicPartitionOffset(cr.topic(), cr.partition(), cr.offset()),
         cr.nextOffset,
         cr.headers.asScala.map(h => (h.key, h.value)).toMap,
+      ),
+    )
+
+  def keyValueOnly[K, V](key: K, value: V): IncomingRecord[K, V] =
+    Impl(
+      key,
+      value,
+      Metadata(
+        -1L,
+        TopicPartitionOffset("invalid topic", -1, -1L),
+        Map.empty,
+        Map.empty,
       ),
     )
 
