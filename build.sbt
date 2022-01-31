@@ -1,13 +1,13 @@
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
 val V = new {
-  val scalaVersion = "2.13.7"
+  val scalaVersion = "2.13.8"
   val crossScalaVersions = List()
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
   val cats = "2.7.0"
-  val catsEffect = "3.3.4"
-  val confluent = "7.0.1"
+  val catsEffect = "3.3.5"
+  val confluent = "6.2.2"
   val curator = "5.2.0"
   val disciplineMunit = "1.0.9"
   val epimetheus = "0.5.0-M2"
@@ -15,15 +15,15 @@ val V = new {
   val junit = "4.13"
   val kafka = s"$confluent-ce"
   val kindProjector = "0.13.2"
-  val log4cats = "2.1.1"
-  val log4j = "1.7.31"
+  val log4cats = "2.2.0"
+  val log4j = "1.7.35"
   val logback = "1.2.10"
   val scalacheck = "1.15.4"
   val scalacheckEffect = "0.6.0"
   val scalacheckMagnolia = "0.6.0"
   val munit = "0.7.29"
   val munitCE3 = "1.0.7"
-  val scalatest = "3.2.10"
+  val scalatest = "3.2.11"
   val scalatestPlus = "3.2.3.0"
   val simpleClient = "0.11.0"
 }
@@ -64,7 +64,7 @@ lazy val core = project
       "org.typelevel" %% "scalacheck-effect-munit" % V.scalacheckEffect,
       "org.typelevel" %% "munit-cats-effect-3" % V.munitCE3 % "test",
       "org.scalatest" %% "scalatest" % V.scalatest % "test",
-      "org.scalatestplus" %% "scalacheck-1-15" % "3.2.10.0" % Test,
+      "org.scalatestplus" %% "scalacheck-1-15" % "3.2.11.0" % Test,
       "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % "test",
       "org.typelevel" %% "cats-effect" % V.catsEffect,
       "org.typelevel" %% "cats-laws" % V.cats % "test",
