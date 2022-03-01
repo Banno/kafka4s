@@ -6,17 +6,17 @@ val V = new {
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
   val cats = "2.7.0"
-  val catsEffect = "3.3.5"
+  val catsEffect = "3.3.6"
   val confluent = "6.2.2"
   val curator = "5.2.0"
   val disciplineMunit = "1.0.9"
   val epimetheus = "0.5.0-M2"
-  val fs2 = "3.2.4"
+  val fs2 = "3.2.5"
   val junit = "4.13"
   val kafka = s"$confluent-ce"
   val kindProjector = "0.13.2"
   val log4cats = "2.2.0"
-  val log4j = "1.7.35"
+  val log4j = "1.7.36"
   val logback = "1.2.10"
   val scalacheck = "1.15.4"
   val scalacheckEffect = "0.6.0"
@@ -75,7 +75,7 @@ lazy val core = project
 lazy val examples = project
   .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
-  .settings(libraryDependencies += "dev.zio" %% "zio-interop-cats" % "3.2.9.0")
+  .settings(libraryDependencies += "dev.zio" %% "zio-interop-cats" % "3.2.9.1")
   .disablePlugins(MimaPlugin)
   .dependsOn(core)
 
