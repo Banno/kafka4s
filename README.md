@@ -63,3 +63,16 @@ Stream.resource(
 ## Learning more
 
 To learn more about kafka4s, start with our [Getting Started Guide](https://banno.github.io/kafka4s/docs/), play with some [example apps](https://github.com/Banno/kafka4s/tree/master/examples/src/main/scala), and check out the [kafka4s Scaladoc](https://www.javadoc.io/doc/com.banno/kafka4s_2.13) for more info.
+
+## Running the examples
+
+To run the examples, setup the following:
+- Pull down the docker image in the project directory: 
+```
+docker-compose up -d
+```
+- Add local host alias `kafka.local` to your machines `/etc/hosts` file. You will need to use sudo access to edit this file.
+- Run example in sbt, for example: 
+```
+examples/runMain example3.CatsEffectApp
+```

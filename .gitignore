@@ -6,6 +6,7 @@ target/
 **/project/metals.sbt
 # vim
 *.sw?
+.vscode/
 
 # Ignore tags files
 tags
