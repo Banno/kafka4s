@@ -7,7 +7,7 @@ val V = new {
   val betterMonadicFor = "0.3.1"
   val cats = "2.8.0"
   val catsEffect = "3.3.14"
-  val confluent = "6.2.6"
+  val confluent = "6.2.7"
   val curator = "5.2.0"
   val disciplineMunit = "1.0.9"
   val epimetheus = "0.5.0-M2"
@@ -195,7 +195,7 @@ inThisBuild(
       "-language:postfixOps",
       "-Xlog-free-terms",
       "-Xlog-free-types",
-      //"-Wnonunit-statement",
+      // "-Wnonunit-statement",
     ),
     organizationName := "Jack Henry & Associates, Inc.®",
     startYear := Some(2019),
