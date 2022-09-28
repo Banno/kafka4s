@@ -47,6 +47,7 @@ lazy val core = project
     },
   )
   .settings(
+    scalacOptions += "-Wnonunit-statement",
     testFrameworks += new TestFramework("munit.Framework"),
     libraryDependencies ++= Seq(
       "org.apache.curator" % "curator-test" % V.curator % "test",
@@ -195,7 +196,6 @@ inThisBuild(
       "-language:postfixOps",
       "-Xlog-free-terms",
       "-Xlog-free-types",
-      //"-Wnonunit-statement",
     ),
     organizationName := "Jack Henry & Associates, Inc.®",
     startYear := Some(2019),

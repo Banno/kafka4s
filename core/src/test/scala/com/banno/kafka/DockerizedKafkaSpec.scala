@@ -51,6 +51,7 @@ trait DockerizedKafkaSpec extends BeforeAndAfterAll { this: Suite =>
         bootstrapServer,
         List(new NewTopic(topic, partitionCount, 1.toShort)),
       )
+      .void
       .unsafeRunSync()
     topic
   }

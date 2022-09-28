@@ -89,8 +89,8 @@ class ConsumerAndProducerApiSpec
         )
         .unsafeRunSync()
 
-      rms.size should ===(strings.size)
-      rms.forall(_.topic == topic) should ===(true)
+      rms.size should ===(strings.size): Unit
+      rms.forall(_.topic == topic) should ===(true): Unit
       if (strings.size >= 2) {
         rms.last.offset - rms.head.offset should ===(strings.size - 1)
       }
@@ -209,7 +209,7 @@ class ConsumerAndProducerApiSpec
               _ <- c.close
             } yield {
               (vs.flatten should contain)
-                .theSameElementsAs(List("0-0", "0-1", "1-1"))
+                .theSameElementsAs(List("0-0", "0-1", "1-1")): Unit
               rs.asScala.map(_.value) should ===(List("new"))
             }
           )
