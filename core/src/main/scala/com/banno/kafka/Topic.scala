@@ -41,10 +41,6 @@ trait Topic[K, V]
     with AschematicTopic {
   final override def aschematic: NonEmptyList[AschematicTopic] =
     NonEmptyList.one(this)
-
-  def withParseFailedHandler(
-    handle: Topic.ParseFailed => Try[IncomingRecord[K, V]]
-  ): Topic[K, V]
 }
 
 object Topic {
@@ -71,13 +67,6 @@ object Topic {
     override def select(cr: CR): GenericRecord = cr.value()
   }
 
-  private def parse1[K: FromRecord, V: FromRecord](cr: CR): Try[(K, V)] = {
-    val tryKey = fromGeneric[K](cr.key).adaptError(ParseFailed(Key, cr, _))
-    val tryValue =
-      fromGeneric[V](cr.value).adaptError(ParseFailed(Value, cr, _))
-    tryKey.product(tryValue)
-  }
-
   final case class ParseFailed(
       keyOrValue: KeyOrValue,
       cr: CR,
@@ -98,7 +87,8 @@ object Topic {
   ](
       topic: String,
       topicPurpose: TopicPurpose,
-      handlePF: Topic.ParseFailed => Try[IncomingRecord[K, V]],
+      handleKeyParseFailed: Option[(GenericRecord, Throwable) => Try[K]],
+      handleValueParseFailed: Option[(GenericRecord, Throwable) => Try[V]],
   ) extends Topic[K, V] {
     override def coparse(
         kv: (K, V)
@@ -109,18 +99,29 @@ object Topic {
 
     override def purpose: TopicPurpose = topicPurpose
 
+    private def parse1(cr: CR): Try[(K, V)] = {
+      val tryKey =
+        fromGeneric[K](cr.key)
+          .handleErrorWith { cause =>
+            handleKeyParseFailed.fold(
+              ParseFailed(Key, cr, cause).raiseError[Try, K]
+            )(handle => handle(cr.key, cause))
+          }
+      val tryValue =
+        fromGeneric[V](cr.value)
+          .handleErrorWith { cause =>
+            handleValueParseFailed.fold(
+              ParseFailed(Value, cr, cause).raiseError[Try, V]
+            )(handle => handle(cr.value, cause))
+          }
+      tryKey.product(tryValue)
+    }
+
     override def parse(cr: CR): Try[IncomingRecord[K, V]] =
-      parse1[K, V](cr).map { kv =>
-        IncomingRecord.of(cr).bimap(_ => kv._1, _ => kv._2)
-      }
-
-    override def withParseFailedHandler(
-      handle: Topic.ParseFailed => Try[IncomingRecord[K, V]]
-    ): Topic[K, V] =
-      copy(handlePF = handle)
-
-    override def handleParseFailed(failed: Topic.ParseFailed): Try[IncomingRecord[K, V]] =
-      handlePF(failed)
+      parse1(cr)
+        .map { kv =>
+          IncomingRecord.of(cr).bimap(_ => kv._1, _ => kv._2)
+        }
 
     override def nextOffset(x: IncomingRecord[K, V]) =
       x.metadata.nextOffset
@@ -169,29 +170,28 @@ object Topic {
       topic: String,
       topicPurpose: TopicPurpose,
   ): Topic[K, V] =
-    Impl(topic, topicPurpose, Failure.apply)
+    Impl(topic, topicPurpose, None, None)
+
+  def apply[
+      K: FromRecord: ToRecord: SchemaFor,
+      V: FromRecord: ToRecord: SchemaFor,
+  ](
+      topic: String,
+      topicPurpose: TopicPurpose,
+      handleKeyParseFailed: Option[(GenericRecord, Throwable) => Try[K]],
+      handleValueParseFailed: Option[(GenericRecord, Throwable) => Try[V]],
+  ): Topic[K, V] =
+    Impl(topic, topicPurpose, handleKeyParseFailed, handleValueParseFailed)
 
   private final case class InvariantImpl[K, A, B](
-    fa: Topic[K, A],
-    f: A => B,
-    g: B => A,
-    handlePF: Option[Topic.ParseFailed => Try[IncomingRecord[K, B]]],
+      fa: Topic[K, A],
+      f: A => B,
+      g: B => A,
   ) extends Topic[K, B] {
     override def parse(
         cr: ConsumerRecord[GenericRecord, GenericRecord]
     ): Try[IncomingRecord[K, B]] =
       fa.parse(cr).map(_.map(f))
-
-
-    override def handleParseFailed(failed: Topic.ParseFailed): Try[IncomingRecord[K, B]] =
-      handlePF.fold(
-        fa.handleParseFailed(failed).map(_.map(f))
-      )(h => h(failed))
-
-    override def withParseFailedHandler(
-      handle: Topic.ParseFailed => Try[IncomingRecord[K, B]]
-    ): Topic[K, B] =
-      copy(handlePF = handle.some)
 
     override def coparse(
         kv: (K, B)
@@ -222,6 +222,6 @@ object Topic {
       override def imap[A, B](
           fa: Topic[K, A]
       )(f: A => B)(g: B => A): Topic[K, B] =
-        InvariantImpl(fa, f, g, None)
+        InvariantImpl(fa, f, g)
     }
 }

@@ -16,13 +16,13 @@
 
 package com.banno.kafka
 
-import scala.util.*
+import scala.util._
 
-import cats.data.*
-import cats.effect.*
+import cats.data._
+import cats.effect._
 
 import org.apache.avro.generic.GenericRecord
-import org.apache.kafka.clients.consumer.*
+import org.apache.kafka.clients.consumer._
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.clients.producer.ProducerRecord
 
@@ -35,8 +35,6 @@ trait AschematicTopic {
   */
 trait Topical[A, B] {
   def parse(cr: ConsumerRecord[GenericRecord, GenericRecord]): Try[A]
-
-  def handleParseFailed(failed: Topic.ParseFailed): Try[A]
 
   def coparse(kv: B): ProducerRecord[GenericRecord, GenericRecord]
 

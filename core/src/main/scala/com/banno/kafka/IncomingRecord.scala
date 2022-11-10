@@ -16,13 +16,13 @@
 
 package com.banno.kafka
 
-import cats.*
-import cats.syntax.all.*
+import cats._
+import cats.syntax.all._
 import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.clients.consumer.*
+import org.apache.kafka.clients.consumer._
+import scala.jdk.CollectionConverters._
+import shapeless._
 import org.apache.avro.generic.GenericRecord
-import scala.jdk.CollectionConverters.*
-import shapeless.*
 
 final case class TopicPartitionOffset(
     topic: String,
@@ -188,7 +188,6 @@ object IncomingRecords {
       nextOffsets: Map[TopicPartition, OffsetAndMetadata],
   ) extends IncomingRecords[A]
 
-  // TODO remove on next major version
   def parseWith[F[_]: ApplicativeThrow, A](
       cr: ConsumerRecords[GenericRecord, GenericRecord],
       f: ConsumerRecord[GenericRecord, GenericRecord] => F[A],
@@ -198,17 +197,4 @@ object IncomingRecords {
       .map(
         Impl(_, cr.nextOffsets)
       )
-
-  def parseWith[F[_]: ApplicativeThrow, A](
-      cr: ConsumerRecords[GenericRecord, GenericRecord],
-      f: ConsumerRecord[GenericRecord, GenericRecord] => F[A],
-      handleParseFailed: Topic.ParseFailed => F[A],
-  ): F[IncomingRecords[A]] =
-    cr.asScala.toList
-      .traverse(
-        f(_).recoverWith { case failed: Topic.ParseFailed =>
-          handleParseFailed(failed)
-        }
-      )
-      .map(Impl(_, cr.nextOffsets))
 }
