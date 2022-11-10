@@ -18,14 +18,14 @@ package com.banno.kafka
 
 import java.time.Instant
 
-import scala.jdk.CollectionConverters._
-import scala.util._
+import scala.jdk.CollectionConverters.*
+import scala.util.*
 import scala.util.control.NoStackTrace
 
-import cats._
-import cats.data._
-import cats.effect._
-import cats.syntax.all._
+import cats.*
+import cats.data.*
+import cats.effect.*
+import cats.syntax.all.*
 import com.banno.kafka.admin.AdminApi
 import com.banno.kafka.schemaregistry.SchemaRegistryApi
 import com.sksamuel.avro4s.FromRecord
@@ -41,6 +41,10 @@ trait Topic[K, V]
     with AschematicTopic {
   final override def aschematic: NonEmptyList[AschematicTopic] =
     NonEmptyList.one(this)
+
+  def withParseFailedHandler(
+    handle: Topic.ParseFailed => Try[IncomingRecord[K, V]]
+  ): Topic[K, V]
 }
 
 object Topic {
@@ -88,6 +92,76 @@ object Topic {
     }
   }
 
+  private final case class Impl[
+      K: FromRecord: ToRecord: SchemaFor,
+      V: FromRecord: ToRecord: SchemaFor,
+  ](
+      topic: String,
+      topicPurpose: TopicPurpose,
+      handlePF: Topic.ParseFailed => Try[IncomingRecord[K, V]],
+  ) extends Topic[K, V] {
+    override def coparse(
+        kv: (K, V)
+    ): ProducerRecord[GenericRecord, GenericRecord] =
+      new ProducerRecord(topic, kv._1, kv._2).toGenericRecord
+
+    override def name: TopicName = TopicName(topic)
+
+    override def purpose: TopicPurpose = topicPurpose
+
+    override def parse(cr: CR): Try[IncomingRecord[K, V]] =
+      parse1[K, V](cr).map { kv =>
+        IncomingRecord.of(cr).bimap(_ => kv._1, _ => kv._2)
+      }
+
+    override def withParseFailedHandler(
+      handle: Topic.ParseFailed => Try[IncomingRecord[K, V]]
+    ): Topic[K, V] =
+      copy(handlePF = handle)
+
+    override def handleParseFailed(failed: Topic.ParseFailed): Try[IncomingRecord[K, V]] =
+      handlePF(failed)
+
+    override def nextOffset(x: IncomingRecord[K, V]) =
+      x.metadata.nextOffset
+
+    private def config: NewTopic =
+      new NewTopic(
+        topic,
+        purpose.partitions,
+        purpose.replicationFactor,
+        // The .configs(...) method performs mutation, but as long as we keep it
+        // local to the method that has done the `new`, the result is referentially
+        // transparent.
+      ).configs(purpose.configs.toMap.asJava)
+
+    override def registerSchemas[F[_]: Sync](
+        schemaRegistryUri: SchemaRegistryUrl,
+        configs: Map[String, Object] = Map.empty,
+    ): F[Unit] =
+      SchemaRegistryApi
+        .register[F, K, V](
+          schemaRegistryUri.url,
+          topic,
+          configs,
+        )
+        .void
+
+    override def setUp[F[_]: Sync](
+        bootstrapServers: BootstrapServers,
+        schemaRegistryUri: SchemaRegistryUrl,
+        configs: Map[String, Object] = Map.empty,
+    ): F[Unit] =
+      for {
+        _ <- AdminApi.createTopicsIdempotent(
+          bootstrapServers.bs,
+          List(config),
+          configs,
+        )
+        _ <- registerSchemas(schemaRegistryUri, configs)
+      } yield ()
+  }
+
   def apply[
       K: FromRecord: ToRecord: SchemaFor,
       V: FromRecord: ToRecord: SchemaFor,
@@ -95,94 +169,59 @@ object Topic {
       topic: String,
       topicPurpose: TopicPurpose,
   ): Topic[K, V] =
-    new Topic[K, V] {
-      override def coparse(
-          kv: (K, V)
-      ): ProducerRecord[GenericRecord, GenericRecord] =
-        new ProducerRecord(topic, kv._1, kv._2).toGenericRecord
+    Impl(topic, topicPurpose, Failure.apply)
 
-      override def name: TopicName = TopicName(topic)
+  private final case class InvariantImpl[K, A, B](
+    fa: Topic[K, A],
+    f: A => B,
+    g: B => A,
+    handlePF: Option[Topic.ParseFailed => Try[IncomingRecord[K, B]]],
+  ) extends Topic[K, B] {
+    override def parse(
+        cr: ConsumerRecord[GenericRecord, GenericRecord]
+    ): Try[IncomingRecord[K, B]] =
+      fa.parse(cr).map(_.map(f))
 
-      override def purpose: TopicPurpose = topicPurpose
 
-      override def parse(cr: CR): Try[IncomingRecord[K, V]] =
-        parse1[K, V](cr).map { kv =>
-          IncomingRecord.of(cr).bimap(_ => kv._1, _ => kv._2)
-        }
+    override def handleParseFailed(failed: Topic.ParseFailed): Try[IncomingRecord[K, B]] =
+      handlePF.fold(
+        fa.handleParseFailed(failed).map(_.map(f))
+      )(h => h(failed))
 
-      override def nextOffset(x: IncomingRecord[K, V]) =
-        x.metadata.nextOffset
+    override def withParseFailedHandler(
+      handle: Topic.ParseFailed => Try[IncomingRecord[K, B]]
+    ): Topic[K, B] =
+      copy(handlePF = handle.some)
 
-      private def config: NewTopic =
-        new NewTopic(
-          topic,
-          purpose.partitions,
-          purpose.replicationFactor,
-          // The .configs(...) method performs mutation, but as long as we keep it
-          // local to the method that has done the `new`, the result is referentially
-          // transparent.
-        ).configs(purpose.configs.toMap.asJava)
+    override def coparse(
+        kv: (K, B)
+    ): ProducerRecord[GenericRecord, GenericRecord] =
+      fa.coparse((kv._1, g(kv._2)))
 
-      override def registerSchemas[F[_]: Sync](
-          schemaRegistryUri: SchemaRegistryUrl,
-          configs: Map[String, Object] = Map.empty,
-      ): F[Unit] =
-        SchemaRegistryApi
-          .register[F, K, V](
-            schemaRegistryUri.url,
-            topic,
-            configs,
-          )
-          .void
+    override def nextOffset(
+        cr: IncomingRecord[K, B]
+    ) = cr.metadata.nextOffset
 
-      override def setUp[F[_]: Sync](
-          bootstrapServers: BootstrapServers,
-          schemaRegistryUri: SchemaRegistryUrl,
-          configs: Map[String, Object] = Map.empty,
-      ): F[Unit] =
-        for {
-          _ <- AdminApi.createTopicsIdempotent(
-            bootstrapServers.bs,
-            List(config),
-            configs,
-          )
-          _ <- registerSchemas(schemaRegistryUri, configs)
-        } yield ()
-    }
+    override def registerSchemas[F[_]: Sync](
+        schemaRegistryUri: SchemaRegistryUrl,
+        configs: Map[String, Object] = Map.empty,
+    ): F[Unit] = fa.registerSchemas(schemaRegistryUri, configs)
+
+    override def setUp[F[_]: Sync](
+        bootstrapServers: BootstrapServers,
+        schemaRegistryUri: SchemaRegistryUrl,
+        configs: Map[String, Object] = Map.empty,
+    ): F[Unit] = fa.setUp(bootstrapServers, schemaRegistryUri, configs)
+
+    override def name: TopicName = fa.name
+    override def purpose: TopicPurpose = fa.purpose
+  }
 
   implicit def invariant[K]: Invariant[Topic[K, *]] =
     new Invariant[Topic[K, *]] {
       override def imap[A, B](
           fa: Topic[K, A]
       )(f: A => B)(g: B => A): Topic[K, B] =
-        new Topic[K, B] {
-          override def parse(
-              cr: ConsumerRecord[GenericRecord, GenericRecord]
-          ): Try[IncomingRecord[K, B]] =
-            fa.parse(cr).map(_.map(f))
-
-          override def coparse(
-              kv: (K, B)
-          ): ProducerRecord[GenericRecord, GenericRecord] =
-            fa.coparse((kv._1, g(kv._2)))
-
-          override def nextOffset(
-              cr: IncomingRecord[K, B]
-          ) = cr.metadata.nextOffset
-
-          override def registerSchemas[F[_]: Sync](
-              schemaRegistryUri: SchemaRegistryUrl,
-              configs: Map[String, Object] = Map.empty,
-          ): F[Unit] = fa.registerSchemas(schemaRegistryUri, configs)
-
-          override def setUp[F[_]: Sync](
-              bootstrapServers: BootstrapServers,
-              schemaRegistryUri: SchemaRegistryUrl,
-              configs: Map[String, Object] = Map.empty,
-          ): F[Unit] = fa.setUp(bootstrapServers, schemaRegistryUri, configs)
-
-          override def name: TopicName = fa.name
-          override def purpose: TopicPurpose = fa.purpose
-        }
+        InvariantImpl(fa, f, g, None)
     }
 }

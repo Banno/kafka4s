@@ -507,7 +507,9 @@ object RecordStream {
     private def parseBatch[F[_]: ApplicativeThrow, A, B](
         topical: Topical[A, B]
     ): ConsumerRecords[GenericRecord, GenericRecord] => F[IncomingRecords[A]] =
-      IncomingRecords.parseWith(_, topical.parse).liftTo[F]
+      IncomingRecords
+        .parseWith(_, topical.parse(_), topical.handleParseFailed)
+        .liftTo[F]
 
     private def recordStream[F[_]: Async, A, B](
         consumer: ConsumerApi[F, GenericRecord, GenericRecord],
