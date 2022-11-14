@@ -172,7 +172,25 @@ object Topic {
   ): Topic[K, V] =
     Impl(topic, topicPurpose, None, None)
 
-  def apply[
+  sealed trait Builder[K, V] {
+    def withKeyParseFailedHandler(
+        handle: (GenericRecord, Throwable) => Try[K]
+    ): Builder[K, V]
+
+    final def recoverKeyAs(value: K) =
+      withKeyParseFailedHandler((_, _) => Success(value))
+
+    def withValueParseFailedHandler(
+        handle: (GenericRecord, Throwable) => Try[V]
+    ): Builder[K, V]
+
+    final def recoverValueAs(value: V) =
+      withValueParseFailedHandler((_, _) => Success(value))
+
+    def build: Topic[K, V]
+  }
+
+  final case class BuilderImpl[
       K: FromRecord: ToRecord: SchemaFor,
       V: FromRecord: ToRecord: SchemaFor,
   ](
@@ -180,8 +198,29 @@ object Topic {
       topicPurpose: TopicPurpose,
       handleKeyParseFailed: Option[(GenericRecord, Throwable) => Try[K]],
       handleValueParseFailed: Option[(GenericRecord, Throwable) => Try[V]],
-  ): Topic[K, V] =
-    Impl(topic, topicPurpose, handleKeyParseFailed, handleValueParseFailed)
+  ) extends Builder[K, V] {
+    override def withKeyParseFailedHandler(
+        handle: (GenericRecord, Throwable) => Try[K]
+    ): Builder[K, V] =
+      copy(handleKeyParseFailed = handle.some)
+
+    override def withValueParseFailedHandler(
+        handle: (GenericRecord, Throwable) => Try[V]
+    ): Builder[K, V] =
+      copy(handleValueParseFailed = handle.some)
+
+    override def build: Topic[K, V] =
+      Impl(topic, topicPurpose, handleKeyParseFailed, handleValueParseFailed)
+  }
+
+  def builder[
+      K: FromRecord: ToRecord: SchemaFor,
+      V: FromRecord: ToRecord: SchemaFor,
+  ](
+      topic: String,
+      topicPurpose: TopicPurpose,
+  ): Builder[K, V] =
+    BuilderImpl(topic, topicPurpose, none, none)
 
   private final case class InvariantImpl[K, A, B](
       fa: Topic[K, A],
