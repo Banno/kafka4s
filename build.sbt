@@ -1,12 +1,12 @@
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
 val V = new {
-  val scalaVersion = "2.13.9"
+  val scalaVersion = "2.13.10"
   val crossScalaVersions = List()
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
-  val cats = "2.8.0"
-  val catsEffect = "3.3.14"
+  val cats = "2.9.0"
+  val catsEffect = "3.4.0"
   val confluent = "6.2.6"
   val curator = "5.2.0"
   val disciplineMunit = "1.0.9"
@@ -17,13 +17,13 @@ val V = new {
   val kindProjector = "0.13.2"
   val log4cats = "2.5.0"
   val log4j = "1.7.36"
-  val logback = "1.2.11"
+  val logback = "1.4.4"
   val scalacheck = "1.17.0"
   val scalacheckEffect = "0.6.0"
   val scalacheckMagnolia = "0.6.0"
   val munit = "0.7.29"
   val munitCE3 = "1.0.7"
-  val scalatest = "3.2.13"
+  val scalatest = "3.2.14"
   val scalatestPlus = "3.2.3.0"
   val simpleClient = "0.11.0"
 }
