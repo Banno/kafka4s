@@ -60,14 +60,14 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
       record: ProducerRecord[K, V],
       callback: Either[Exception, RecordMetadata] => Unit,
   ): Unit = {
-    sendRaw(
+    val _: JFuture[RecordMetadata] = sendRaw(
       record,
       new Callback() {
         override def onCompletion(rm: RecordMetadata, e: Exception): Unit =
           if (e == null) callback(Right(rm)) else callback(Left(e))
       },
     )
-    () // discard the returned JFuture[RecordMetadata]
+    ()
   }
 
   /** The returned F[_] completes as soon as the underlying
