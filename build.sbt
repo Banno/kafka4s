@@ -206,3 +206,4 @@ inThisBuild(
 
 addCommandAlias("fmt", "scalafmtSbt;scalafmtAll;")
 addCommandAlias("fmtck", "scalafmtSbtCheck;scalafmtCheckAll;")
+addCommandAlias("build", "Test / compile")
