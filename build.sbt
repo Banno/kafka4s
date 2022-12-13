@@ -16,7 +16,7 @@ val V = new {
   val kafka = s"$confluent-ce"
   val kindProjector = "0.13.2"
   val log4cats = "2.5.0"
-  val logback = "1.4.4"
+  val logback = "1.4.5"
   val scalacheck = "1.17.0"
   val scalacheckEffect = "0.6.0"
   val scalacheckMagnolia = "0.6.0"
@@ -24,7 +24,7 @@ val V = new {
   val munitCE3 = "1.0.7"
   val scalatest = "3.2.14"
   val scalatestPlus = "3.2.3.0"
-  val simpleClient = "0.11.0"
+  val simpleClient = "0.16.0"
 }
 
 lazy val kafka4s = project
