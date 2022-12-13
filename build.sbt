@@ -16,7 +16,6 @@ val V = new {
   val kafka = s"$confluent-ce"
   val kindProjector = "0.13.2"
   val log4cats = "2.5.0"
-  val log4j = "1.7.36"
   val logback = "1.4.5"
   val scalacheck = "1.17.0"
   val scalacheckEffect = "0.6.0"
@@ -58,7 +57,6 @@ lazy val core = project
         .classifier("test"),
       ("org.apache.kafka" % "kafka-streams-test-utils" % V.kafka % "test"),
       "ch.qos.logback" % "logback-classic" % V.logback % "test",
-      "org.slf4j" % "log4j-over-slf4j" % V.log4j % "test",
       "org.scalacheck" %% "scalacheck" % V.scalacheck % "test",
       "org.scalameta" %% "munit" % V.munit % "test",
       "org.scalameta" %% "munit-scalacheck" % V.munit % "test",
@@ -208,3 +206,4 @@ inThisBuild(
 
 addCommandAlias("fmt", "scalafmtSbt;scalafmtAll;")
 addCommandAlias("fmtck", "scalafmtSbtCheck;scalafmtCheckAll;")
+addCommandAlias("build", "Test / compile")
