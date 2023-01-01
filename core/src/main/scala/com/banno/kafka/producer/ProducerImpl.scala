@@ -22,7 +22,7 @@ import java.util.concurrent.{Future => JFuture}
 import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
 import org.apache.kafka.common._
-import org.apache.kafka.clients.consumer.OffsetAndMetadata
+import org.apache.kafka.clients.consumer._
 import org.apache.kafka.clients.producer._
 
 case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
@@ -40,9 +40,9 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
     F.delay(p.partitionsFor(topic).asScala.toSeq)
   def sendOffsetsToTransaction(
       offsets: Map[TopicPartition, OffsetAndMetadata],
-      consumerGroupId: String,
+      groupMetadata: ConsumerGroupMetadata,
   ): F[Unit] =
-    F.delay(p.sendOffsetsToTransaction(offsets.asJava, consumerGroupId))
+    F.delay(p.sendOffsetsToTransaction(offsets.asJava, groupMetadata))
 
   private[producer] def sendRaw(
       record: ProducerRecord[K, V]

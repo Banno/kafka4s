@@ -25,7 +25,7 @@ import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
 import org.apache.kafka.common._
 import org.apache.kafka.common.serialization.Serializer
-import org.apache.kafka.clients.consumer.OffsetAndMetadata
+import org.apache.kafka.clients.consumer._
 import org.apache.kafka.clients.producer._
 import org.apache.avro.generic.GenericRecord
 import com.sksamuel.avro4s.ToRecord
@@ -45,7 +45,7 @@ trait ProducerApi[F[_], K, V] {
   def partitionsFor(topic: String): F[Seq[PartitionInfo]]
   def sendOffsetsToTransaction(
       offsets: Map[TopicPartition, OffsetAndMetadata],
-      consumerGroupId: String,
+      groupMetadata: ConsumerGroupMetadata,
   ): F[Unit]
 
   private[producer] def sendRaw(
@@ -89,9 +89,9 @@ trait ProducerApi[F[_], K, V] {
         self.partitionsFor(topic)
       override def sendOffsetsToTransaction(
           offsets: Map[TopicPartition, OffsetAndMetadata],
-          consumerGroupId: String,
+          groupMetadata: ConsumerGroupMetadata,
       ): F[Unit] =
-        self.sendOffsetsToTransaction(offsets, consumerGroupId)
+        self.sendOffsetsToTransaction(offsets, groupMetadata)
 
       override private[producer] def sendRaw(
           record: ProducerRecord[A, B]
@@ -136,9 +136,9 @@ trait ProducerApi[F[_], K, V] {
         f(self.partitionsFor(topic))
       override def sendOffsetsToTransaction(
           offsets: Map[TopicPartition, OffsetAndMetadata],
-          consumerGroupId: String,
+          groupMetadata: ConsumerGroupMetadata,
       ): G[Unit] =
-        f(self.sendOffsetsToTransaction(offsets, consumerGroupId))
+        f(self.sendOffsetsToTransaction(offsets, groupMetadata))
 
       override private[producer] def sendRaw(
           record: ProducerRecord[K, V]

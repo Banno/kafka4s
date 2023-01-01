@@ -20,7 +20,7 @@ import cats.{Applicative, Foldable, MonadError, Traverse}
 import cats.syntax.all._
 import fs2._
 import org.apache.kafka.common._
-import org.apache.kafka.clients.consumer.OffsetAndMetadata
+import org.apache.kafka.clients.consumer._
 import org.apache.kafka.clients.producer._
 
 case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
@@ -68,13 +68,13 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
   def transaction[G[_]: Foldable](
       records: G[ProducerRecord[K, V]],
       offsets: Map[TopicPartition, OffsetAndMetadata],
-      consumerGroupId: String,
+      groupMetadata: ConsumerGroupMetadata,
   )(implicit F: MonadError[F, Throwable]): F[Unit] =
     (for {
       _ <- producer.beginTransaction
       // should be no need to wait for RecordMetadatas or errors, since commitTransaction flushes and throws
       _ <- sendAndForgetBatch(records)
-      _ <- producer.sendOffsetsToTransaction(offsets, consumerGroupId)
+      _ <- producer.sendOffsetsToTransaction(offsets, groupMetadata)
       _ <- producer.commitTransaction
     } yield ()).handleErrorWith(KafkaTransactionError(_, producer))
 }
