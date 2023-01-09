@@ -124,7 +124,7 @@ package object kafka {
         cr.partition,
         cr.offset,
         cr.timestamp,
-        cr.timestampType, 
+        cr.timestampType,
         cr.serializedKeySize,
         cr.serializedValueSize,
         f(cr.key),
