@@ -124,12 +124,13 @@ package object kafka {
         cr.partition,
         cr.offset,
         cr.timestamp,
-        cr.timestampType, /*cr.checksum*/ -1,
+        cr.timestampType,
         cr.serializedKeySize,
         cr.serializedValueSize,
         f(cr.key),
         g(cr.value),
         cr.headers,
+        cr.leaderEpoch,
       )
   }
 
