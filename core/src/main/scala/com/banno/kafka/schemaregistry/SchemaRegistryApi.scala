@@ -14,21 +14,21 @@
  * limitations under the License.
  */
 
-package com.banno.kafka.schemaregistry
+package com.banno.kafka
+package schemaregistry
 
-import org.apache.avro.Schema
+import cats.*
+import cats.effect.*
+import cats.syntax.all.*
+import io.confluent.kafka.schemaregistry.ParsedSchema
+import io.confluent.kafka.schemaregistry.client.rest.RestService
 import io.confluent.kafka.schemaregistry.client.{
   CachedSchemaRegistryClient,
   SchemaMetadata,
 }
-import io.confluent.kafka.schemaregistry.client.rest.RestService
-import cats.syntax.all._
-import cats.effect.Sync
-import com.sksamuel.avro4s.SchemaFor
+import org.apache.avro.{Schema as JSchema}
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import io.confluent.kafka.schemaregistry.ParsedSchema
-
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.control.NoStackTrace
 
 trait SchemaRegistryApi[F[_]] {
@@ -37,13 +37,13 @@ trait SchemaRegistryApi[F[_]] {
   def getAllSubjects: F[Iterable[String]]
 
   @deprecated("Use getSchemaById instead.", "3.0.0-M24")
-  def getById(id: Int): F[Schema]
+  def getById(id: Int): F[JSchema]
 
   @deprecated("Use getSchemaBySubjectAndId instead.", "3.0.0-M24")
   def getSchemaById(id: Int): F[ParsedSchema]
 
   @deprecated("Use getSchemaBySubjectAndId instead.", "3.0.0-M24")
-  def getBySubjectAndId(subject: String, id: Int): F[Schema]
+  def getBySubjectAndId(subject: String, id: Int): F[JSchema]
 
   def getSchemaBySubjectAndId(subject: String, id: Int): F[ParsedSchema]
   def getCompatibility(subject: String): F[CompatibilityLevel]
@@ -51,12 +51,12 @@ trait SchemaRegistryApi[F[_]] {
   def getSchemaMetadata(subject: String, version: Int): F[SchemaMetadata]
 
   @deprecated("Use getVersion(String,ParsedSchema) instead.", "3.0.0-M24")
-  def getVersion(subject: String, schema: Schema): F[Int]
+  def getVersion(subject: String, schema: JSchema): F[Int]
 
   def getVersion(subject: String, schema: ParsedSchema): F[Int]
 
   @deprecated("Use register(String,ParsedSchema) instead.", "3.0.0-M24")
-  def register(subject: String, schema: Schema): F[Int]
+  def register(subject: String, schema: JSchema): F[Int]
 
   def register(subject: String, schema: ParsedSchema): F[Int]
 
@@ -64,7 +64,7 @@ trait SchemaRegistryApi[F[_]] {
     "Use testCompatibility(String,ParsedSchema) instead.",
     "3.0.0-M24",
   )
-  def testCompatibility(subject: String, schema: Schema): F[Boolean]
+  def testCompatibility(subject: String, schema: JSchema): F[Boolean]
 
   def testCompatibility(subject: String, schema: ParsedSchema): F[Boolean]
 
@@ -72,6 +72,50 @@ trait SchemaRegistryApi[F[_]] {
       subject: String,
       compatibility: CompatibilityLevel,
   ): F[String]
+
+  final def keySubject(topic: String): String = topic + "-key"
+  final def valueSubject(topic: String): String = topic + "-value"
+
+  final def register[A](subject: String, schema: Schema[A]): F[Int] =
+    register(subject, schema.parsed)
+
+  final def registerKey[K](topic: String, schema: Schema[K]): F[Int] =
+    register[K](keySubject(topic), schema)
+
+  final def registerValue[V](topic: String, schema: Schema[V]): F[Int] =
+    register[V](valueSubject(topic), schema)
+
+  final def register[K, V](
+      topic: String,
+      keySchema: Schema[K],
+      valueSchema: Schema[V],
+  )(implicit F: FlatMap[F]): F[(Int, Int)] =
+    for {
+      k <- registerKey(topic, keySchema)
+      v <- registerValue(topic, valueSchema)
+    } yield (k, v)
+
+  final def isCompatible(subject: String, schema: JSchema): F[Boolean] =
+    testCompatibility(subject, schema.asParsedSchema)
+
+  final def isCompatible[A](subject: String, schema: Schema[A]): F[Boolean] =
+    isCompatible(subject, schema.ast)
+
+  final def isKeyCompatible[K](topic: String, schema: Schema[K]): F[Boolean] =
+    isCompatible(keySubject(topic), schema)
+
+  final def isValueCompatible[V](topic: String, schema: Schema[V]): F[Boolean] =
+    isCompatible(valueSubject(topic), schema)
+
+  final def isCompatible[K, V](
+      topic: String,
+      keySchema: Schema[K],
+      valueSchema: Schema[V],
+  )(implicit F: FlatMap[F]): F[(Boolean, Boolean)] =
+    for {
+      k <- isKeyCompatible[K](topic, keySchema)
+      v <- isValueCompatible[V](topic, valueSchema)
+    } yield (k, v)
 }
 
 object SchemaRegistryApi {
@@ -128,21 +172,6 @@ object SchemaRegistryApi {
       SchemaRegistryImpl[F](_)
     )
 
-  def register[F[_]: Sync, K: SchemaFor, V: SchemaFor](
-      baseUrl: String,
-      topic: String,
-      configs: Map[String, Object] = Map.empty,
-  ) =
-    for {
-      schemaRegistry <- apply(baseUrl, configs)
-      k <- schemaRegistry.registerKey[K](topic)
-      _ <- log.debug(s"Registered key schema for topic ${topic} at ${baseUrl}")
-      v <- schemaRegistry.registerValue[V](topic)
-      _ <- log.debug(
-        s"Registered value schema for topic ${topic} at ${baseUrl}"
-      )
-    } yield (k, v)
-
   sealed trait CompatibilityLevel {
     def asString: String
   }
@@ -196,4 +225,17 @@ object SchemaRegistryApi {
         throw ParseFailure(s"Unable to parse CompatibilityLevel: $s")
       )
   }
+
+  def register[F[_]: Sync, K, V](
+      baseUrl: String,
+      topic: String,
+      keySchema: Schema[K],
+      valueSchema: Schema[V],
+      configs: Map[String, Object] = Map.empty,
+  ) =
+    for {
+      schemaRegistry <- SchemaRegistryApi(baseUrl, configs)
+      k <- schemaRegistry.registerKey[K](topic, keySchema)
+      v <- schemaRegistry.registerValue[V](topic, valueSchema)
+    } yield (k, v)
 }

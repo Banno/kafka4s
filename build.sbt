@@ -32,7 +32,7 @@ lazy val kafka4s = project
   .settings(scalaVersion := V.scalaVersion)
   .disablePlugins(MimaPlugin)
   .enablePlugins(NoPublishPlugin)
-  .aggregate(core, examples, site)
+  .aggregate(core, avro4s, examples, site)
 
 lazy val core = project
   .in(file("core"))
@@ -49,27 +49,47 @@ lazy val core = project
     scalacOptions += "-Wnonunit-statement",
     testFrameworks += new TestFramework("munit.Framework"),
     libraryDependencies ++= Seq(
-      "org.apache.curator" % "curator-test" % V.curator % "test",
-      ("org.apache.kafka" %% "kafka" % V.kafka % "test").classifier("test"),
-      ("org.apache.kafka" % "kafka-clients" % V.kafka % "test")
+      "org.apache.curator" % "curator-test" % V.curator % Test,
+      ("org.apache.kafka" %% "kafka" % V.kafka % Test).classifier("test"),
+      ("org.apache.kafka" % "kafka-clients" % V.kafka % Test)
         .classifier("test"),
-      ("org.apache.kafka" % "kafka-streams" % V.kafka % "test")
+      ("org.apache.kafka" % "kafka-streams" % V.kafka % Test)
         .classifier("test"),
-      ("org.apache.kafka" % "kafka-streams-test-utils" % V.kafka % "test"),
-      "ch.qos.logback" % "logback-classic" % V.logback % "test",
-      "org.scalacheck" %% "scalacheck" % V.scalacheck % "test",
-      "org.scalameta" %% "munit" % V.munit % "test",
-      "org.scalameta" %% "munit-scalacheck" % V.munit % "test",
+      ("org.apache.kafka" % "kafka-streams-test-utils" % V.kafka % Test),
+      "ch.qos.logback" % "logback-classic" % V.logback % Test,
+      "org.scalacheck" %% "scalacheck" % V.scalacheck % Test,
+      "org.scalameta" %% "munit" % V.munit % Test,
+      "org.scalameta" %% "munit-scalacheck" % V.munit % Test,
       "org.typelevel" %% "scalacheck-effect-munit" % V.scalacheckEffect,
-      "org.typelevel" %% "munit-cats-effect-3" % V.munitCE3 % "test",
-      "org.scalatest" %% "scalatest" % V.scalatest % "test",
-      "org.scalatestplus" %% "scalacheck-1-15" % "3.2.11.0" % Test,
-      "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % "test",
+      "org.typelevel" %% "munit-cats-effect-3" % V.munitCE3 % Test,
       "org.typelevel" %% "cats-effect" % V.catsEffect,
-      "org.typelevel" %% "cats-laws" % V.cats % "test",
-      "org.typelevel" %% "discipline-munit" % V.disciplineMunit % "test",
+      "org.typelevel" %% "cats-laws" % V.cats % Test,
+      "org.scalatest" %% "scalatest" % V.scalatest % Test,
+      "org.typelevel" %% "discipline-munit" % V.disciplineMunit % Test,
     ),
   )
+
+lazy val avro4s = project
+  .in(file("avro4s"))
+  .settings(commonSettings)
+  .settings(
+    name := "kafka4s-avro4s",
+    mimaBinaryIssueFilters ++= {
+      import com.typesafe.tools.mima.core._
+      import com.typesafe.tools.mima.core.ProblemFilters._
+      Seq()
+    },
+    libraryDependencies ++= Seq(
+      "com.sksamuel.avro4s" %% "avro4s-core" % V.avro4s,
+      "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % Test,
+      "org.scalatest" %% "scalatest" % V.scalatest % Test,
+      "org.scalatestplus" %% "scalacheck-1-15" % "3.2.11.0" % Test,
+    ),
+  )
+  .settings(
+    scalacOptions += "-Wnonunit-statement",
+    testFrameworks += new TestFramework("munit.Framework"),
+  ).dependsOn(core % "compile->compile;test->test")
 
 lazy val examples = project
   .enablePlugins(NoPublishPlugin)
@@ -82,7 +102,7 @@ lazy val examples = project
     fork := true,
   )
   .disablePlugins(MimaPlugin)
-  .dependsOn(core)
+  .dependsOn(core, avro4s)
 
 lazy val site = project
   .in(file("site"))
@@ -161,7 +181,6 @@ lazy val commonSettings = Seq(
     "co.fs2" %% "fs2-core" % V.fs2,
     "org.apache.kafka" % "kafka-clients" % V.kafka,
     "io.confluent" % "kafka-avro-serializer" % V.confluent,
-    "com.sksamuel.avro4s" %% "avro4s-core" % V.avro4s,
     "io.prometheus" % "simpleclient" % V.simpleClient,
     "io.chrisdavenport" %% "epimetheus" % V.epimetheus,
     "org.typelevel" %% "log4cats-slf4j" % V.log4cats,

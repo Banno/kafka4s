@@ -16,18 +16,16 @@
 
 package com.banno.kafka
 
-import scala.util._
-
-import cats._
-import cats.data._
-import cats.effect._
-import cats.syntax.all._
-import com.sksamuel.avro4s._
+import cats.*
+import cats.data.*
+import cats.effect.*
+import cats.syntax.all.*
 import org.apache.avro.generic.GenericRecord
-import org.apache.kafka.clients.consumer._
-import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.clients.consumer.*
 import org.apache.kafka.clients.producer.ProducerRecord
-import shapeless._
+import org.apache.kafka.common.TopicPartition
+import scala.util.*
+import shapeless.*
 
 sealed trait Topics[A, B] extends Topical[A, B]
 
@@ -145,15 +143,6 @@ object Topics {
   final case class Builder[A <: Coproduct, B <: Coproduct] private[Topics] (
       private val topics: Topics[A, B]
   ) {
-    def and[
-        K: FromRecord: ToRecord: SchemaFor,
-        V: FromRecord: ToRecord: SchemaFor,
-    ](
-        topic: String,
-        purpose: TopicPurpose,
-    ): Builder[IncomingRecord[K, V] :+: A, (K, V) :+: B] =
-      and(Topic[K, V](topic, purpose))
-
     def and[K, V](
         topic: Topic[K, V]
     ): Builder[IncomingRecord[K, V] :+: A, (K, V) :+: B] =
@@ -166,13 +155,4 @@ object Topics {
       topic: Topic[K, V]
   ): Builder[IncomingRecord[K, V] :+: CNil, (K, V) :+: CNil] =
     Builder(SingletonTopics(topic))
-
-  def of[
-      K: FromRecord: ToRecord: SchemaFor,
-      V: FromRecord: ToRecord: SchemaFor,
-  ](
-      topic: String,
-      purpose: TopicPurpose,
-  ): Builder[IncomingRecord[K, V] :+: CNil, (K, V) :+: CNil] =
-    of(Topic[K, V](topic, purpose))
 }

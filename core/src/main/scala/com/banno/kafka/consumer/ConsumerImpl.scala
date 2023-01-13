@@ -16,16 +16,14 @@
 
 package com.banno.kafka.consumer
 
-import cats.syntax.all._
-import cats.effect.Sync
+import cats.effect.*
+import cats.syntax.all.*
 import java.util.regex.Pattern
-
+import org.apache.kafka.clients.consumer.*
+import org.apache.kafka.common.*
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-
-import scala.jdk.CollectionConverters._
-import scala.concurrent.duration._
-import org.apache.kafka.common._
-import org.apache.kafka.clients.consumer._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 
 case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
     extends ConsumerApi[F, K, V] {

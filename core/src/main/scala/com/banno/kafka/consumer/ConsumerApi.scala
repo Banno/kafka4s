@@ -16,23 +16,22 @@
 
 package com.banno.kafka.consumer
 
+import cats.*
+import cats.arrow.*
+import cats.effect.*
+import cats.syntax.all.*
+import com.banno.kafka.*
 import fs2.Stream
-import cats._
-import cats.arrow._
-import cats.effect._
-import cats.syntax.all._
-import java.util.regex.Pattern
-import scala.jdk.CollectionConverters._
-import scala.concurrent.duration._
-import org.apache.kafka.common._
-import org.apache.kafka.common.serialization.Deserializer
-import org.apache.kafka.clients.consumer._
-import org.apache.avro.generic.GenericRecord
-import com.sksamuel.avro4s.FromRecord
 import io.confluent.kafka.serializers.KafkaAvroDeserializer
-import com.banno.kafka._
 import java.util.concurrent.{Executors, ThreadFactory}
+import java.util.regex.Pattern
+import org.apache.avro.generic.GenericRecord
+import org.apache.kafka.clients.consumer.*
+import org.apache.kafka.common.*
+import org.apache.kafka.common.serialization.Deserializer
+import scala.concurrent.duration.*
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
+import scala.jdk.CollectionConverters.*
 
 trait ConsumerApi[F[_], K, V] {
   def assign(partitions: Iterable[TopicPartition]): F[Unit]
@@ -164,16 +163,6 @@ object ShiftingConsumer {
         Async[F].evalOn(_, blockingContext)
       )
     )
-}
-
-object Avro4sConsumer {
-  def apply[F[_]: Functor, K, V](
-      c: ConsumerApi[F, GenericRecord, GenericRecord]
-  )(implicit
-      kfr: FromRecord[K],
-      vfr: FromRecord[V],
-  ): ConsumerApi[F, K, V] =
-    c.bimap(kfr.from, vfr.from)
 }
 
 object ConsumerApi {
@@ -373,14 +362,6 @@ object ConsumerApi {
           (configs.toMap + SpecificAvroReader(true)).toSeq: _*
         )
     }
-  }
-
-  object Avro4s {
-
-    def resource[F[_]: Async, K: FromRecord, V: FromRecord](
-        configs: (String, AnyRef)*
-    ): Resource[F, ConsumerApi[F, K, V]] =
-      ConsumerApi.Avro.Generic.resource[F](configs: _*).map(Avro4sConsumer(_))
   }
 
   object NonShifting {

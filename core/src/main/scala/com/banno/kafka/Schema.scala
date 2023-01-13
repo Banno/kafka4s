@@ -18,11 +18,15 @@ package com.banno.kafka
 
 import io.confluent.kafka.schemaregistry.ParsedSchema
 import io.confluent.kafka.schemaregistry.avro.AvroSchema
-import org.apache.avro.{Schema as JSchema}
+import org.apache.avro.{Schema => JSchema}
+import org.apache.avro.generic.GenericRecord
+import scala.util.Try
 
-package object schemaregistry {
-  implicit class SchemaOps(schema: JSchema) {
-    val asParsedSchema: ParsedSchema =
-      new AvroSchema(schema)
-  }
+final case class Schema[A](
+    ast: JSchema, // Abstract Syntax Tree
+    parse: GenericRecord => Try[A],
+    unparse: A => GenericRecord,
+) {
+  def parsed: ParsedSchema =
+    new AvroSchema(ast)
 }

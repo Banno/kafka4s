@@ -16,12 +16,12 @@
 
 package com.banno.kafka.producer
 
-import cats.{Applicative, Foldable, MonadError, Traverse}
-import cats.syntax.all._
-import fs2._
-import org.apache.kafka.common._
-import org.apache.kafka.clients.consumer._
-import org.apache.kafka.clients.producer._
+import cats.*
+import cats.syntax.all.*
+import fs2.*
+import org.apache.kafka.common.*
+import org.apache.kafka.clients.consumer.*
+import org.apache.kafka.clients.producer.*
 
 case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
 
@@ -77,16 +77,4 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
       _ <- producer.sendOffsetsToTransaction(offsets, groupMetadata)
       _ <- producer.commitTransaction
     } yield ()).handleErrorWith(KafkaTransactionError(_, producer))
-}
-
-import org.apache.avro.generic.GenericRecord
-import com.sksamuel.avro4s.ToRecord
-
-case class GenericProducerOps[F[_]](
-    producer: ProducerApi[F, GenericRecord, GenericRecord]
-) {
-
-  def toAvro4s[K: ToRecord, V: ToRecord]: ProducerApi[F, K, V] =
-    Avro4sProducer[F, K, V](producer)
-
 }
