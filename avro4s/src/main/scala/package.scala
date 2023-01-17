@@ -34,20 +34,32 @@ package object avro4s {
   implicit final class SchemaRegistryObjectOpsOps(
       private val x: SchemaRegistryApi.type
   ) extends AnyVal {
-    def avro4s: SchemaRegistryApiObjectOps =
-      new SchemaRegistryApiObjectOps(x)
+    def avro4s: SchemaRegistryApiObjectOps.type =
+      SchemaRegistryApiObjectOps
   }
 
-  implicit class GenericProducerAvro4sOps[F[_]](
-      producer: ProducerApi[F, GenericRecord, GenericRecord]
-  ) {
+  implicit final class TopicObjectOpsOps(
+      private val x: Topic.type
+  ) extends AnyVal {
+    def avro4s: TopicObjectOps.type = TopicObjectOps
+  }
+
+  implicit final class SchemaObjectOpsOps(
+      private val x: Schema.type
+  ) extends AnyVal {
+    def avro4s: SchemaObjectOps.type = SchemaObjectOps
+  }
+
+  implicit final class GenericProducerAvro4sOps[F[_]](
+      private val producer: ProducerApi[F, GenericRecord, GenericRecord]
+  ) extends AnyVal {
     def toAvro4s[K: ToRecord, V: ToRecord]: ProducerApi[F, K, V] =
       Avro4sProducer[F, K, V](producer)
   }
 
-  implicit class GenericConsumerRecordAvro4sOps(
-      cr: ConsumerRecord[GenericRecord, GenericRecord]
-  ) {
+  implicit final class GenericConsumerRecordAvro4sOps(
+      private val cr: ConsumerRecord[GenericRecord, GenericRecord]
+  ) extends AnyVal {
     def maybeKeyAs[K](implicit kfr: FromRecord[K]): Option[K] =
       cr.maybeKey.map(kfr.from)
     def maybeValueAs[V](implicit vfr: FromRecord[V]): Option[V] =
@@ -58,7 +70,9 @@ package object avro4s {
     def valueAs[V](implicit vfr: FromRecord[V]): V = vfr.from(cr.value)
   }
 
-  implicit class ProducerRecordAvro4sOps[K, V](pr: ProducerRecord[K, V]) {
+  implicit final class ProducerRecordAvro4sOps[K, V](
+      private val pr: ProducerRecord[K, V]
+  ) extends AnyVal {
 
     /** This only works when both key and value are non-null. */
     def toGenericRecord(implicit

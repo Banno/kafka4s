@@ -60,9 +60,7 @@ final class SchemaRegistryAvro4sOps[F[_]](
     } yield (k, v)
 }
 
-final class SchemaRegistryApiObjectOps(
-    private val self: SchemaRegistryApi.type
-) extends AnyVal {
+object SchemaRegistryApiObjectOps {
   def register[F[_]: Sync, K: SchemaFor, V: SchemaFor](
       baseUrl: String,
       topic: String,
