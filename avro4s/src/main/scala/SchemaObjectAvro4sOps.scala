@@ -22,7 +22,7 @@ import org.apache.avro.{Schema as JSchema}
 import org.apache.avro.generic.GenericRecord
 import scala.util.*
 
-object SchemaObjectOps {
+object SchemaObjectAvro4sOps {
   private def fromGeneric[A](
       gr: GenericRecord
   )(implicit FR: FromRecord[A]): Try[A] =

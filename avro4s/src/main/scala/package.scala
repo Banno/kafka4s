@@ -31,23 +31,22 @@ package object avro4s {
       new SchemaRegistryAvro4sOps(r)
   }
 
-  implicit final class SchemaRegistryObjectOpsOps(
+  implicit final class SchemaRegistryObjectAvro4sOpsOps(
       private val x: SchemaRegistryApi.type
   ) extends AnyVal {
-    def avro4s: SchemaRegistryApiObjectOps.type =
-      SchemaRegistryApiObjectOps
+    def avro4s = SchemaRegistryApiObjectAvro4sOps
   }
 
-  implicit final class TopicObjectOpsOps(
+  implicit final class TopicObjectAvro4sOpsOps(
       private val x: Topic.type
   ) extends AnyVal {
-    def avro4s: TopicObjectOps.type = TopicObjectOps
+    def avro4s = TopicObjectAvro4sOps
   }
 
-  implicit final class SchemaObjectOpsOps(
+  implicit final class SchemaObjectAvro4sOpsOps(
       private val x: Schema.type
   ) extends AnyVal {
-    def avro4s: SchemaObjectOps.type = SchemaObjectOps
+    def avro4s = SchemaObjectAvro4sOps
   }
 
   implicit final class GenericProducerAvro4sOps[F[_]](

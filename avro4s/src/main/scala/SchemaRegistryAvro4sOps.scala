@@ -60,7 +60,7 @@ final class SchemaRegistryAvro4sOps[F[_]](
     } yield (k, v)
 }
 
-object SchemaRegistryApiObjectOps {
+object SchemaRegistryApiObjectAvro4sOps {
   def register[F[_]: Sync, K: SchemaFor, V: SchemaFor](
       baseUrl: String,
       topic: String,

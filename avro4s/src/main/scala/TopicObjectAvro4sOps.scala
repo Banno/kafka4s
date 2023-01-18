@@ -19,7 +19,7 @@ package avro4s
 
 import com.sksamuel.avro4s.*
 
-object TopicObjectOps {
+object TopicObjectAvro4sOps {
   def apply[
       K: FromRecord: ToRecord: SchemaFor,
       V: FromRecord: ToRecord: SchemaFor,
