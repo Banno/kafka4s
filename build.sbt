@@ -111,7 +111,7 @@ lazy val site = project
   .enablePlugins(MdocPlugin)
   .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
-  .dependsOn(core)
+  .dependsOn(core, avro4s)
   .settings {
     import microsites._
     Seq(
