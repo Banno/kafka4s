@@ -24,7 +24,6 @@ val V = new {
   val munitCE3 = "1.0.7"
   val scalatest = "3.2.15"
   val scalatestPlus = "3.2.3.0"
-  val simpleClient = "0.16.0"
 }
 
 lazy val kafka4s = project
@@ -162,7 +161,6 @@ lazy val commonSettings = Seq(
     "org.apache.kafka" % "kafka-clients" % V.kafka,
     "io.confluent" % "kafka-avro-serializer" % V.confluent,
     "com.sksamuel.avro4s" %% "avro4s-core" % V.avro4s,
-    "io.prometheus" % "simpleclient" % V.simpleClient,
     "io.chrisdavenport" %% "epimetheus" % V.epimetheus,
     "org.typelevel" %% "log4cats-slf4j" % V.log4cats,
   ),
