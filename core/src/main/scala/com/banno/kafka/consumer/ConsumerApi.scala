@@ -151,6 +151,91 @@ trait ConsumerApi[F[_], K, V] {
         self.partitionQueries.mapK(f)
     }
   }
+
+  final def biSemiflatMap[C, D](
+      f: K => F[C],
+      g: V => F[D],
+  )(implicit F: Monad[F]): ConsumerApi[F, C, D] = {
+    val fab = this
+    new ConsumerApi[F, C, D] {
+      override def assign(partitions: Iterable[TopicPartition]): F[Unit] =
+        fab.assign(partitions)
+      override def assignment: F[Set[TopicPartition]] =
+        fab.assignment
+
+      override def close: F[Unit] =
+        fab.close
+      override def close(timeout: FiniteDuration): F[Unit] =
+        fab.close(timeout)
+
+      override def commitAsync: F[Unit] =
+        fab.commitAsync
+      override def commitAsync(
+          offsets: Map[TopicPartition, OffsetAndMetadata],
+          callback: OffsetCommitCallback,
+      ): F[Unit] =
+        fab.commitAsync(offsets, callback)
+      override def commitAsync(callback: OffsetCommitCallback): F[Unit] =
+        fab.commitAsync(callback)
+      override def commitSync: F[Unit] =
+        fab.commitSync
+      override def commitSync(
+          offsets: Map[TopicPartition, OffsetAndMetadata]
+      ): F[Unit] =
+        fab.commitSync(offsets)
+
+      override def listTopics: F[Map[String, Seq[PartitionInfo]]] =
+        fab.listTopics
+      override def listTopics(
+          timeout: FiniteDuration
+      ): F[Map[String, Seq[PartitionInfo]]] =
+        fab.listTopics(timeout)
+      override def metrics: F[Map[MetricName, Metric]] =
+        fab.metrics
+
+      override def pause(partitions: Iterable[TopicPartition]): F[Unit] =
+        fab.pause(partitions)
+      override def paused: F[Set[TopicPartition]] =
+        fab.paused
+      override def poll(timeout: FiniteDuration): F[ConsumerRecords[C, D]] =
+        fab.poll(timeout).flatMap(_.bitraverse(f, g))
+      override def position(partition: TopicPartition): F[Long] =
+        fab.position(partition)
+      override def resume(partitions: Iterable[TopicPartition]): F[Unit] =
+        fab.resume(partitions)
+      override def seek(partition: TopicPartition, offset: Long): F[Unit] =
+        fab.seek(partition, offset)
+      override def seekToBeginning(
+          partitions: Iterable[TopicPartition]
+      ): F[Unit] =
+        fab.seekToBeginning(partitions)
+      override def seekToEnd(
+          partitions: Iterable[TopicPartition]
+      ): F[Unit] =
+        fab.seekToEnd(partitions)
+      override def subscribe(topics: Iterable[String]): F[Unit] =
+        fab.subscribe(topics)
+      override def subscribe(
+          topics: Iterable[String],
+          callback: ConsumerRebalanceListener,
+      ): F[Unit] =
+        fab.subscribe(topics, callback)
+      override def subscribe(pattern: Pattern): F[Unit] =
+        fab.subscribe(pattern)
+      override def subscribe(
+          pattern: Pattern,
+          callback: ConsumerRebalanceListener,
+      ): F[Unit] =
+        fab.subscribe(pattern, callback)
+      override def subscription: F[Set[String]] =
+        fab.subscription
+      override def unsubscribe: F[Unit] =
+        fab.unsubscribe
+
+      override def partitionQueries: PartitionQueries[F] =
+        fab.partitionQueries
+    }
+  }
 }
 
 object ShiftingConsumer {
