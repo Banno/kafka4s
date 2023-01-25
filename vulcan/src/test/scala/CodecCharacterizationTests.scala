@@ -19,27 +19,23 @@ package com.banno.kafka.vulcan
 import cats.syntax.all.*
 import munit.*
 import org.scalacheck.*
-import org.apache.avro.generic.GenericRecord
+import scala.util.*
 import vulcan.*
 
 class CodecCharacterizationTests extends ScalaCheckSuite {
   test("Vulcan record codec encodes to a generic record") {
     Prop.forAll { (foo: Foo) =>
       Codec
-        .encode(foo)
-        .toOption
-        .get
-        .isInstanceOf[GenericRecord]
+        .encodeGenericRecord[Try, Foo](foo)
+        .isSuccess
     }
   }
 
   test("Vulcan union of records codec encodes to a generic record") {
     Prop.forAll { (foolike: Foolike) =>
       Codec
-        .encode(foolike)
-        .toOption
-        .get
-        .isInstanceOf[GenericRecord]
+        .encodeGenericRecord[Try, Foolike](foolike)
+        .isSuccess
     }
   }
 }

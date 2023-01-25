@@ -16,7 +16,12 @@
 
 package com.banno.kafka
 
+import _root_.vulcan.*
+import cats.*
+import cats.syntax.all.*
 import com.banno.kafka.schemaregistry.*
+import org.apache.avro.generic.GenericRecord
+import scala.util.control.NoStackTrace
 
 package object vulcan {
   implicit final class SchemaRegistryVulcanOpsOps[F[_]](
@@ -43,4 +48,35 @@ package object vulcan {
   ) extends AnyVal {
     def vulcan = SchemaObjectVulcanOps
   }
+
+  implicit final class CodecObjectOpsOps(
+      private val x: Codec.type
+  ) extends AnyVal {
+    def decodeGenericRecord[F[_]: ApplicativeThrow, A: Codec](
+        x: GenericRecord
+    ): F[A] =
+      Codec
+        .decode[A](x)
+        .leftMap(_.throwable)
+        .liftTo[F]
+
+    def encodeGenericRecord[F[_]: MonadThrow, A: Codec](
+        x: A
+    ): F[GenericRecord] =
+      Codec
+        .encode[A](x)
+        .leftMap(_.throwable)
+        .liftTo[F]
+        .flatMap {
+          case x: GenericRecord => x.pure[F]
+          case _ => UnableToDecodeToGenericRecord(x.getClass).raiseError
+        }
+  }
+}
+
+package vulcan {
+  final case class UnableToDecodeToGenericRecord(
+      cls: java.lang.Class[_]
+  ) extends RuntimeException(s"Unable to decode $cls to a GenericRecord")
+      with NoStackTrace
 }
