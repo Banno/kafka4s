@@ -17,28 +17,24 @@
 package com.banno.kafka
 package vulcan
 
+import _root_.vulcan.*
+import cats.*
+import cats.syntax.all.*
 import org.apache.avro.{Schema as JSchema}
-import org.apache.avro.generic.GenericRecord
 import scala.util.*
 
 object SchemaObjectVulcanOps {
-  private def fromGeneric[A](gr: GenericRecord): Try[A] = {
-    val _ = gr
-    Try(???)
-  }
+  private def schema[F[_]: ApplicativeThrow, A: Codec]: F[JSchema] =
+    Codec[A].schema
+      .leftMap(_.throwable)
+      .liftTo[F]
 
-  private def toGeneric[A](x: A): GenericRecord = {
-    val _ = x
-    ???
-  }
-
-  private def schema[A]: JSchema =
-    ???
-
-  def apply[A]: Schema[A] =
-    Schema(
-      schema,
-      fromGeneric(_),
-      toGeneric(_),
+  def apply[F[_]: ApplicativeThrow, A: Codec]: F[Schema[A]] =
+    schema.map(
+      Schema(
+        _,
+        Codec.decodeGenericRecord[Try, A](_),
+        Codec.encodeGenericRecord[Try, A](_),
+      )
     )
 }

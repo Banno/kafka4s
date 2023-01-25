@@ -17,26 +17,34 @@
 package com.banno.kafka
 package vulcan
 
+import _root_.vulcan.*
+import cats.*
+import cats.syntax.all.*
+
 object TopicObjectVulcanOps {
-  def apply[K, V](
+  def apply[F[_]: ApplicativeThrow, K: Codec, V: Codec](
       topic: String,
       topicPurpose: TopicPurpose,
-  ): Topic[K, V] =
-    Topic(
-      topic,
-      topicPurpose,
-      Schema.vulcan[K],
-      Schema.vulcan[V],
+  ): F[Topic[K, V]] =
+    (Schema.vulcan[F, K], Schema.vulcan[F, V]).mapN(
+      Topic(
+        topic,
+        topicPurpose,
+        _,
+        _,
+      )
     )
 
-  def builder[K, V](
+  def builder[F[_]: ApplicativeThrow, K: Codec, V: Codec](
       topic: String,
       topicPurpose: TopicPurpose,
-  ): Topic.Builder[K, V] =
-    Topic.builder(
-      topic,
-      topicPurpose,
-      Schema.vulcan[K],
-      Schema.vulcan[V],
+  ): F[Topic.Builder[K, V]] =
+    (Schema.vulcan[F, K], Schema.vulcan[F, V]).mapN(
+      Topic.builder(
+        topic,
+        topicPurpose,
+        _,
+        _,
+      )
     )
 }
