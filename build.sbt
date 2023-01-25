@@ -6,12 +6,12 @@ val V = new {
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
   val cats = "2.9.0"
-  val catsEffect = "3.4.4"
+  val catsEffect = "3.4.5"
   val confluent = "7.3.1"
   val curator = "5.2.0"
   val disciplineMunit = "1.0.9"
   val epimetheus = "0.5.0-M2"
-  val fs2 = "3.4.0"
+  val fs2 = "3.5.0"
   val junit = "4.13"
   val kafka = s"$confluent-ce"
   val kindProjector = "0.13.2"
@@ -24,7 +24,6 @@ val V = new {
   val munitCE3 = "1.0.7"
   val scalatest = "3.2.15"
   val scalatestPlus = "3.2.3.0"
-  val simpleClient = "0.16.0"
 }
 
 lazy val kafka4s = project
@@ -181,7 +180,6 @@ lazy val commonSettings = Seq(
     "co.fs2" %% "fs2-core" % V.fs2,
     "org.apache.kafka" % "kafka-clients" % V.kafka,
     "io.confluent" % "kafka-avro-serializer" % V.confluent,
-    "io.prometheus" % "simpleclient" % V.simpleClient,
     "io.chrisdavenport" %% "epimetheus" % V.epimetheus,
     "org.typelevel" %% "log4cats-slf4j" % V.log4cats,
   ),
