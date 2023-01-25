@@ -16,9 +16,11 @@
 
 package com.banno.kafka
 
-import org.scalacheck.{Arbitrary, Cogen, Gen}
+import org.apache.kafka.clients.consumer.{ConsumerRecord, ConsumerRecords}
 import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.common.TopicPartition
+import org.scalacheck.{Arbitrary, Cogen, Gen}
+import scala.jdk.CollectionConverters.*
 
 package object test {
 
@@ -40,6 +42,22 @@ package object test {
       k <- Arbitrary.arbitrary[K]
       v <- Arbitrary.arbitrary[V]
     } yield new ConsumerRecord(t, p, o, k, v)
+  }
+
+  implicit def arbitraryConsumerRecords[K: Arbitrary, V: Arbitrary]
+      : Arbitrary[ConsumerRecords[K, V]] = Arbitrary {
+    Gen
+      .listOf(Arbitrary.arbitrary[ConsumerRecord[K, V]])
+      .map { crs =>
+        new ConsumerRecords(
+          crs
+            .map(cr =>
+              new TopicPartition(cr.topic, cr.partition) -> List(cr).asJava
+            )
+            .toMap
+            .asJava
+        )
+      }
   }
 
   // these things are necessary for EqSpec

@@ -16,19 +16,23 @@
 
 package com.banno.kafka
 
-import cats.laws.discipline.BifunctorTests
-import com.banno.kafka.test._
-import munit._
+import cats.*
+import cats.laws.discipline.*
+import com.banno.kafka.test.*
+import munit.*
+import org.apache.kafka.clients.consumer.ConsumerRecords
+import scala.jdk.CollectionConverters.*
 
-class BifunctorSpec extends DisciplineSuite {
+class ConsumerRecordsSpec extends DisciplineSuite {
   checkAll(
-    "ProducerRecordBifunctor",
-    BifunctorTests(ProducerRecordBifunctor)
-      .bifunctor[Int, Int, Int, String, String, String],
+    "ConsumerRecordsBitraverse",
+    BitraverseTests(ConsumerRecordsBitraverse)
+      .bitraverse[Option, Int, Int, Int, String, String, String],
   )
-  checkAll(
-    "ConsumerRecordBifunctor",
-    BifunctorTests(ConsumerRecordBifunctor)
-      .bifunctor[Int, Int, Int, String, String, String],
-  )
+
+  implicit def eq[K, V]: Eq[ConsumerRecords[K, V]] =
+    Eq.by { x =>
+      x.partitions.asScala.toList
+        .flatMap(x.records(_).asScala.toList)
+    }
 }

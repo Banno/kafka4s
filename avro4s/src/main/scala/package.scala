@@ -16,6 +16,7 @@
 
 package com.banno.kafka
 
+import cats.syntax.all.*
 import com.banno.kafka.producer.*
 import com.banno.kafka.schemaregistry.*
 import com.sksamuel.avro4s.*
