@@ -16,17 +16,17 @@
 
 package example2
 
-import cats.effect._
-import cats.syntax.all._
-import com.banno.kafka._
-import com.banno.kafka.admin._
-import com.banno.kafka.schemaregistry._
-import com.banno.kafka.consumer._
-import com.banno.kafka.producer._
+import cats.effect.*
+import cats.syntax.all.*
+import com.banno.kafka.*
+import com.banno.kafka.admin.*
+import com.banno.kafka.avro4s.*
+import com.banno.kafka.consumer.*
+import com.banno.kafka.schemaregistry.*
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.producer.ProducerRecord
-import scala.concurrent.duration._
 import org.apache.kafka.common.TopicPartition
+import scala.concurrent.duration.*
 
 final class ExampleApp[F[_]: Async] {
 
@@ -54,14 +54,14 @@ final class ExampleApp[F[_]: Async] {
     .toVector
 
   val producer =
-    ProducerApi.Avro4s.resource[F, CustomerId, Customer](
+    Avro4sProducer.resource[F, CustomerId, Customer](
       BootstrapServers(kafkaBootstrapServers),
       SchemaRegistryUrl(schemaRegistryUri),
       ClientId("producer-example"),
     )
 
   val consumer =
-    ConsumerApi.Avro4s.resource[F, CustomerId, Customer](
+    Avro4sConsumer.resource[F, CustomerId, Customer](
       BootstrapServers(kafkaBootstrapServers),
       SchemaRegistryUrl(schemaRegistryUri),
       ClientId("consumer-example"),
@@ -74,7 +74,7 @@ final class ExampleApp[F[_]: Async] {
       _ <- Sync[F].delay(println("Starting kafka4s example"))
 
       _ <- AdminApi.createTopicsIdempotent[F](kafkaBootstrapServers, topic)
-      _ <- SchemaRegistryApi.register[F, CustomerId, Customer](
+      _ <- SchemaRegistryApi.avro4s.register[F, CustomerId, Customer](
         schemaRegistryUri,
         topic.name,
       )

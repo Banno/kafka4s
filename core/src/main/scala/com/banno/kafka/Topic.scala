@@ -16,25 +16,20 @@
 
 package com.banno.kafka
 
-import java.time.Instant
-
-import scala.jdk.CollectionConverters.*
-import scala.util.*
-import scala.util.control.NoStackTrace
-
 import cats.*
 import cats.data.*
 import cats.effect.*
 import cats.syntax.all.*
 import com.banno.kafka.admin.AdminApi
 import com.banno.kafka.schemaregistry.SchemaRegistryApi
-import com.sksamuel.avro4s.FromRecord
-import com.sksamuel.avro4s.SchemaFor
+import java.time.Instant
 import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.admin.NewTopic
-import org.apache.kafka.clients.consumer._
+import org.apache.kafka.clients.consumer.*
 import org.apache.kafka.clients.producer.ProducerRecord
-import com.sksamuel.avro4s.ToRecord
+import scala.jdk.CollectionConverters.*
+import scala.util.*
+import scala.util.control.NoStackTrace
 
 trait Topic[K, V]
     extends Topical[IncomingRecord[K, V], (K, V)]
@@ -45,11 +40,6 @@ trait Topic[K, V]
 
 object Topic {
   type CR = ConsumerRecord[GenericRecord, GenericRecord]
-
-  private def fromGeneric[A](
-      gr: GenericRecord
-  )(implicit FR: FromRecord[A]): Try[A] =
-    Try(FR.from(gr))
 
   sealed trait KeyOrValue {
     def forLog: String
@@ -81,19 +71,19 @@ object Topic {
     }
   }
 
-  private final case class Impl[
-      K: FromRecord: ToRecord: SchemaFor,
-      V: FromRecord: ToRecord: SchemaFor,
-  ](
+  private final case class Impl[K, V](
       topic: String,
       topicPurpose: TopicPurpose,
       handleKeyParseFailed: Option[(GenericRecord, Throwable) => Try[K]],
       handleValueParseFailed: Option[(GenericRecord, Throwable) => Try[V]],
+      keySchema: Schema[K],
+      valueSchema: Schema[V],
   ) extends Topic[K, V] {
     override def coparse(
         kv: (K, V)
     ): ProducerRecord[GenericRecord, GenericRecord] =
-      new ProducerRecord(topic, kv._1, kv._2).toGenericRecord
+      new ProducerRecord(topic, kv._1, kv._2)
+        .bimap(keySchema.unparse, valueSchema.unparse)
 
     override def name: TopicName = TopicName(topic)
 
@@ -101,14 +91,16 @@ object Topic {
 
     private def parse1(cr: CR): Try[(K, V)] = {
       val tryKey =
-        fromGeneric[K](cr.key)
+        keySchema
+          .parse(cr.key)
           .handleErrorWith { cause =>
             handleKeyParseFailed.fold(
               ParseFailed(Key, cr, cause).raiseError[Try, K]
             )(handle => handle(cr.key, cause))
           }
       val tryValue =
-        fromGeneric[V](cr.value)
+        valueSchema
+          .parse(cr.value)
           .handleErrorWith { cause =>
             handleValueParseFailed.fold(
               ParseFailed(Value, cr, cause).raiseError[Try, V]
@@ -144,6 +136,8 @@ object Topic {
         .register[F, K, V](
           schemaRegistryUri.url,
           topic,
+          keySchema,
+          valueSchema,
           configs,
         )
         .void
@@ -163,14 +157,13 @@ object Topic {
       } yield ()
   }
 
-  def apply[
-      K: FromRecord: ToRecord: SchemaFor,
-      V: FromRecord: ToRecord: SchemaFor,
-  ](
+  def apply[K, V](
       topic: String,
       topicPurpose: TopicPurpose,
+      keySchema: Schema[K],
+      valueSchema: Schema[V],
   ): Topic[K, V] =
-    Impl(topic, topicPurpose, None, None)
+    Impl(topic, topicPurpose, None, None, keySchema, valueSchema)
 
   sealed trait Builder[K, V] {
     def withKeyParseFailedHandler(
@@ -190,14 +183,13 @@ object Topic {
     def build: Topic[K, V]
   }
 
-  final case class BuilderImpl[
-      K: FromRecord: ToRecord: SchemaFor,
-      V: FromRecord: ToRecord: SchemaFor,
-  ](
+  private final case class BuilderImpl[K, V](
       topic: String,
       topicPurpose: TopicPurpose,
       handleKeyParseFailed: Option[(GenericRecord, Throwable) => Try[K]],
       handleValueParseFailed: Option[(GenericRecord, Throwable) => Try[V]],
+      keySchema: Schema[K],
+      valueSchema: Schema[V],
   ) extends Builder[K, V] {
     override def withKeyParseFailedHandler(
         handle: (GenericRecord, Throwable) => Try[K]
@@ -210,17 +202,23 @@ object Topic {
       copy(handleValueParseFailed = handle.some)
 
     override def build: Topic[K, V] =
-      Impl(topic, topicPurpose, handleKeyParseFailed, handleValueParseFailed)
+      Impl(
+        topic,
+        topicPurpose,
+        handleKeyParseFailed,
+        handleValueParseFailed,
+        keySchema,
+        valueSchema,
+      )
   }
 
-  def builder[
-      K: FromRecord: ToRecord: SchemaFor,
-      V: FromRecord: ToRecord: SchemaFor,
-  ](
+  def builder[K, V](
       topic: String,
       topicPurpose: TopicPurpose,
+      keySchema: Schema[K],
+      valueSchema: Schema[V],
   ): Builder[K, V] =
-    BuilderImpl(topic, topicPurpose, none, none)
+    BuilderImpl(topic, topicPurpose, none, none, keySchema, valueSchema)
 
   private final case class InvariantImpl[K, A, B](
       fa: Topic[K, A],

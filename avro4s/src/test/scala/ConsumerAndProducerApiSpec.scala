@@ -16,28 +16,25 @@
 
 package com.banno.kafka
 
-import org.scalacheck._
-import cats.syntax.all._
-import cats.effect._
-import org.apache.kafka.clients.producer.ProducerRecord
-
-import scala.concurrent.duration._
-import com.banno.kafka.producer._
-import com.banno.kafka.consumer._
-import fs2._
-
-import scala.util.Random
-import org.scalacheck.magnolia._
+import cats.effect.*
+import cats.syntax.all.*
+import com.banno.kafka.avro4s.*
+import com.banno.kafka.consumer.*
+import com.banno.kafka.producer.*
 import com.sksamuel.avro4s.RecordFormat
-import org.apache.kafka.common.TopicPartition
-import org.scalatestplus.scalacheck._
-
-import scala.jdk.CollectionConverters._
+import fs2.*
 import java.util.ConcurrentModificationException
-
+import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.common.TopicPartition
+import org.scalacheck.*
+import org.scalacheck.magnolia.*
 import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.propspec.AnyPropSpec
+import org.scalatestplus.scalacheck.*
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
+import scala.util.Random
 
 class ConsumerAndProducerApiSpec
     extends AnyPropSpec
@@ -312,13 +309,13 @@ class ConsumerAndProducerApiSpec
     forAll { values: Vector[(PersonId, Person2)] =>
       val actual = (for {
         p <- Stream.resource(
-          ProducerApi.Avro4s.resource[IO, PersonId, Person2](
+          Avro4sProducer.resource[IO, PersonId, Person2](
             BootstrapServers(bootstrapServer),
             SchemaRegistryUrl(schemaRegistryUrl),
           )
         )
         c <- Stream.resource(
-          ConsumerApi.Avro4s.resource[IO, PersonId, Person2](
+          Avro4sConsumer.resource[IO, PersonId, Person2](
             BootstrapServers(bootstrapServer),
             GroupId(groupId),
             AutoOffsetReset.earliest,

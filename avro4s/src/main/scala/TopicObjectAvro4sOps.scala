@@ -15,14 +15,36 @@
  */
 
 package com.banno.kafka
+package avro4s
 
-import io.confluent.kafka.schemaregistry.ParsedSchema
-import io.confluent.kafka.schemaregistry.avro.AvroSchema
-import org.apache.avro.{Schema as JSchema}
+import com.sksamuel.avro4s.*
 
-package object schemaregistry {
-  implicit class SchemaOps(schema: JSchema) {
-    val asParsedSchema: ParsedSchema =
-      new AvroSchema(schema)
-  }
+object TopicObjectAvro4sOps {
+  def apply[
+      K: FromRecord: ToRecord: SchemaFor,
+      V: FromRecord: ToRecord: SchemaFor,
+  ](
+      topic: String,
+      topicPurpose: TopicPurpose,
+  ): Topic[K, V] =
+    Topic(
+      topic,
+      topicPurpose,
+      Schema.avro4s[K],
+      Schema.avro4s[V],
+    )
+
+  def builder[
+      K: FromRecord: ToRecord: SchemaFor,
+      V: FromRecord: ToRecord: SchemaFor,
+  ](
+      topic: String,
+      topicPurpose: TopicPurpose,
+  ): Topic.Builder[K, V] =
+    Topic.builder(
+      topic,
+      topicPurpose,
+      Schema.avro4s[K],
+      Schema.avro4s[V],
+    )
 }

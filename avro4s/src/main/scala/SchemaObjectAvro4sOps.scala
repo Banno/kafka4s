@@ -15,14 +15,31 @@
  */
 
 package com.banno.kafka
+package avro4s
 
-import io.confluent.kafka.schemaregistry.ParsedSchema
-import io.confluent.kafka.schemaregistry.avro.AvroSchema
+import com.sksamuel.avro4s.*
 import org.apache.avro.{Schema as JSchema}
+import org.apache.avro.generic.GenericRecord
+import scala.util.*
 
-package object schemaregistry {
-  implicit class SchemaOps(schema: JSchema) {
-    val asParsedSchema: ParsedSchema =
-      new AvroSchema(schema)
-  }
+object SchemaObjectAvro4sOps {
+  private def fromGeneric[A](
+      gr: GenericRecord
+  )(implicit FR: FromRecord[A]): Try[A] =
+    Try(FR.from(gr))
+
+  private def toGeneric[A](
+      x: A
+  )(implicit TR: ToRecord[A]): GenericRecord =
+    TR.to(x)
+
+  private def schema[A](implicit SF: SchemaFor[A]): JSchema =
+    SF.schema(DefaultFieldMapper)
+
+  def apply[A: FromRecord: ToRecord: SchemaFor]: Schema[A] =
+    Schema(
+      schema,
+      fromGeneric(_),
+      toGeneric(_),
+    )
 }

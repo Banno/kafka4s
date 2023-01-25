@@ -41,6 +41,12 @@ import com.banno.kafka._, com.banno.kafka.admin._
 import org.apache.kafka.clients.admin.NewTopic
 ```
 
+We'll use Avro4s for serialization.
+
+```scala mdoc
+import com.banno.kafka.avro4s._
+```
+
 Now we can create a topic named `customers.v1` with 1 partition and 1 replica:
 
 ```scala mdoc
@@ -77,7 +83,7 @@ val schemaRegistryUri = "http://localhost:8091" // Change as needed
 
 ```scala mdoc:compile-only
 import cats.effect.unsafe.implicits.global
-SchemaRegistryApi.register[IO, CustomerId, Customer](
+SchemaRegistryApi.avro4s.register[IO, CustomerId, Customer](
   schemaRegistryUri, topicName
 ).unsafeRunSync()
 ```
@@ -166,7 +172,7 @@ pool.
 And here's our consumer, which is using Avro4s to deserialize the records:
 
 ```scala mdoc
-val consumer = ConsumerApi.Avro4s.resource[IO, CustomerId, Customer](
+val consumer = Avro4sConsumer.resource[IO, CustomerId, Customer](
   BootstrapServers(kafkaBootstrapServers),
   SchemaRegistryUrl(schemaRegistryUri),
   ClientId("consumer-example"),

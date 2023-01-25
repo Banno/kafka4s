@@ -14,26 +14,25 @@
  * limitations under the License.
  */
 
-package com.banno.kafka.schemaregistry
+package com.banno.kafka.avro4s
 
-import org.apache.avro.Schema
-import com.sksamuel.avro4s.{DefaultFieldMapper, SchemaFor}
-import cats.FlatMap
-import cats.syntax.all._
+import cats.*
+import cats.effect.*
+import cats.syntax.all.*
+import com.banno.kafka.schemaregistry.*
+import com.sksamuel.avro4s.*
 
-case class SchemaRegistryOps[F[_]](registry: SchemaRegistryApi[F]) {
-
-  def keySubject(topic: String): String = topic + "-key"
-  def valueSubject(topic: String): String = topic + "-value"
-
+final class SchemaRegistryAvro4sOps[F[_]](
+    private val registry: SchemaRegistryApi[F]
+) extends AnyVal {
   def register[A](subject: String)(implicit SF: SchemaFor[A]): F[Int] =
     registry.register(subject, SF.schema(DefaultFieldMapper).asParsedSchema)
 
   def registerKey[K: SchemaFor](topic: String): F[Int] =
-    register[K](keySubject(topic))
+    register[K](registry.keySubject(topic))
 
   def registerValue[V: SchemaFor](topic: String): F[Int] =
-    register[V](valueSubject(topic))
+    register[V](registry.valueSubject(topic))
 
   def register[K: SchemaFor, V: SchemaFor](
       topic: String
@@ -43,17 +42,14 @@ case class SchemaRegistryOps[F[_]](registry: SchemaRegistryApi[F]) {
       v <- registerValue[V](topic)
     } yield (k, v)
 
-  def isCompatible(subject: String, schema: Schema): F[Boolean] =
-    registry.testCompatibility(subject, schema.asParsedSchema)
-
   def isCompatible[A](subject: String)(implicit SF: SchemaFor[A]): F[Boolean] =
-    isCompatible(subject, SF.schema(DefaultFieldMapper))
+    registry.isCompatible(subject, SF.schema(DefaultFieldMapper))
 
   def isKeyCompatible[K: SchemaFor](topic: String): F[Boolean] =
-    isCompatible[K](keySubject(topic))
+    isCompatible[K](registry.keySubject(topic))
 
   def isValueCompatible[V: SchemaFor](topic: String): F[Boolean] =
-    isCompatible[V](valueSubject(topic))
+    isCompatible[V](registry.valueSubject(topic))
 
   def isCompatible[K: SchemaFor, V: SchemaFor](
       topic: String
@@ -62,5 +58,17 @@ case class SchemaRegistryOps[F[_]](registry: SchemaRegistryApi[F]) {
       k <- isKeyCompatible[K](topic)
       v <- isValueCompatible[V](topic)
     } yield (k, v)
+}
 
+object SchemaRegistryApiObjectAvro4sOps {
+  def register[F[_]: Sync, K: SchemaFor, V: SchemaFor](
+      baseUrl: String,
+      topic: String,
+      configs: Map[String, Object] = Map.empty,
+  ) =
+    for {
+      schemaRegistry <- SchemaRegistryApi(baseUrl, configs)
+      k <- schemaRegistry.avro4s.registerKey[K](topic)
+      v <- schemaRegistry.avro4s.registerValue[V](topic)
+    } yield (k, v)
 }

@@ -14,15 +14,24 @@
  * limitations under the License.
  */
 
-package com.banno.kafka
+package com.banno.kafka.avro4s
 
-import io.confluent.kafka.schemaregistry.ParsedSchema
-import io.confluent.kafka.schemaregistry.avro.AvroSchema
-import org.apache.avro.{Schema as JSchema}
+import cats.effect.*
+import com.banno.kafka.producer.*
+import com.sksamuel.avro4s.ToRecord
+import org.apache.avro.generic.GenericRecord
 
-package object schemaregistry {
-  implicit class SchemaOps(schema: JSchema) {
-    val asParsedSchema: ParsedSchema =
-      new AvroSchema(schema)
-  }
+object Avro4sProducer {
+  def apply[F[_], K, V](
+      p: ProducerApi[F, GenericRecord, GenericRecord]
+  )(implicit
+      ktr: ToRecord[K],
+      vtr: ToRecord[V],
+  ): ProducerApi[F, K, V] =
+    p.contrabimap(ktr.to, vtr.to)
+
+  def resource[F[_]: Async, K: ToRecord, V: ToRecord](
+      configs: (String, AnyRef)*
+  ): Resource[F, ProducerApi[F, K, V]] =
+    ProducerApi.Avro.Generic.resource[F](configs: _*).map(Avro4sProducer(_))
 }

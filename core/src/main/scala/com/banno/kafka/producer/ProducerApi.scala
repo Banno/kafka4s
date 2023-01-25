@@ -16,22 +16,21 @@
 
 package com.banno.kafka.producer
 
-import cats._
-import cats.arrow._
-import cats.syntax.all._
-import cats.effect.{Async, Resource, Sync}
-import java.util.concurrent.{Future => JFuture}
-import scala.jdk.CollectionConverters._
-import scala.concurrent.duration._
-import org.apache.kafka.common._
-import org.apache.kafka.common.serialization.Serializer
-import org.apache.kafka.clients.consumer._
-import org.apache.kafka.clients.producer._
-import org.apache.avro.generic.GenericRecord
-import com.sksamuel.avro4s.ToRecord
+import cats.*
+import cats.arrow.*
+import cats.effect.*
+import cats.syntax.all.*
+import com.banno.kafka.*
 import io.confluent.kafka.serializers.KafkaAvroSerializer
-import com.banno.kafka._
+import java.util.concurrent.{Future => JFuture}
+import org.apache.avro.generic.GenericRecord
+import org.apache.kafka.clients.consumer.*
+import org.apache.kafka.clients.producer.*
+import org.apache.kafka.common.*
+import org.apache.kafka.common.serialization.Serializer
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 
 trait ProducerApi[F[_], K, V] {
   def abortTransaction: F[Unit]
@@ -177,16 +176,6 @@ object ShiftingProducer {
     )
 }
 
-object Avro4sProducer {
-  def apply[F[_], K, V](
-      p: ProducerApi[F, GenericRecord, GenericRecord]
-  )(implicit
-      ktr: ToRecord[K],
-      vtr: ToRecord[V],
-  ): ProducerApi[F, K, V] =
-    p.contrabimap(ktr.to, vtr.to)
-}
-
 object ProducerApi {
 
   private[this] def createKafkaProducer[F[_]: Sync, K, V](
@@ -227,7 +216,6 @@ object ProducerApi {
     )
 
   object Avro {
-
     def resource[F[_]: Async, K, V](
         configs: (String, AnyRef)*
     ): Resource[F, ProducerApi[F, K, V]] =
@@ -242,23 +230,10 @@ object ProducerApi {
       )(_.close)
 
     object Generic {
-
       def resource[F[_]: Async](
           configs: (String, AnyRef)*
       ): Resource[F, ProducerApi[F, GenericRecord, GenericRecord]] =
         ProducerApi.Avro.resource[F, GenericRecord, GenericRecord](configs: _*)
     }
-
-    object Specific {
-      // TODO
-    }
-  }
-
-  object Avro4s {
-
-    def resource[F[_]: Async, K: ToRecord, V: ToRecord](
-        configs: (String, AnyRef)*
-    ): Resource[F, ProducerApi[F, K, V]] =
-      ProducerApi.Avro.Generic.resource[F](configs: _*).map(Avro4sProducer(_))
   }
 }
