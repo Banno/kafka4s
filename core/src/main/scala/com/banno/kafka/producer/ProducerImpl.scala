@@ -44,11 +44,11 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
   ): F[Unit] =
     F.delay(p.sendOffsetsToTransaction(offsets.asJava, groupMetadata))
 
-  private[producer] def sendRaw(
+  private def sendRaw(
       record: ProducerRecord[K, V]
   ): JFuture[RecordMetadata] =
     p.send(record)
-  private[producer] def sendRaw(
+  private def sendRaw(
       record: ProducerRecord[K, V],
       callback: Callback,
   ): JFuture[RecordMetadata] = p.send(record, callback)
@@ -56,7 +56,7 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
   /** Convenience operation that accepts a callback function instead of a
     * Callback instance.
     */
-  private[producer] def sendRaw(
+  private def sendRaw(
       record: ProducerRecord[K, V],
       callback: Either[Exception, RecordMetadata] => Unit,
   ): Unit = {
