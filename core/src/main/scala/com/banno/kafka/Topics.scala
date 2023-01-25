@@ -42,7 +42,7 @@ object Topics {
 
     def tailParse(cr: ConsumerRecord[GenericRecord, GenericRecord]): Try[S]
 
-    def tailCoparse(kv: T): ProducerRecord[GenericRecord, GenericRecord]
+    def tailCoparse(kv: T): Try[ProducerRecord[GenericRecord, GenericRecord]]
 
     def tailNextOffset(cr: S): Map[TopicPartition, OffsetAndMetadata]
 

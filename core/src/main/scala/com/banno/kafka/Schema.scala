@@ -25,7 +25,7 @@ import scala.util.Try
 final case class Schema[A](
     ast: JSchema, // Abstract Syntax Tree
     parse: GenericRecord => Try[A],
-    unparse: A => GenericRecord,
+    unparse: A => Try[GenericRecord],
 ) {
   def parsed: ParsedSchema =
     new AvroSchema(ast)

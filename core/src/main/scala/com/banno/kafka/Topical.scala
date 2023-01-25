@@ -36,7 +36,7 @@ trait AschematicTopic {
 trait Topical[A, B] {
   def parse(cr: ConsumerRecord[GenericRecord, GenericRecord]): Try[A]
 
-  def coparse(kv: B): ProducerRecord[GenericRecord, GenericRecord]
+  def coparse(kv: B): Try[ProducerRecord[GenericRecord, GenericRecord]]
 
   def nextOffset(cr: A): Map[TopicPartition, OffsetAndMetadata]
 
