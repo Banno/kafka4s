@@ -18,20 +18,21 @@ package com.banno.kafka.vulcan
 
 import cats.*
 import cats.effect.*
-import cats.syntax.all.*
 import com.banno.kafka.consumer.*
 import org.apache.avro.generic.GenericRecord
+import vulcan.*
 
 object VulcanConsumer {
-  def apply[F[_]: Functor, K, V](
+  def apply[F[_]: MonadThrow, K: Codec, V: Codec](
       c: ConsumerApi[F, GenericRecord, GenericRecord]
   ): ConsumerApi[F, K, V] =
-    c.bimap(_ => ???, _ => ???)
+    c.biSemiflatMap(
+      Codec.decodeGenericRecord[F, K](_),
+      Codec.decodeGenericRecord[F, V](_),
+    )
 
-  def resource[F[_]: Async, K, V](
+  def resource[F[_]: Async, K: Codec, V: Codec](
       configs: (String, AnyRef)*
-  ): Resource[F, ConsumerApi[F, K, V]] = {
-    val _ = configs
-    ???
-  }
+  ): Resource[F, ConsumerApi[F, K, V]] =
+    ConsumerApi.Avro.Generic.resource[F](configs: _*).map(apply(_))
 }

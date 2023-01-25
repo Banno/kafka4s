@@ -16,20 +16,23 @@
 
 package com.banno.kafka.vulcan
 
+import cats.*
 import cats.effect.*
 import com.banno.kafka.producer.*
 import org.apache.avro.generic.GenericRecord
+import vulcan.*
 
 object VulcanProducer {
-  def apply[F[_], K, V](
+  def apply[F[_]: MonadThrow, K: Codec, V: Codec](
       p: ProducerApi[F, GenericRecord, GenericRecord]
   ): ProducerApi[F, K, V] =
-    p.contrabimap(_ => ???, _ => ???)
+    p.semiflatContrabimap(
+      Codec.encodeGenericRecord[F, K](_),
+      Codec.encodeGenericRecord[F, V](_),
+    )
 
-  def resource[F[_], K, V](
+  def resource[F[_]: Async, K: Codec, V: Codec](
       configs: (String, AnyRef)*
-  ): Resource[F, ProducerApi[F, K, V]] = {
-    val _ = configs
-    ???
-  }
+  ): Resource[F, ProducerApi[F, K, V]] =
+    ProducerApi.Avro.Generic.resource[F](configs: _*).map(apply(_))
 }
