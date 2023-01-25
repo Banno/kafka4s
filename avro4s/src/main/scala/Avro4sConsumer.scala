@@ -35,5 +35,5 @@ object Avro4sConsumer {
   def resource[F[_]: Async, K: FromRecord, V: FromRecord](
       configs: (String, AnyRef)*
   ): Resource[F, ConsumerApi[F, K, V]] =
-    ConsumerApi.Avro.Generic.resource[F](configs: _*).map(Avro4sConsumer(_))
+    ConsumerApi.Avro.Generic.resource[F](configs: _*).map(apply(_))
 }
