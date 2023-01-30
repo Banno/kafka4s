@@ -14,19 +14,25 @@
  * limitations under the License.
  */
 
-package com.banno.kafka
+package com.banno.kafka.vulcan
 
-import io.confluent.kafka.schemaregistry.ParsedSchema
-import io.confluent.kafka.schemaregistry.avro.AvroSchema
-import org.apache.avro.{Schema as JSchema}
+import cats.*
+import cats.effect.*
+import com.banno.kafka.producer.*
 import org.apache.avro.generic.GenericRecord
-import scala.util.Try
+import vulcan.*
 
-final case class Schema[A](
-    ast: JSchema, // Abstract Syntax Tree
-    parse: GenericRecord => Try[A],
-    unparse: A => Try[GenericRecord],
-) {
-  def parsed: ParsedSchema =
-    new AvroSchema(ast)
+object VulcanProducer {
+  def apply[F[_]: MonadThrow, K: Codec, V: Codec](
+      p: ProducerApi[F, GenericRecord, GenericRecord]
+  ): ProducerApi[F, K, V] =
+    p.semiflatContrabimap(
+      Codec.encodeGenericRecord[F, K](_),
+      Codec.encodeGenericRecord[F, V](_),
+    )
+
+  def resource[F[_]: Async, K: Codec, V: Codec](
+      configs: (String, AnyRef)*
+  ): Resource[F, ProducerApi[F, K, V]] =
+    ProducerApi.Avro.Generic.resource[F](configs: _*).map(apply(_))
 }

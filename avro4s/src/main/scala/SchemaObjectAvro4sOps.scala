@@ -40,6 +40,6 @@ object SchemaObjectAvro4sOps {
     Schema(
       schema,
       fromGeneric(_),
-      toGeneric(_),
+      x => Try(toGeneric(x)),
     )
 }

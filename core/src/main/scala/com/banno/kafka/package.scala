@@ -17,6 +17,7 @@
 package com.banno
 
 import cats.*
+import cats.syntax.all.*
 import fs2.Stream
 import java.lang.{
   Double => JDouble,
@@ -43,21 +44,6 @@ package object kafka {
   implicit class ScalaProducerRecord[K, V](pr: ProducerRecord[K, V]) {
     def maybeKey: Option[K] = Option(pr.key)
     def maybeValue: Option[V] = Option(pr.value)
-
-    /** Note that since a record's key or value could be null, functions f and g
-      * should take care to handle null arguments. A null key means the sender
-      * was unable to choose a key on which to partition. A null value means the
-      * entity identified by the key should be deleted.
-      */
-    def bimap[K2, V2](f: K => K2, g: V => V2): ProducerRecord[K2, V2] =
-      new ProducerRecord(
-        pr.topic,
-        pr.partition,
-        pr.timestamp,
-        f(pr.key),
-        g(pr.value),
-        pr.headers,
-      )
   }
 
   implicit class ScalaConsumerRecords[K, V](crs: ConsumerRecords[K, V]) {
@@ -102,51 +88,6 @@ package object kafka {
           cr.offset + 1
         )
       )
-
-    /** Note that since a record's key or value could be null, functions f and g
-      * should take care to handle null arguments. A null key means the sender
-      * was unable to choose a key on which to partition. A null value means the
-      * entity identified by the key should be deleted. Note also that the
-      * returned record has checksum of `-1` since that field is deprecated.
-      */
-    def bimap[K2, V2](f: K => K2, g: V => V2): ConsumerRecord[K2, V2] =
-      new ConsumerRecord(
-        cr.topic,
-        cr.partition,
-        cr.offset,
-        cr.timestamp,
-        cr.timestampType,
-        cr.serializedKeySize,
-        cr.serializedValueSize,
-        f(cr.key),
-        g(cr.value),
-        cr.headers,
-        cr.leaderEpoch,
-      )
-  }
-
-  implicit class ByteArrayConsumerRecord(
-      cr: ConsumerRecord[Array[Byte], Array[Byte]]
-  ) {
-    def maybeKeyAs[K](topic: String)(implicit kd: Deserializer[K]): Option[K] =
-      cr.maybeKey.map(kd.deserialize(topic, _))
-    def maybeValueAs[V](topic: String)(implicit
-        vd: Deserializer[V]
-    ): Option[V] =
-      cr.maybeValue.map(vd.deserialize(topic, _))
-
-    // note that these will probably throw NPE if key/value is null
-    def keyAs[K](topic: String)(implicit kd: Deserializer[K]): K =
-      kd.deserialize(topic, cr.key)
-    def valueAs[V](topic: String)(implicit vd: Deserializer[V]): V =
-      vd.deserialize(topic, cr.value)
-
-    /** This only works when both key and value are non-null. */
-    def as[K, V](topic: String)(implicit
-        kd: Deserializer[K],
-        vd: Deserializer[V],
-    ): ConsumerRecord[K, V] =
-      cr.bimap(kd.deserialize(topic, _), vd.deserialize(topic, _))
   }
 
   implicit class ByteArrayConsumerRecords(
@@ -179,30 +120,133 @@ package object kafka {
         x.value == y.value
     }
 
-  implicit object ProducerRecordBifunctor extends Bifunctor[ProducerRecord] {
-    def bimap[A, B, C, D](
+  implicit object ProducerRecordBitraverse extends Bitraverse[ProducerRecord] {
+    override def bifoldLeft[A, B, C](fab: ProducerRecord[A, B], c: C)(
+        f: (C, A) => C,
+        g: (C, B) => C,
+    ): C =
+      g(f(c, fab.key), fab.value)
+
+    override def bifoldRight[A, B, C](fab: ProducerRecord[A, B], c: Eval[C])(
+        f: (A, Eval[C]) => Eval[C],
+        g: (B, Eval[C]) => Eval[C],
+    ): Eval[C] =
+      g(fab.value, f(fab.key, c))
+
+    /** Note that since a record's key or value could be null, functions f and g
+      * should take care to handle null arguments. A null key means the sender
+      * was unable to choose a key on which to partition. A null value means the
+      * entity identified by the key should be deleted.
+      */
+    override def bitraverse[G[_]: Applicative, A, B, C, D](
         fab: ProducerRecord[A, B]
-    )(f: A => C, g: B => D): ProducerRecord[C, D] =
-      fab.bimap(f, g)
-  }
-
-  implicit object ConsumerRecordBifunctor extends Bifunctor[ConsumerRecord] {
-    def bimap[A, B, C, D](
-        fab: ConsumerRecord[A, B]
-    )(f: A => C, g: B => D): ConsumerRecord[C, D] =
-      fab.bimap(f, g)
-  }
-
-  implicit object ConsumerRecordsBifunctor extends Bifunctor[ConsumerRecords] {
-    def bimap[A, B, C, D](
-        fab: ConsumerRecords[A, B]
-    )(f: A => C, g: B => D): ConsumerRecords[C, D] =
-      new ConsumerRecords[C, D](
-        fab.partitions.asScala
-          .map(tp => (tp, fab.records(tp).asScala.map(_.bimap(f, g)).asJava))
-          .toMap
-          .asJava
+    )(f: A => G[C], g: B => G[D]): G[ProducerRecord[C, D]] =
+      (f(fab.key), g(fab.value)).mapN(
+        new ProducerRecord(
+          fab.topic,
+          fab.partition,
+          fab.timestamp,
+          _,
+          _,
+          fab.headers,
+        )
       )
+  }
+
+  implicit object ConsumerRecordBitraverse extends Bitraverse[ConsumerRecord] {
+    override def bifoldLeft[A, B, C](fab: ConsumerRecord[A, B], c: C)(
+        f: (C, A) => C,
+        g: (C, B) => C,
+    ): C =
+      g(f(c, fab.key), fab.value)
+
+    override def bifoldRight[A, B, C](fab: ConsumerRecord[A, B], c: Eval[C])(
+        f: (A, Eval[C]) => Eval[C],
+        g: (B, Eval[C]) => Eval[C],
+    ): Eval[C] =
+      g(fab.value, f(fab.key, c))
+
+    /** Note that since a record's key or value could be null, functions f and g
+      * should take care to handle null arguments. A null key means the sender
+      * was unable to choose a key on which to partition. A null value means the
+      * entity identified by the key should be deleted. Note also that the
+      * returned record has checksum of `-1` since that field is deprecated.
+      */
+    override def bitraverse[G[_]: Applicative, A, B, C, D](
+        fab: ConsumerRecord[A, B]
+    )(f: A => G[C], g: B => G[D]): G[ConsumerRecord[C, D]] =
+      (f(fab.key), g(fab.value)).mapN(
+        new ConsumerRecord(
+          fab.topic,
+          fab.partition,
+          fab.offset,
+          fab.timestamp,
+          fab.timestampType,
+          fab.serializedKeySize,
+          fab.serializedValueSize,
+          _,
+          _,
+          fab.headers,
+          fab.leaderEpoch,
+        )
+      )
+  }
+
+  implicit class ByteArrayConsumerRecord(
+      cr: ConsumerRecord[Array[Byte], Array[Byte]]
+  ) {
+    def maybeKeyAs[K](topic: String)(implicit kd: Deserializer[K]): Option[K] =
+      cr.maybeKey.map(kd.deserialize(topic, _))
+    def maybeValueAs[V](topic: String)(implicit
+        vd: Deserializer[V]
+    ): Option[V] =
+      cr.maybeValue.map(vd.deserialize(topic, _))
+
+    // note that these will probably throw NPE if key/value is null
+    def keyAs[K](topic: String)(implicit kd: Deserializer[K]): K =
+      kd.deserialize(topic, cr.key)
+    def valueAs[V](topic: String)(implicit vd: Deserializer[V]): V =
+      vd.deserialize(topic, cr.value)
+
+    /** This only works when both key and value are non-null. */
+    def as[K, V](topic: String)(implicit
+        kd: Deserializer[K],
+        vd: Deserializer[V],
+    ): ConsumerRecord[K, V] =
+      cr.bimap(kd.deserialize(topic, _), vd.deserialize(topic, _))
+  }
+
+  implicit object ConsumerRecordsBitraverse
+      extends Bitraverse[ConsumerRecords] {
+    override def bifoldLeft[A, B, C](fab: ConsumerRecords[A, B], c: C)(
+        f: (C, A) => C,
+        g: (C, B) => C,
+    ): C =
+      fab.partitions.asScala.toList
+        .flatMap(fab.records(_).asScala.toList)
+        .foldLeft(c)((b, a) => a.bifoldLeft(b)(f, g))
+
+    override def bifoldRight[A, B, C](fab: ConsumerRecords[A, B], c: Eval[C])(
+        f: (A, Eval[C]) => Eval[C],
+        g: (B, Eval[C]) => Eval[C],
+    ): Eval[C] =
+      fab.partitions.asScala.toList
+        .flatMap(fab.records(_).asScala.toList)
+        .foldRight(c)((a, b) => a.bifoldRight(b)(f, g))
+
+    override def bitraverse[G[_]: Applicative, A, B, C, D](
+        fab: ConsumerRecords[A, B]
+    )(f: A => G[C], g: B => G[D]): G[ConsumerRecords[C, D]] =
+      fab.partitions.asScala.toList
+        .traverse(tp =>
+          fab
+            .records(tp)
+            .asScala
+            .toList
+            .traverse(_.bitraverse(f, g))
+            .map(tp -> _.asJava)
+        )
+        .map(x => new ConsumerRecords[C, D](x.toMap.asJava))
   }
 
   implicit class BifunctorToOptionExtension[F[_, _], A, B](

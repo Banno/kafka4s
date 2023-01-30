@@ -16,17 +16,14 @@
 
 package com.banno.kafka
 
-import io.confluent.kafka.schemaregistry.ParsedSchema
-import io.confluent.kafka.schemaregistry.avro.AvroSchema
-import org.apache.avro.{Schema as JSchema}
-import org.apache.avro.generic.GenericRecord
-import scala.util.Try
+import cats.laws.discipline.*
+import com.banno.kafka.test.*
+import munit.*
 
-final case class Schema[A](
-    ast: JSchema, // Abstract Syntax Tree
-    parse: GenericRecord => Try[A],
-    unparse: A => Try[GenericRecord],
-) {
-  def parsed: ParsedSchema =
-    new AvroSchema(ast)
+class ConsumerRecordSpec extends DisciplineSuite {
+  checkAll(
+    "ConsumerRecordBitraverse",
+    BitraverseTests(ConsumerRecordBitraverse)
+      .bitraverse[Option, Int, Int, Int, String, String, String],
+  )
 }

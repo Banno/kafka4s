@@ -14,19 +14,25 @@
  * limitations under the License.
  */
 
-package com.banno.kafka
+package com.banno.kafka.vulcan
 
-import io.confluent.kafka.schemaregistry.ParsedSchema
-import io.confluent.kafka.schemaregistry.avro.AvroSchema
-import org.apache.avro.{Schema as JSchema}
+import cats.*
+import cats.effect.*
+import com.banno.kafka.consumer.*
 import org.apache.avro.generic.GenericRecord
-import scala.util.Try
+import vulcan.*
 
-final case class Schema[A](
-    ast: JSchema, // Abstract Syntax Tree
-    parse: GenericRecord => Try[A],
-    unparse: A => Try[GenericRecord],
-) {
-  def parsed: ParsedSchema =
-    new AvroSchema(ast)
+object VulcanConsumer {
+  def apply[F[_]: MonadThrow, K: Codec, V: Codec](
+      c: ConsumerApi[F, GenericRecord, GenericRecord]
+  ): ConsumerApi[F, K, V] =
+    c.biSemiflatMap(
+      Codec.decodeGenericRecord[F, K](_),
+      Codec.decodeGenericRecord[F, V](_),
+    )
+
+  def resource[F[_]: Async, K: Codec, V: Codec](
+      configs: (String, AnyRef)*
+  ): Resource[F, ConsumerApi[F, K, V]] =
+    ConsumerApi.Avro.Generic.resource[F](configs: _*).map(apply(_))
 }

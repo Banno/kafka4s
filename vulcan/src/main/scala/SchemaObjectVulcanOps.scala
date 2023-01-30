@@ -15,18 +15,26 @@
  */
 
 package com.banno.kafka
+package vulcan
 
-import io.confluent.kafka.schemaregistry.ParsedSchema
-import io.confluent.kafka.schemaregistry.avro.AvroSchema
+import _root_.vulcan.*
+import cats.*
+import cats.syntax.all.*
 import org.apache.avro.{Schema as JSchema}
-import org.apache.avro.generic.GenericRecord
-import scala.util.Try
+import scala.util.*
 
-final case class Schema[A](
-    ast: JSchema, // Abstract Syntax Tree
-    parse: GenericRecord => Try[A],
-    unparse: A => Try[GenericRecord],
-) {
-  def parsed: ParsedSchema =
-    new AvroSchema(ast)
+object SchemaObjectVulcanOps {
+  private def schema[F[_]: ApplicativeThrow, A: Codec]: F[JSchema] =
+    Codec[A].schema
+      .leftMap(_.throwable)
+      .liftTo[F]
+
+  def apply[F[_]: ApplicativeThrow, A: Codec]: F[Schema[A]] =
+    schema.map(
+      Schema(
+        _,
+        Codec.decodeGenericRecord[Try, A](_),
+        Codec.encodeGenericRecord[Try, A](_),
+      )
+    )
 }

@@ -24,6 +24,7 @@ val V = new {
   val munitCE3 = "1.0.7"
   val scalatest = "3.2.15"
   val scalatestPlus = "3.2.3.0"
+  val vulcan = "1.8.4"
 }
 
 lazy val kafka4s = project
@@ -31,7 +32,7 @@ lazy val kafka4s = project
   .settings(scalaVersion := V.scalaVersion)
   .disablePlugins(MimaPlugin)
   .enablePlugins(NoPublishPlugin)
-  .aggregate(core, avro4s, examples, site)
+  .aggregate(core, avro4s, vulcan, examples, site)
 
 lazy val core = project
   .in(file("core"))
@@ -89,6 +90,25 @@ lazy val avro4s = project
     scalacOptions += "-Wnonunit-statement",
     testFrameworks += new TestFramework("munit.Framework"),
   ).dependsOn(core % "compile->compile;test->test")
+
+lazy val vulcan = project
+  .in(file("vulcan"))
+  .settings(commonSettings)
+  .settings(
+    name := "kafka4s-vulcan",
+    mimaBinaryIssueFilters ++= {
+      import com.typesafe.tools.mima.core._
+      import com.typesafe.tools.mima.core.ProblemFilters._
+      Seq()
+    },
+    libraryDependencies ++= Seq(
+      "com.github.fd4s" %% "vulcan" % V.vulcan,
+    ),
+  )
+  .settings(
+    scalacOptions += "-Wnonunit-statement",
+    testFrameworks += new TestFramework("munit.Framework"),
+  ).dependsOn(core)
 
 lazy val examples = project
   .enablePlugins(NoPublishPlugin)

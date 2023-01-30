@@ -22,7 +22,6 @@ import cats.effect.*
 import cats.syntax.all.*
 import com.banno.kafka.*
 import io.confluent.kafka.serializers.KafkaAvroSerializer
-import java.util.concurrent.{Future => JFuture}
 import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.consumer.*
 import org.apache.kafka.clients.producer.*
@@ -47,24 +46,11 @@ trait ProducerApi[F[_], K, V] {
       groupMetadata: ConsumerGroupMetadata,
   ): F[Unit]
 
-  private[producer] def sendRaw(
-      record: ProducerRecord[K, V]
-  ): JFuture[RecordMetadata]
-  private[producer] def sendRaw(
-      record: ProducerRecord[K, V],
-      callback: Callback,
-  ): JFuture[RecordMetadata]
-  private[producer] def sendRaw(
-      record: ProducerRecord[K, V],
-      callback: Either[Exception, RecordMetadata] => Unit,
-  ): Unit
-
   def sendAndForget(record: ProducerRecord[K, V]): F[Unit]
   def sendSync(record: ProducerRecord[K, V]): F[RecordMetadata]
   def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata]
 
-  // Implementing directly here since Cats doesn't have `Bicontravariant`, and
-  // we technically don't need that level of abstraction, just this method.
+  // Cats doesn't have `Bicontravariant`
   final def contrabimap[A, B](f: A => K, g: B => V): ProducerApi[F, A, B] = {
     val self = this
     new ProducerApi[F, A, B] {
@@ -92,29 +78,51 @@ trait ProducerApi[F[_], K, V] {
       ): F[Unit] =
         self.sendOffsetsToTransaction(offsets, groupMetadata)
 
-      override private[producer] def sendRaw(
-          record: ProducerRecord[A, B]
-      ): JFuture[RecordMetadata] =
-        self.sendRaw(record.bimap(f, g))
-
-      override private[producer] def sendRaw(
-          record: ProducerRecord[A, B],
-          callback: Callback,
-      ): JFuture[RecordMetadata] =
-        self.sendRaw(record.bimap(f, g), callback)
-
-      override private[producer] def sendRaw(
-          record: ProducerRecord[A, B],
-          callback: Either[Exception, RecordMetadata] => Unit,
-      ): Unit =
-        self.sendRaw(record.bimap(f, g), callback)
-
       override def sendAndForget(record: ProducerRecord[A, B]): F[Unit] =
         self.sendAndForget(record.bimap(f, g))
       override def sendSync(record: ProducerRecord[A, B]): F[RecordMetadata] =
         self.sendSync(record.bimap(f, g))
       override def sendAsync(record: ProducerRecord[A, B]): F[RecordMetadata] =
         self.sendAsync(record.bimap(f, g))
+    }
+  }
+
+  final def semiflatContrabimap[A, B](
+      f: A => F[K],
+      g: B => F[V],
+  )(implicit F: Monad[F]): ProducerApi[F, A, B] = {
+    val self = this
+    new ProducerApi[F, A, B] {
+      override def abortTransaction: F[Unit] =
+        self.abortTransaction
+      override def beginTransaction: F[Unit] =
+        self.beginTransaction
+      override def close: F[Unit] =
+        self.close
+      override def close(timeout: FiniteDuration): F[Unit] =
+        self.close(timeout)
+      override def commitTransaction: F[Unit] =
+        self.commitTransaction
+      override def flush: F[Unit] =
+        self.flush
+      override def initTransactions: F[Unit] =
+        self.initTransactions
+      override def metrics: F[Map[MetricName, Metric]] =
+        self.metrics
+      override def partitionsFor(topic: String): F[Seq[PartitionInfo]] =
+        self.partitionsFor(topic)
+      override def sendOffsetsToTransaction(
+          offsets: Map[TopicPartition, OffsetAndMetadata],
+          groupMetadata: ConsumerGroupMetadata,
+      ): F[Unit] =
+        self.sendOffsetsToTransaction(offsets, groupMetadata)
+
+      override def sendAndForget(record: ProducerRecord[A, B]): F[Unit] =
+        record.bitraverse(f, g) >>= self.sendAndForget
+      override def sendSync(record: ProducerRecord[A, B]): F[RecordMetadata] =
+        record.bitraverse(f, g) >>= self.sendSync
+      override def sendAsync(record: ProducerRecord[A, B]): F[RecordMetadata] =
+        record.bitraverse(f, g) >>= self.sendAsync
     }
   }
 
@@ -138,21 +146,6 @@ trait ProducerApi[F[_], K, V] {
           groupMetadata: ConsumerGroupMetadata,
       ): G[Unit] =
         f(self.sendOffsetsToTransaction(offsets, groupMetadata))
-
-      override private[producer] def sendRaw(
-          record: ProducerRecord[K, V]
-      ): JFuture[RecordMetadata] =
-        self.sendRaw(record)
-      override private[producer] def sendRaw(
-          record: ProducerRecord[K, V],
-          callback: Callback,
-      ): JFuture[RecordMetadata] =
-        self.sendRaw(record, callback)
-      override private[producer] def sendRaw(
-          record: ProducerRecord[K, V],
-          callback: Either[Exception, RecordMetadata] => Unit,
-      ): Unit =
-        self.sendRaw(record, callback)
 
       override def sendAndForget(record: ProducerRecord[K, V]): G[Unit] =
         f(self.sendAndForget(record))

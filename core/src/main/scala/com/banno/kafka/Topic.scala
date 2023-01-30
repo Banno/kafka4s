@@ -81,9 +81,9 @@ object Topic {
   ) extends Topic[K, V] {
     override def coparse(
         kv: (K, V)
-    ): ProducerRecord[GenericRecord, GenericRecord] =
+    ): Try[ProducerRecord[GenericRecord, GenericRecord]] =
       new ProducerRecord(topic, kv._1, kv._2)
-        .bimap(keySchema.unparse, valueSchema.unparse)
+        .bitraverse(keySchema.unparse, valueSchema.unparse)
 
     override def name: TopicName = TopicName(topic)
 
@@ -232,8 +232,8 @@ object Topic {
 
     override def coparse(
         kv: (K, B)
-    ): ProducerRecord[GenericRecord, GenericRecord] =
-      fa.coparse((kv._1, g(kv._2)))
+    ): Try[ProducerRecord[GenericRecord, GenericRecord]] =
+      fa.coparse(kv._1 -> g(kv._2))
 
     override def nextOffset(
         cr: IncomingRecord[K, B]

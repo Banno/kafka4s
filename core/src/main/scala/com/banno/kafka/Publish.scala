@@ -16,25 +16,26 @@
 
 package com.banno.kafka
 
-import cats._
-import cats.syntax.all._
-
-import com.banno.kafka._
+import cats.*
+import cats.syntax.all.*
+import com.banno.kafka.*
 import com.banno.kafka.producer.ProducerApi
-
-import shapeless._
-
 import org.apache.avro.generic.GenericRecord
+import shapeless.*
 
 object Publish {
   type T[F[_], A] = A => F[Unit]
   type KV[F[_], K, V] = T[F, (K, V)]
 
-  def to[F[_]: Functor, A, B](
+  def to[F[_]: MonadThrow, A, B](
       topical: Topical[A, B],
       producer: ProducerApi[F, GenericRecord, GenericRecord],
-  ): T[F, B] =
-    kv => producer.sendAsync(topical.coparse(kv)).void
+  ): T[F, B] = kv =>
+    topical
+      .coparse(kv)
+      .liftTo[F]
+      .flatMap(producer.sendAsync)
+      .void
 
   trait Builder[F[_], A <: Coproduct, B <: Coproduct] {
     type P <: HList
@@ -45,11 +46,13 @@ object Publish {
   }
 
   object Builder {
-    implicit def buildNPublishers[F[
-        _
-    ]: Functor, K, V, X <: Coproduct, Y <: Coproduct](implicit
-        buildTail: Builder[F, X, Y]
-    ) =
+    implicit def buildNPublishers[
+        F[_]: MonadThrow,
+        K,
+        V,
+        X <: Coproduct,
+        Y <: Coproduct,
+    ](implicit buildTail: Builder[F, X, Y]) =
       new Builder[F, IncomingRecord[K, V] :+: X, (K, V) :+: Y] {
         override type P = T[F, (K, V)] :: buildTail.P
 

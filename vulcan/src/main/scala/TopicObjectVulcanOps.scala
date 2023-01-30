@@ -14,26 +14,37 @@
  * limitations under the License.
  */
 
-package com.banno.kafka.avro4s
+package com.banno.kafka
+package vulcan
 
+import _root_.vulcan.*
 import cats.*
-import cats.effect.*
 import cats.syntax.all.*
-import com.banno.kafka.consumer.*
-import com.sksamuel.avro4s.FromRecord
-import org.apache.avro.generic.GenericRecord
 
-object Avro4sConsumer {
-  def apply[F[_]: Functor, K, V](
-      c: ConsumerApi[F, GenericRecord, GenericRecord]
-  )(implicit
-      kfr: FromRecord[K],
-      vfr: FromRecord[V],
-  ): ConsumerApi[F, K, V] =
-    c.bimap(kfr.from, vfr.from)
+object TopicObjectVulcanOps {
+  def apply[F[_]: ApplicativeThrow, K: Codec, V: Codec](
+      topic: String,
+      topicPurpose: TopicPurpose,
+  ): F[Topic[K, V]] =
+    (Schema.vulcan[F, K], Schema.vulcan[F, V]).mapN(
+      Topic(
+        topic,
+        topicPurpose,
+        _,
+        _,
+      )
+    )
 
-  def resource[F[_]: Async, K: FromRecord, V: FromRecord](
-      configs: (String, AnyRef)*
-  ): Resource[F, ConsumerApi[F, K, V]] =
-    ConsumerApi.Avro.Generic.resource[F](configs: _*).map(apply(_))
+  def builder[F[_]: ApplicativeThrow, K: Codec, V: Codec](
+      topic: String,
+      topicPurpose: TopicPurpose,
+  ): F[Topic.Builder[K, V]] =
+    (Schema.vulcan[F, K], Schema.vulcan[F, V]).mapN(
+      Topic.builder(
+        topic,
+        topicPurpose,
+        _,
+        _,
+      )
+    )
 }
