@@ -16,17 +16,17 @@
 
 package com.banno
 package kafka
+package avro4s
 
-import io.confluent.kafka.serializers._
-import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
-import org.apache.avro._
-import org.apache.avro.generic.GenericRecord
 import com.sksamuel.avro4s.{DefaultFieldMapper, RecordFormat, SchemaFor}
-import munit._
-
-import scala.util._
-import scala.jdk.CollectionConverters._
-import shapeless._
+import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
+import io.confluent.kafka.serializers.*
+import munit.*
+import org.apache.avro.*
+import org.apache.avro.generic.GenericRecord
+import scala.jdk.CollectionConverters.*
+import scala.util.*
+import shapeless.*
 
 // http://avro.apache.org/docs/current/api/java/index.html
 object Compatibility {
