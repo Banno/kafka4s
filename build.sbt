@@ -6,7 +6,7 @@ val V = new {
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
   val cats = "2.9.0"
-  val catsEffect = "3.4.5"
+  val catsEffect = "3.4.6"
   val confluent = "7.3.1"
   val curator = "5.2.0"
   val disciplineMunit = "1.0.9"
@@ -89,7 +89,8 @@ lazy val avro4s = project
   .settings(
     scalacOptions += "-Wnonunit-statement",
     testFrameworks += new TestFramework("munit.Framework"),
-  ).dependsOn(core % "compile->compile;test->test")
+  )
+  .dependsOn(core % "compile->compile;test->test")
 
 lazy val vulcan = project
   .in(file("vulcan"))
@@ -102,13 +103,14 @@ lazy val vulcan = project
       Seq()
     },
     libraryDependencies ++= Seq(
-      "com.github.fd4s" %% "vulcan" % V.vulcan,
+      "com.github.fd4s" %% "vulcan" % V.vulcan
     ),
   )
   .settings(
     scalacOptions += "-Wnonunit-statement",
     testFrameworks += new TestFramework("munit.Framework"),
-  ).dependsOn(core)
+  )
+  .dependsOn(core)
 
 lazy val examples = project
   .enablePlugins(NoPublishPlugin)
