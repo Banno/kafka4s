@@ -165,6 +165,14 @@ object Topic {
   ): Topic[K, V] =
     Impl(topic, topicPurpose, None, None, keySchema, valueSchema)
 
+  def applyF[F[_]: Applicative, K, V](
+      topic: String,
+      topicPurpose: TopicPurpose,
+      keySchema: F[Schema[K]],
+      valueSchema: F[Schema[V]],
+  ): F[Topic[K, V]] =
+    (keySchema, valueSchema).mapN(Impl(topic, topicPurpose, None, None, _, _))
+
   sealed trait Builder[K, V] {
     def withKeyParseFailedHandler(
         handle: (GenericRecord, Throwable) => Try[K]
@@ -219,6 +227,16 @@ object Topic {
       valueSchema: Schema[V],
   ): Builder[K, V] =
     BuilderImpl(topic, topicPurpose, none, none, keySchema, valueSchema)
+
+  def builderF[F[_]: Applicative, K, V](
+      topic: String,
+      topicPurpose: TopicPurpose,
+      keySchema: F[Schema[K]],
+      valueSchema: F[Schema[V]],
+  ): F[Builder[K, V]] =
+    (keySchema, valueSchema).mapN(
+      BuilderImpl(topic, topicPurpose, none, none, _, _)
+    )
 
   private final case class InvariantImpl[K, A, B](
       fa: Topic[K, A],

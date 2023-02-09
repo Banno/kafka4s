@@ -30,11 +30,9 @@ object SchemaObjectVulcanOps {
       .liftTo[F]
 
   def apply[F[_]: ApplicativeThrow, A: Codec]: F[Schema[A]] =
-    schema.map(
-      Schema(
-        _,
-        Codec.decodeGenericRecord[Try, A](_),
-        Codec.encodeGenericRecord[Try, A](_),
-      )
+    Schema.tryInit(
+      schema,
+      Codec.decodeGenericRecord[Try, A](_),
+      Codec.encodeGenericRecord[Try, A](_),
     )
 }

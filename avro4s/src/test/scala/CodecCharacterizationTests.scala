@@ -23,6 +23,7 @@ import io.confluent.kafka.schemaregistry.CompatibilityLevel
 import munit.*
 import org.scalacheck.*
 import scala.jdk.CollectionConverters.*
+import scala.util.*
 
 class CodecCharacterizationTests extends ScalaCheckSuite {
   test(
@@ -30,10 +31,10 @@ class CodecCharacterizationTests extends ScalaCheckSuite {
     "whole union's schema"
   ) {
     Prop.forAll { (foolike: Foolike) =>
-      val schema = Schema.avro4s[Foolike]
-      val attempt = schema.unparse(foolike)
+      val trySchema = Schema.avro4s[Try, Foolike]
+      val attempt = trySchema.flatMap(x => x.unparse(foolike).map(x -> _))
       assert(clue(attempt).isSuccess)
-      val record = attempt.toOption.get
+      val (schema, record) = attempt.toOption.get
       val parsedSchema = record.getSchema.asParsedSchema
       val errors = schema.ast.asParsedSchema.isCompatible(
         CompatibilityLevel.BACKWARD_TRANSITIVE,

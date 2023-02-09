@@ -17,6 +17,7 @@
 package com.banno.kafka
 package avro4s
 
+import cats.*
 import com.sksamuel.avro4s.*
 import org.apache.avro.{Schema as JSchema}
 import org.apache.avro.generic.GenericRecord
@@ -30,16 +31,19 @@ object SchemaObjectAvro4sOps {
 
   private def toGeneric[A](
       x: A
-  )(implicit TR: ToRecord[A]): GenericRecord =
-    TR.to(x)
+  )(implicit TR: ToRecord[A]): Try[GenericRecord] =
+    Try(TR.to(x))
 
-  private def schema[A](implicit SF: SchemaFor[A]): JSchema =
-    SF.schema(DefaultFieldMapper)
+  private def schema[F[_]: ApplicativeThrow, A](implicit
+      SF: SchemaFor[A]
+  ): F[JSchema] =
+    ApplicativeThrow[F].catchNonFatal(SF.schema(DefaultFieldMapper))
 
-  def apply[A: FromRecord: ToRecord: SchemaFor]: Schema[A] =
-    Schema(
+  def apply[F[_]: ApplicativeThrow, A: FromRecord: ToRecord: SchemaFor]
+      : F[Schema[A]] =
+    Schema.tryInit(
       schema,
       fromGeneric(_),
-      x => Try(toGeneric(x)),
+      toGeneric(_),
     )
 }
