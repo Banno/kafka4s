@@ -17,34 +17,37 @@
 package com.banno.kafka
 package avro4s
 
+import cats.*
 import com.sksamuel.avro4s.*
 
 object TopicObjectAvro4sOps {
   def apply[
+      F[_]: ApplicativeThrow,
       K: FromRecord: ToRecord: SchemaFor,
       V: FromRecord: ToRecord: SchemaFor,
   ](
       topic: String,
       topicPurpose: TopicPurpose,
-  ): Topic[K, V] =
-    Topic(
+  ): F[Topic[K, V]] =
+    Topic.applyF(
       topic,
       topicPurpose,
-      Schema.avro4s[K],
-      Schema.avro4s[V],
+      Schema.avro4s[F, K],
+      Schema.avro4s[F, V],
     )
 
   def builder[
+      F[_]: ApplicativeThrow,
       K: FromRecord: ToRecord: SchemaFor,
       V: FromRecord: ToRecord: SchemaFor,
   ](
       topic: String,
       topicPurpose: TopicPurpose,
-  ): Topic.Builder[K, V] =
-    Topic.builder(
+  ): F[Topic.Builder[K, V]] =
+    Topic.builderF(
       topic,
       topicPurpose,
-      Schema.avro4s[K],
-      Schema.avro4s[V],
+      Schema.avro4s[F, K],
+      Schema.avro4s[F, V],
     )
 }

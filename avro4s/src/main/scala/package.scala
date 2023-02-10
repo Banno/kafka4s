@@ -23,6 +23,7 @@ import com.sksamuel.avro4s.*
 import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.producer.ProducerRecord
+import scala.util.*
 
 package object avro4s {
   implicit final class SchemaRegistryAvro4sOpsOps[F[_]](
@@ -61,13 +62,13 @@ package object avro4s {
       private val cr: ConsumerRecord[GenericRecord, GenericRecord]
   ) extends AnyVal {
     def maybeKeyAs[K](implicit kfr: FromRecord[K]): Option[K] =
-      cr.maybeKey.map(kfr.from)
+      cr.maybeKey.flatMap(k => Try(kfr.from(k)).toOption)
     def maybeValueAs[V](implicit vfr: FromRecord[V]): Option[V] =
-      cr.maybeValue.map(vfr.from)
+      cr.maybeValue.flatMap(v => Try(vfr.from(v)).toOption)
 
-    // note that these will probably throw NPE if key/value is null
-    def keyAs[K](implicit kfr: FromRecord[K]): K = kfr.from(cr.key)
-    def valueAs[V](implicit vfr: FromRecord[V]): V = vfr.from(cr.value)
+    def keyAs[K](implicit kfr: FromRecord[K]): Try[K] = Try(kfr.from(cr.key))
+    def valueAs[V](implicit vfr: FromRecord[V]): Try[V] =
+      Try(vfr.from(cr.value))
   }
 
   implicit final class ProducerRecordAvro4sOps[K, V](
@@ -78,7 +79,7 @@ package object avro4s {
     def toGenericRecord(implicit
         ktr: ToRecord[K],
         vtr: ToRecord[V],
-    ): ProducerRecord[GenericRecord, GenericRecord] =
-      pr.bimap(ktr.to, vtr.to)
+    ): Try[ProducerRecord[GenericRecord, GenericRecord]] =
+      pr.bitraverse(k => Try(ktr.to(k)), v => Try(vtr.to(v)))
   }
 }

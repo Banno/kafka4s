@@ -16,10 +16,12 @@
 
 package com.banno.kafka
 
+import cats.*
+import cats.syntax.all.*
 import io.confluent.kafka.schemaregistry.ParsedSchema
 import io.confluent.kafka.schemaregistry.avro.AvroSchema
-import org.apache.avro.{Schema as JSchema}
 import org.apache.avro.generic.GenericRecord
+import org.apache.avro.{Schema as JSchema}
 import scala.util.Try
 
 final case class Schema[A](
@@ -29,4 +31,13 @@ final case class Schema[A](
 ) {
   def parsed: ParsedSchema =
     new AvroSchema(ast)
+}
+
+object Schema {
+  def tryInit[F[_]: Functor, A](
+      tryAst: F[JSchema],
+      parse: GenericRecord => Try[A],
+      unparse: A => Try[GenericRecord],
+  ): F[Schema[A]] =
+    tryAst.map(Schema(_, parse, unparse))
 }
