@@ -22,7 +22,7 @@ val V = new {
   val scalacheckMagnolia = "0.6.0"
   val munit = "0.7.29"
   val munitCE3 = "1.0.7"
-  val scalatest = "3.2.15"
+  val scalatest = "3.2.16"
   val scalatestPlus = "3.2.3.0"
   val vulcan = "1.9.0"
 }
