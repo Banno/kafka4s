@@ -83,7 +83,7 @@ lazy val avro4s = project
       "com.sksamuel.avro4s" %% "avro4s-core" % V.avro4s,
       "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % Test,
       "org.scalatest" %% "scalatest" % V.scalatest % Test,
-      "org.scalatestplus" %% "scalacheck-1-15" % "3.2.11.0" % Test,
+      "org.scalatestplus" %% "scalacheck-1-16" % "3.2.14.0" % Test,
     ),
   )
   .settings(
