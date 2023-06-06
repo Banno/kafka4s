@@ -233,8 +233,6 @@ object PrometheusMetricsReporterApi {
     def ignore(id: MetricId) =
       log.trace(s"Skipping Prometheus registration for Kafka metric: $id")
 
-
-
     def tryAdapter(
         metric: KafkaMetric,
         name: String,
