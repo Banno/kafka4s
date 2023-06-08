@@ -11,7 +11,7 @@ val V = new {
   val curator = "5.2.0"
   val disciplineMunit = "1.0.9"
   val epimetheus = "0.5.0"
-  val fs2 = "3.6.1"
+  val fs2 = "3.7.0"
   val junit = "4.13"
   val kafka = s"$confluent-ce"
   val kindProjector = "0.13.2"
@@ -22,7 +22,7 @@ val V = new {
   val scalacheckMagnolia = "0.6.0"
   val munit = "0.7.29"
   val munitCE3 = "1.0.7"
-  val scalatest = "3.2.15"
+  val scalatest = "3.2.16"
   val scalatestPlus = "3.2.3.0"
   val vulcan = "1.9.0"
 }
@@ -83,7 +83,7 @@ lazy val avro4s = project
       "com.sksamuel.avro4s" %% "avro4s-core" % V.avro4s,
       "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % Test,
       "org.scalatest" %% "scalatest" % V.scalatest % Test,
-      "org.scalatestplus" %% "scalacheck-1-15" % "3.2.11.0" % Test,
+      "org.scalatestplus" %% "scalacheck-1-16" % "3.2.14.0" % Test,
     ),
   )
   .settings(

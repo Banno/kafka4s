@@ -59,15 +59,15 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
   private def sendRaw(
       record: ProducerRecord[K, V],
       callback: Either[Exception, RecordMetadata] => Unit,
-  ): Unit = {
-    val _: JFuture[RecordMetadata] = sendRaw(
+  ): F[Option[F[Unit]]] = F.delay {
+    val jFuture: JFuture[RecordMetadata] = sendRaw(
       record,
       new Callback() {
         override def onCompletion(rm: RecordMetadata, e: Exception): Unit =
           if (e == null) callback(Right(rm)) else callback(Left(e))
       },
     )
-    ()
+    Some(F.delay(jFuture.cancel(false)).void)
   }
 
   /** The returned F[_] completes as soon as the underlying
@@ -105,7 +105,7 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
     * blocking semantics than sendSync?
     */
   def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata] =
-    F.async_(sendRaw(record, _))
+    F.async(sendRaw(record, _))
 }
 
 object ProducerImpl {
