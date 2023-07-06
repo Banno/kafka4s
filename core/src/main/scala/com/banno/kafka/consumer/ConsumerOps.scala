@@ -316,8 +316,8 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
             } && zeroCount < maxZeroCount
           }
           .map(_._2)
-      // once we've read up to final offset for a partition, we could pause it, so poll would stop returning any newer records from it, and then at end we could resume all partitions
-      // not sure if pausing is really necessary, because this stream just needs to guarantee its read *up to* final offsets; reading *past* them should be fine
+        // once we've read up to final offset for a partition, we could pause it, so poll would stop returning any newer records from it, and then at end we could resume all partitions
+        // not sure if pausing is really necessary, because this stream just needs to guarantee its read *up to* final offsets; reading *past* them should be fine
       }
 
   def recordsThroughAssignmentLastOffsetsOrZeros(
