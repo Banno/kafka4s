@@ -12,6 +12,7 @@ val V = new {
   val disciplineMunit = "1.0.9"
   val epimetheus = "0.5.0"
   val fs2 = "3.8.0"
+  val guava = "32.1.2-jre"
   val junit = "4.13"
   val kafka = s"$confluent-ccs"
   val kindProjector = "0.13.2"
@@ -204,6 +205,10 @@ lazy val commonSettings = Seq(
     "io.confluent" % "kafka-avro-serializer" % V.confluent,
     "io.chrisdavenport" %% "epimetheus" % V.epimetheus,
     "org.typelevel" %% "log4cats-slf4j" % V.log4cats,
+    // Upgrade vulnerable guava-30.1.1-jre from confluent-7.4.1.  This
+    // should be a Runtime dependency, but it isn't shadowing right
+    // unless it's Compile.
+    "com.google.guava" % "guava" % V.guava,
   ),
   Test / sourceGenerators += (Test / avroScalaGenerate).taskValue,
   watchSources ++= ((Test / avroSourceDirectories).value ** "*.avdl").get,
