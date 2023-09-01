@@ -240,7 +240,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       pollTimeout: FiniteDuration
   ): Stream[F, ConsumerRecord[K, V]] =
     recordsStream(pollTimeout).flatMap(crs =>
-      Stream.chunk(Chunk.indexedSeq(crs.asScala.toIndexedSeq))
+      Stream.chunk(Chunk.from(crs.asScala.toIndexedSeq))
     )
 
   /** Polls for and returns records until reading at least up to the specified

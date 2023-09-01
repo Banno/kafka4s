@@ -144,7 +144,7 @@ object RecordStream {
   }
 
   private def chunked[F[_], A](rs: IncomingRecords[A]): Stream[F, A] =
-    Stream.chunk(Chunk.iterable(rs.toList))
+    Stream.chunk(Chunk.from(rs.toList))
 
   private sealed trait WhetherCommits[P[_[_], _]] {
     def extrude[F[_], A](x: RecordStream[F, A]): P[F, A]
