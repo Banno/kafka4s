@@ -354,17 +354,16 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       .evalMap(r => process(r) <* consumer.commitSync(r.nextOffset))
 
   /** Returns a stream that processes records using the specified function,
-    * committing offsets for successfully processed records, either after processing
-    * the specified number of records, or after the specified time has elapsed since the 
-    * last offset commit. If the processing
-    * function returns a failure, the stream will halt with that failure, and
-    * the offsets will not be committed. This is at-least-once
-    * processing: records for which the function returns success, but whose 
-    * offset have not yet been committed will be reprocessed after a subsequent failure.
-    * In some use cases this pattern is more appropriate
-    * than just using auto-offset-commits, since it will not commit offsets for
-    * failed records when the consumer is closed. The consumer must be configured to disable
-    * offset auto-commits.
+    * committing offsets for successfully processed records, either after
+    * processing the specified number of records, or after the specified time
+    * has elapsed since the last offset commit. If the processing function
+    * returns a failure, the stream will halt with that failure, and the offsets
+    * will not be committed. This is at-least-once processing: records for which
+    * the function returns success, but whose offset have not yet been committed
+    * will be reprocessed after a subsequent failure. In some use cases this
+    * pattern is more appropriate than just using auto-offset-commits, since it
+    * will not commit offsets for failed records when the consumer is closed.
+    * The consumer must be configured to disable offset auto-commits.
     */
   def readProcessCommit2[A](
       pollTimeout: FiniteDuration,
