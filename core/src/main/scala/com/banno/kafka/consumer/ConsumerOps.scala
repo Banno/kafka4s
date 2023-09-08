@@ -353,4 +353,86 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       .recordStream(pollTimeout)
       .evalMap(r => process(r) <* consumer.commitSync(r.nextOffset))
 
+  /** Returns a stream that processes records using the specified function,
+    * committing offsets for successfully processed records, either after processing
+    * the specified number of records, or after the specified time has elapsed since the 
+    * last offset commit. If the processing
+    * function returns a failure, the stream will halt with that failure, and
+    * the offsets will not be committed. This is at-least-once
+    * processing: records for which the function returns success, but whose 
+    * offset have not yet been committed will be reprocessed after a subsequent failure.
+    * In some use cases this pattern is more appropriate
+    * than just using auto-offset-commits, since it will not commit offsets for
+    * failed records when the consumer is closed. The consumer must be configured to disable
+    * offset auto-commits.
+    */
+  def readProcessCommit2[A](
+      pollTimeout: FiniteDuration,
+      maxRecordCount: Long = 1000L,
+      maxCommitTime: Long = 60000L,
+  )(
+      process: ConsumerRecord[K, V] => F[A]
+  )(implicit C: Clock[F], S: Sync[F]): Stream[F, A] =
+    for {
+      state <- Stream.eval(
+        Ref.of[F, OffsetCommitState](OffsetCommitState.empty)
+      )
+      record <- consumer.recordStream(pollTimeout)
+      a <- Stream.eval(process(record))
+      s <- Stream.eval(state.updateAndGet(_.update(record)))
+      now <- Stream.eval(C.realTime.map(_.toNanos))
+      () <- Stream.eval(
+        s.needToCommit(maxRecordCount, now, maxCommitTime)
+          .traverse_(os =>
+            consumer.commitSync(os) *>
+            state.update(_.reset(now))
+          )
+      )
+    } yield a
+
+  case class OffsetCommitState(
+      offsets: Map[TopicPartition, Long],
+      recordCount: Long,
+      lastCommitTime: Long,
+  ) {
+    def update(record: ConsumerRecord[_, _]): OffsetCommitState =
+      copy(
+        offsets = offsets + (new TopicPartition(
+          record.topic,
+          record.partition,
+        ) -> record.offset),
+        recordCount = recordCount + 1,
+      )
+
+    def needToCommit(
+        maxRecordCount: Long,
+        now: Long,
+        maxCommitTime: Long,
+    ): Option[Map[TopicPartition, OffsetAndMetadata]] =
+      if (
+        recordCount >= maxRecordCount || (now - lastCommitTime) >= maxCommitTime
+      )
+        nextOffsets.some
+      else
+        none
+
+    def nextOffsets: Map[TopicPartition, OffsetAndMetadata] =
+      offsets.view.mapValues(o => new OffsetAndMetadata(o + 1)).toMap
+
+    def reset(time: Long): OffsetCommitState =
+      copy(
+        offsets = Map.empty,
+        recordCount = 0L,
+        lastCommitTime = time,
+      )
+  }
+
+  object OffsetCommitState {
+    val empty = OffsetCommitState(
+      offsets = Map.empty,
+      recordCount = 0L,
+      lastCommitTime = 0L,
+    )
+  }
+
 }
