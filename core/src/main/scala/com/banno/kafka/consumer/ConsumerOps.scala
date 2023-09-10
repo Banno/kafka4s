@@ -371,7 +371,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       maxCommitTime: Long = 60000L,
   )(
       process: ConsumerRecord[K, V] => F[A]
-  )(implicit C: Clock[F], S: Sync[F]): Stream[F, A] =
+  )(implicit C: Clock[F], S: Concurrent[F]): Stream[F, A] =
     for {
       state <- Stream.eval(
         Ref.of[F, OffsetCommitState](OffsetCommitState.empty)
