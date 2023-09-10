@@ -365,7 +365,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
     * will not commit offsets for failed records when the consumer is closed.
     * The consumer must be configured to disable offset auto-commits.
     */
-  def readProcessCommit2[A](
+  def processingAndCommitting[A](
       pollTimeout: FiniteDuration,
       maxRecordCount: Long = 1000L,
       maxCommitTime: Long = 60000L,
