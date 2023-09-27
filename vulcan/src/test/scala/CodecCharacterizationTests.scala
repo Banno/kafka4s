@@ -20,6 +20,10 @@ package vulcan
 import cats.syntax.all.*
 import com.banno.kafka.schemaregistry.*
 import io.confluent.kafka.schemaregistry.CompatibilityLevel
+import io.confluent.kafka.schemaregistry.{
+  ParsedSchemaHolder,
+  SimpleParsedSchemaHolder,
+}
 import munit.*
 import org.scalacheck.*
 import scala.jdk.CollectionConverters.*
@@ -53,9 +57,11 @@ class CodecCharacterizationTests extends ScalaCheckSuite {
       assert(clue(attempt).isSuccess)
       val (schema, record) = attempt.toOption.get
       val parsedSchema = record.getSchema.asParsedSchema
+      val holder: ParsedSchemaHolder =
+        new SimpleParsedSchemaHolder(parsedSchema)
       val errors = schema.ast.asParsedSchema.isCompatible(
         CompatibilityLevel.BACKWARD_TRANSITIVE,
-        List(parsedSchema).asJava,
+        List(holder).asJava,
       )
       assert(clue(errors).isEmpty)
     }
