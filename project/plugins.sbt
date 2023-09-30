@@ -1,4 +1,4 @@
-addSbtPlugin("com.julianpeeters" % "sbt-avrohugger" % "2.5.4")
+addSbtPlugin("com.julianpeeters" % "sbt-avrohugger" % "2.5.5")
 addSbtPlugin("io.github.davidgregory084" % "sbt-tpolecat" % "0.3.1")
 addSbtPlugin("com.typesafe.sbt" % "sbt-ghpages" % "0.6.3")
 addSbtPlugin("com.github.cb372" % "sbt-explicit-dependencies" % "0.3.1")
