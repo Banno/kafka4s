@@ -83,7 +83,6 @@ lazy val avro4s = project
     },
     libraryDependencies ++= Seq(
       "com.sksamuel.avro4s" %% "avro4s-core" % V.avro4s,
-      "org.apache.avro" % "avro" % V.avro % Runtime, // CVE-2023-39410
       "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % Test,
       "org.scalatest" %% "scalatest" % V.scalatest % Test,
       "org.scalatestplus" %% "scalacheck-1-16" % "3.2.14.0" % Test,
@@ -205,6 +204,7 @@ lazy val commonSettings = Seq(
     "co.fs2" %% "fs2-core" % V.fs2,
     "org.apache.kafka" % "kafka-clients" % V.kafka,
     "io.confluent" % "kafka-avro-serializer" % V.confluent,
+    "org.apache.avro" % "avro" % V.avro % Compile, // CVE-2023-39410, didn't work as Runtime
     "io.chrisdavenport" %% "epimetheus" % V.epimetheus,
     "org.typelevel" %% "log4cats-slf4j" % V.log4cats,
     // Upgrade vulnerable guava-30.1.1-jre from confluent-7.4.1.  This
