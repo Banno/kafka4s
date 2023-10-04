@@ -3,6 +3,7 @@ Global / onChangedBuildSource := ReloadOnSourceChanges
 val V = new {
   val scalaVersion = "2.13.10"
   val crossScalaVersions = List()
+  val avro = "1.11.3"
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
   val cats = "2.10.0"
@@ -118,7 +119,6 @@ lazy val examples = project
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio-interop-cats" % "3.2.9.1",
       "ch.qos.logback" % "logback-classic" % V.logback % Runtime,
     ),
     fork := true,
@@ -203,6 +203,7 @@ lazy val commonSettings = Seq(
     "co.fs2" %% "fs2-core" % V.fs2,
     "org.apache.kafka" % "kafka-clients" % V.kafka,
     "io.confluent" % "kafka-avro-serializer" % V.confluent,
+    "org.apache.avro" % "avro" % V.avro % Compile, // CVE-2023-39410, didn't work as Runtime
     "io.chrisdavenport" %% "epimetheus" % V.epimetheus,
     "org.typelevel" %% "log4cats-slf4j" % V.log4cats,
     // Upgrade vulnerable guava-30.1.1-jre from confluent-7.4.1.  This
