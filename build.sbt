@@ -119,7 +119,6 @@ lazy val examples = project
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio-interop-cats" % "3.2.9.1",
       "ch.qos.logback" % "logback-classic" % V.logback % Runtime,
     ),
     fork := true,
