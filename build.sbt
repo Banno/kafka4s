@@ -3,6 +3,7 @@ Global / onChangedBuildSource := ReloadOnSourceChanges
 val V = new {
   val scalaVersion = "2.13.10"
   val crossScalaVersions = List()
+  val avro = "1.11.3"
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
   val cats = "2.10.0"
@@ -82,6 +83,7 @@ lazy val avro4s = project
     },
     libraryDependencies ++= Seq(
       "com.sksamuel.avro4s" %% "avro4s-core" % V.avro4s,
+      "org.apache.avro" % "avro" % V.avro % Runtime, // CVE-2023-39410
       "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % Test,
       "org.scalatest" %% "scalatest" % V.scalatest % Test,
       "org.scalatestplus" %% "scalacheck-1-16" % "3.2.14.0" % Test,
