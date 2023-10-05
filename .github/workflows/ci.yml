@@ -51,6 +51,10 @@ jobs:
         if: matrix.java == 'temurin@8' && steps.setup-java-temurin-8.outputs.cache-hit == 'false'
         run: sbt +update
 
+      - name: Start docker-compose
+        id: start-docker-compose
+        run: docker-compose up -d
+
       - name: Check that workflows are up to date
         run: sbt githubWorkflowCheck
 

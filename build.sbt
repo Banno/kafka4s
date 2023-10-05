@@ -7,6 +7,13 @@ ThisBuild / scalaVersion := "2.13.10"
 ThisBuild / crossScalaVersions := List(scalaVersion.value)
 ThisBuild / tlBaseVersion := "5.0"
 ThisBuild / githubWorkflowTargetBranches := Seq("*", "series/*")
+ThisBuild / githubWorkflowBuildPreamble := Seq(
+  WorkflowStep.Run(
+    id = Some("start-docker-compose"),
+    name = Some("Start docker-compose"),
+    commands = List("docker-compose up -d"),
+  )
+)
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
