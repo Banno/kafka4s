@@ -151,13 +151,11 @@ lazy val site = project
     Seq(
       mdocIn := baseDirectory.value / "docs",
       tlSiteHelium := {
-        GenericSiteSettings.defaults
-          .value
-          .site
+        GenericSiteSettings.defaults.value.site
           .metadata(
             title = Some("kafka4s"),
             description = Some("Functional programming with Kafka and Scala"),
-            authors = List("Jack Henry & Associates, Inc.®")
+            authors = List("Jack Henry & Associates, Inc.®"),
           )
           .site
           .topNavigationBar(
