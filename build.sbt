@@ -8,6 +8,7 @@ val V = new {
   val betterMonadicFor = "0.3.1"
   val cats = "2.10.0"
   val catsEffect = "3.4.10"
+  val commonsCompress = "1.24.0"
   val confluent = "7.5.0"
   val curator = "5.2.0"
   val disciplineMunit = "1.0.9"
@@ -203,7 +204,8 @@ lazy val commonSettings = Seq(
     "co.fs2" %% "fs2-core" % V.fs2,
     "org.apache.kafka" % "kafka-clients" % V.kafka,
     "io.confluent" % "kafka-avro-serializer" % V.confluent,
-    "org.apache.avro" % "avro" % V.avro % Compile, // CVE-2023-39410, didn't work as Runtime
+    "org.apache.avro" % "avro" % V.avro, // CVE-2023-39410, didn't work as Runtime
+    "org.apache.commons" % "commons-compress" % V.commonsCompress, // CVE-2023-42503, didn't work as Runtime
     "io.chrisdavenport" %% "epimetheus" % V.epimetheus,
     "org.typelevel" %% "log4cats-slf4j" % V.log4cats,
     // Upgrade vulnerable guava-30.1.1-jre from confluent-7.4.1.  This
