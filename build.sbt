@@ -1,8 +1,16 @@
+import laika.helium.Helium
+import laika.helium.config.HeliumIcon
+import laika.helium.config.IconLink
+import org.typelevel.sbt.site.GenericSiteSettings
+
+ThisBuild / scalaVersion := "2.13.10"
+ThisBuild / crossScalaVersions := List(scalaVersion.value)
+ThisBuild / tlBaseVersion := "5.0"
+ThisBuild / githubWorkflowTargetBranches := Seq("*", "series/*")
+
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
 val V = new {
-  val scalaVersion = "2.13.10"
-  val crossScalaVersions = List()
   val avro = "1.11.3"
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
@@ -31,7 +39,6 @@ val V = new {
 
 lazy val kafka4s = project
   .in(file("."))
-  .settings(scalaVersion := V.scalaVersion)
   .disablePlugins(MimaPlugin)
   .enablePlugins(NoPublishPlugin)
   .aggregate(core, avro4s, vulcan, examples, site)
@@ -128,71 +135,24 @@ lazy val examples = project
 
 lazy val site = project
   .in(file("site"))
-  .disablePlugins(MimaPlugin)
-  .enablePlugins(MicrositesPlugin)
-  .enablePlugins(MdocPlugin)
-  .enablePlugins(NoPublishPlugin)
-  .settings(commonSettings)
+  .settings(publish / skip := true)
+  .enablePlugins(TypelevelSitePlugin)
+  .enablePlugins(TypelevelUnidocPlugin)
   .dependsOn(core, avro4s)
   .settings {
-    import microsites._
     Seq(
-      micrositeName := "kafka4s",
-      micrositeDescription := "Functional programming with Kafka and Scala",
-      micrositeAuthor := "Jack Henry & Associates, Inc.®",
-      micrositeGithubOwner := "Banno",
-      micrositeGithubRepo := "kafka4s",
-      micrositeTwitter := "@kafka4s",
-      micrositeBaseUrl := "/kafka4s",
-      micrositeDocumentationUrl := "/kafka4s/docs",
-      micrositeFooterText := None,
-      micrositeHighlightTheme := "atom-one-light",
-      micrositePalette := Map(
-        "brand-primary" -> "#3e5b95",
-        "brand-secondary" -> "#294066",
-        "brand-tertiary" -> "#2d5799",
-        "gray-dark" -> "#49494B",
-        "gray" -> "#7B7B7E",
-        "gray-light" -> "#E5E5E6",
-        "gray-lighter" -> "#F4F3F4",
-        "white-color" -> "#FFFFFF",
-      ),
-      scalacOptions += "-Wconf:cat=deprecation:i",
-      scalacOptions -= "-Xsource:3",
-      mdocExtraArguments += "--no-link-hygiene",
-      micrositePushSiteWith := GitHub4s,
-      micrositeGithubToken := sys.env.get("GITHUB_TOKEN"),
-      micrositeExtraMdFiles := Map(
-        file("CHANGELOG.md") -> ExtraMdFileConfig(
-          "changelog.md",
-          "page",
-          Map(
-            "title" -> "changelog",
-            "section" -> "changelog",
-            "position" -> "100",
-          ),
-        ),
-        file("CODE_OF_CONDUCT.md") -> ExtraMdFileConfig(
-          "code-of-conduct.md",
-          "page",
-          Map(
-            "title" -> "code of conduct",
-            "section" -> "code of conduct",
-            "position" -> "101",
-          ),
-        ),
-        file("LICENSE") -> ExtraMdFileConfig(
-          "license.md",
-          "page",
-          Map("title" -> "license", "section" -> "license", "position" -> "102"),
-        ),
-      ),
+      mdocIn := baseDirectory.value / "docs",
+      tlSiteHelium := {
+        GenericSiteSettings.defaults.value.site
+          .topNavigationBar(
+            homeLink = IconLink
+              .external("https://banno.github.io/kafka4s", HeliumIcon.home)
+          )
+      }
     )
   }
 
 lazy val commonSettings = Seq(
-  scalaVersion := V.scalaVersion,
-  crossScalaVersions := V.crossScalaVersions,
   resolvers += "confluent".at("https://packages.confluent.io/maven/"),
   addCompilerPlugin(
     ("org.typelevel" %% "kind-projector" % V.kindProjector)
