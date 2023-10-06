@@ -1,7 +1,7 @@
 val typelevelV = "0.5.3"
 
 addSbtPlugin("com.julianpeeters" % "sbt-avrohugger" % "2.5.6")
-addSbtPlugin("io.github.davidgregory084" % "sbt-tpolecat" % "0.3.1")
+addSbtPlugin("io.github.davidgregory084" % "sbt-tpolecat" % "0.4.4")
 addSbtPlugin("com.github.cb372" % "sbt-explicit-dependencies" % "0.3.1")
 addSbtPlugin("org.scalameta" % "sbt-mdoc" % "2.3.7")
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.2")
