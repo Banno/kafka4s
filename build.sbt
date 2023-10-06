@@ -1,13 +1,30 @@
+import laika.helium.Helium
+import laika.helium.config.HeliumIcon
+import laika.helium.config.IconLink
+import org.typelevel.sbt.site.GenericSiteSettings
+
+ThisBuild / scalaVersion := "2.13.10"
+ThisBuild / crossScalaVersions := List(scalaVersion.value)
+ThisBuild / tlBaseVersion := "5.0"
+ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("11"))
+ThisBuild / githubWorkflowTargetBranches := Seq("*", "series/*")
+ThisBuild / githubWorkflowBuildPreamble := Seq(
+  WorkflowStep.Run(
+    id = Some("start-docker-compose"),
+    name = Some("Start docker-compose"),
+    commands = List("docker-compose up -d"),
+  )
+)
+
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
 val V = new {
-  val scalaVersion = "2.13.10"
-  val crossScalaVersions = List()
   val avro = "1.11.3"
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
   val cats = "2.10.0"
   val catsEffect = "3.4.10"
+  val commonsCompress = "1.24.0"
   val confluent = "7.5.0"
   val curator = "5.2.0"
   val disciplineMunit = "1.0.9"
@@ -31,7 +48,6 @@ val V = new {
 
 lazy val kafka4s = project
   .in(file("."))
-  .settings(scalaVersion := V.scalaVersion)
   .disablePlugins(MimaPlugin)
   .enablePlugins(NoPublishPlugin)
   .aggregate(core, avro4s, vulcan, examples, site)
@@ -119,7 +135,7 @@ lazy val examples = project
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(
-      "ch.qos.logback" % "logback-classic" % V.logback % Runtime,
+      "ch.qos.logback" % "logback-classic" % V.logback % Runtime
     ),
     fork := true,
   )
@@ -128,71 +144,30 @@ lazy val examples = project
 
 lazy val site = project
   .in(file("site"))
-  .disablePlugins(MimaPlugin)
-  .enablePlugins(MicrositesPlugin)
-  .enablePlugins(MdocPlugin)
-  .enablePlugins(NoPublishPlugin)
-  .settings(commonSettings)
+  .settings(publish / skip := true)
+  .enablePlugins(TypelevelSitePlugin)
+  .enablePlugins(TypelevelUnidocPlugin)
   .dependsOn(core, avro4s)
   .settings {
-    import microsites._
     Seq(
-      micrositeName := "kafka4s",
-      micrositeDescription := "Functional programming with Kafka and Scala",
-      micrositeAuthor := "Jack Henry & Associates, Inc.®",
-      micrositeGithubOwner := "Banno",
-      micrositeGithubRepo := "kafka4s",
-      micrositeTwitter := "@kafka4s",
-      micrositeBaseUrl := "/kafka4s",
-      micrositeDocumentationUrl := "/kafka4s/docs",
-      micrositeFooterText := None,
-      micrositeHighlightTheme := "atom-one-light",
-      micrositePalette := Map(
-        "brand-primary" -> "#3e5b95",
-        "brand-secondary" -> "#294066",
-        "brand-tertiary" -> "#2d5799",
-        "gray-dark" -> "#49494B",
-        "gray" -> "#7B7B7E",
-        "gray-light" -> "#E5E5E6",
-        "gray-lighter" -> "#F4F3F4",
-        "white-color" -> "#FFFFFF",
-      ),
-      scalacOptions += "-Wconf:cat=deprecation:i",
-      scalacOptions -= "-Xsource:3",
-      mdocExtraArguments += "--no-link-hygiene",
-      micrositePushSiteWith := GitHub4s,
-      micrositeGithubToken := sys.env.get("GITHUB_TOKEN"),
-      micrositeExtraMdFiles := Map(
-        file("CHANGELOG.md") -> ExtraMdFileConfig(
-          "changelog.md",
-          "page",
-          Map(
-            "title" -> "changelog",
-            "section" -> "changelog",
-            "position" -> "100",
-          ),
-        ),
-        file("CODE_OF_CONDUCT.md") -> ExtraMdFileConfig(
-          "code-of-conduct.md",
-          "page",
-          Map(
-            "title" -> "code of conduct",
-            "section" -> "code of conduct",
-            "position" -> "101",
-          ),
-        ),
-        file("LICENSE") -> ExtraMdFileConfig(
-          "license.md",
-          "page",
-          Map("title" -> "license", "section" -> "license", "position" -> "102"),
-        ),
-      ),
+      mdocIn := baseDirectory.value / "docs",
+      tlSiteHelium := {
+        GenericSiteSettings.defaults.value.site
+          .metadata(
+            title = Some("kafka4s"),
+            description = Some("Functional programming with Kafka and Scala"),
+            authors = List("Jack Henry & Associates, Inc.®"),
+          )
+          .site
+          .topNavigationBar(
+            homeLink = IconLink
+              .external("https://banno.github.io/kafka4s", HeliumIcon.home)
+          )
+      },
     )
   }
 
 lazy val commonSettings = Seq(
-  scalaVersion := V.scalaVersion,
-  crossScalaVersions := V.crossScalaVersions,
   resolvers += "confluent".at("https://packages.confluent.io/maven/"),
   addCompilerPlugin(
     ("org.typelevel" %% "kind-projector" % V.kindProjector)
@@ -203,7 +178,8 @@ lazy val commonSettings = Seq(
     "co.fs2" %% "fs2-core" % V.fs2,
     "org.apache.kafka" % "kafka-clients" % V.kafka,
     "io.confluent" % "kafka-avro-serializer" % V.confluent,
-    "org.apache.avro" % "avro" % V.avro % Compile, // CVE-2023-39410, didn't work as Runtime
+    "org.apache.avro" % "avro" % V.avro, // CVE-2023-39410, didn't work as Runtime
+    "org.apache.commons" % "commons-compress" % V.commonsCompress, // CVE-2023-42503, didn't work as Runtime
     "io.chrisdavenport" %% "epimetheus" % V.epimetheus,
     "org.typelevel" %% "log4cats-slf4j" % V.log4cats,
     // Upgrade vulnerable guava-30.1.1-jre from confluent-7.4.1.  This
@@ -215,7 +191,7 @@ lazy val commonSettings = Seq(
   watchSources ++= ((Test / avroSourceDirectories).value ** "*.avdl").get,
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oS"),
   // Autogenerated source sometimes has unused warnings.  Works for Scala 2 only!
-  Compile / scalacOptions += "-Wconf:src=target/.*:silent"
+  Compile / scalacOptions += "-Wconf:src=target/.*:silent",
 )
 
 lazy val contributors = Seq(
@@ -244,9 +220,7 @@ inThisBuild(
     ),
     organizationName := "Jack Henry & Associates, Inc.®",
     startYear := Some(2019),
-    licenses += ("Apache-2.0", new URL(
-      "https://www.apache.org/licenses/LICENSE-2.0.txt"
-    )),
+    licenses := Seq(License.Apache2),
     homepage := Some(url("https://github.com/banno/kafka4s")),
   )
 )
