@@ -48,7 +48,6 @@ val V = new {
 
 lazy val kafka4s = project
   .in(file("."))
-  .disablePlugins(MimaPlugin)
   .enablePlugins(NoPublishPlugin)
   .aggregate(core, avro4s, vulcan, examples, site)
 
