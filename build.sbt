@@ -7,7 +7,7 @@ ThisBuild / scalaVersion := "2.13.10"
 ThisBuild / crossScalaVersions := List(scalaVersion.value)
 ThisBuild / tlBaseVersion := "5.0"
 ThisBuild / tlMimaPreviousVersions ~= { versions =>
-  val failedReleases = Set("5.0.1")
+  val failedReleases = Set("5.0.1", "5.0.2")
   versions -- failedReleases
 }
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("11"))
@@ -19,6 +19,7 @@ ThisBuild / githubWorkflowBuildPreamble := Seq(
     commands = List("docker-compose up -d"),
   )
 )
+ThisBuild / tlSonatypeUseLegacyHost := true
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
