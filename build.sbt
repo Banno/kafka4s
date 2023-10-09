@@ -6,6 +6,10 @@ import org.typelevel.sbt.site.GenericSiteSettings
 ThisBuild / scalaVersion := "2.13.10"
 ThisBuild / crossScalaVersions := List(scalaVersion.value)
 ThisBuild / tlBaseVersion := "5.0"
+ThisBuild / tlMimaPreviousVersions ~= { versions =>
+  val failedReleases = Set("5.0.1")
+  versions -- failedReleases
+}
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("11"))
 ThisBuild / githubWorkflowTargetBranches := Seq("*", "series/*")
 ThisBuild / githubWorkflowBuildPreamble := Seq(
@@ -48,7 +52,6 @@ val V = new {
 
 lazy val kafka4s = project
   .in(file("."))
-  .disablePlugins(MimaPlugin)
   .enablePlugins(NoPublishPlugin)
   .aggregate(core, avro4s, vulcan, examples, site)
 
