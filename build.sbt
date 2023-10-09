@@ -47,6 +47,7 @@ val V = new {
   val munitCE3 = "1.0.7"
   val scalatest = "3.2.17"
   val scalatestPlus = "3.2.3.0"
+  val snappy = "1.1.10.4"
   val vulcan = "1.9.0"
 }
 
@@ -180,6 +181,7 @@ lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
     "co.fs2" %% "fs2-core" % V.fs2,
     "org.apache.kafka" % "kafka-clients" % V.kafka,
+    "org.xerial.snappy" % "snappy-java" % V.snappy, // multiple CVE, doesn't work as Runtime
     "io.confluent" % "kafka-avro-serializer" % V.confluent,
     "org.apache.avro" % "avro" % V.avro, // CVE-2023-39410, didn't work as Runtime
     "org.apache.commons" % "commons-compress" % V.commonsCompress, // CVE-2023-42503, didn't work as Runtime
