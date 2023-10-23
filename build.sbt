@@ -6,6 +6,10 @@ import org.typelevel.sbt.site.GenericSiteSettings
 ThisBuild / scalaVersion := "2.13.10"
 ThisBuild / crossScalaVersions := List(scalaVersion.value)
 ThisBuild / tlBaseVersion := "5.0"
+ThisBuild / tlMimaPreviousVersions ~= { versions =>
+  val failedReleases = Set("5.0.1", "5.0.2")
+  versions -- failedReleases
+}
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("11"))
 ThisBuild / githubWorkflowTargetBranches := Seq("*", "series/*")
 ThisBuild / githubWorkflowBuildPreamble := Seq(
@@ -15,6 +19,7 @@ ThisBuild / githubWorkflowBuildPreamble := Seq(
     commands = List("docker-compose up -d"),
   )
 )
+ThisBuild / tlSonatypeUseLegacyHost := true
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
@@ -30,25 +35,25 @@ val V = new {
   val disciplineMunit = "1.0.9"
   val epimetheus = "0.5.0"
   val fs2 = "3.9.2"
-  val guava = "32.1.2-jre"
+  val guava = "32.1.3-jre"
   val junit = "4.13"
   val kafka = s"$confluent-ccs"
   val kindProjector = "0.13.2"
   val log4cats = "2.6.0"
   val logback = "1.4.11"
   val scalacheck = "1.17.0"
-  val scalacheckEffect = "0.6.0"
+  val scalacheckEffect = "1.0.4"
   val scalacheckMagnolia = "0.6.0"
   val munit = "0.7.29"
   val munitCE3 = "1.0.7"
   val scalatest = "3.2.17"
   val scalatestPlus = "3.2.3.0"
+  val snappy = "1.1.10.5"
   val vulcan = "1.9.0"
 }
 
 lazy val kafka4s = project
   .in(file("."))
-  .disablePlugins(MimaPlugin)
   .enablePlugins(NoPublishPlugin)
   .aggregate(core, avro4s, vulcan, examples, site)
 
@@ -177,6 +182,7 @@ lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
     "co.fs2" %% "fs2-core" % V.fs2,
     "org.apache.kafka" % "kafka-clients" % V.kafka,
+    "org.xerial.snappy" % "snappy-java" % V.snappy, // multiple CVE, doesn't work as Runtime
     "io.confluent" % "kafka-avro-serializer" % V.confluent,
     "org.apache.avro" % "avro" % V.avro, // CVE-2023-39410, didn't work as Runtime
     "org.apache.commons" % "commons-compress" % V.commonsCompress, // CVE-2023-42503, didn't work as Runtime
