@@ -1,230 +1,288 @@
-<!DOCTYPE html><html><head><title>kafka4s: Getting Started</title><meta charset="utf-8" /><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Jack Henry &amp; Associates, Inc.®" /><meta name="description" content="Functional programming with Kafka and Scala" /><meta name="og:image" content="/kafka4s/img/poster.png" /><meta name="image" property="og:image" content="/kafka4s/img/poster.png" /><meta name="og:title" content="kafka4s: Getting Started" /><meta name="title" property="og:title" content="kafka4s: Getting Started" /><meta name="og:site_name" content="kafka4s" /><meta name="og:url" content="https://github.com/banno/kafka4s" /><meta name="og:type" content="website" /><meta name="og:description" content="Functional programming with Kafka and Scala" /><link rel="icon" type="image/png" href="/kafka4s/img/favicon.png" /><meta name="twitter:title" content="kafka4s: Getting Started" /><meta name="twitter:image" content="/kafka4s/img/poster.png" /><meta name="twitter:description" content="Functional programming with Kafka and Scala" /><meta name="twitter:card" content="summary_large_image" /><meta name="twitter:site" content="@kafka4s" /><link rel="icon" type="image/png" sizes="16x16" href="/kafka4s/img/favicon16x16.png" /><link rel="icon" type="image/png" sizes="24x24" href="/kafka4s/img/favicon24x24.png" /><link rel="icon" type="image/png" sizes="32x32" href="/kafka4s/img/favicon32x32.png" /><link rel="icon" type="image/png" sizes="48x48" href="/kafka4s/img/favicon48x48.png" /><link rel="icon" type="image/png" sizes="57x57" href="/kafka4s/img/favicon57x57.png" /><link rel="icon" type="image/png" sizes="60x60" href="/kafka4s/img/favicon60x60.png" /><link rel="icon" type="image/png" sizes="64x64" href="/kafka4s/img/favicon64x64.png" /><link rel="icon" type="image/png" sizes="70x70" href="/kafka4s/img/favicon70x70.png" /><link rel="icon" type="image/png" sizes="72x72" href="/kafka4s/img/favicon72x72.png" /><link rel="icon" type="image/png" sizes="76x76" href="/kafka4s/img/favicon76x76.png" /><link rel="icon" type="image/png" sizes="96x96" href="/kafka4s/img/favicon96x96.png" /><link rel="icon" type="image/png" sizes="114x114" href="/kafka4s/img/favicon114x114.png" /><link rel="icon" type="image/png" sizes="120x120" href="/kafka4s/img/favicon120x120.png" /><link rel="icon" type="image/png" sizes="128x128" href="/kafka4s/img/favicon128x128.png" /><link rel="icon" type="image/png" sizes="144x144" href="/kafka4s/img/favicon144x144.png" /><link rel="icon" type="image/png" sizes="150x150" href="/kafka4s/img/favicon150x150.png" /><link rel="icon" type="image/png" sizes="152x152" href="/kafka4s/img/favicon152x152.png" /><link rel="icon" type="image/png" sizes="196x196" href="/kafka4s/img/favicon196x196.png" /><link rel="icon" type="image/png" sizes="310x310" href="/kafka4s/img/favicon310x310.png" /><link rel="icon" type="image/png" sizes="310x150" href="/kafka4s/img/favicon310x150.png" /><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" /><link rel="stylesheet" href="/kafka4s/highlight/styles/atom-one-light.css" /><link rel="stylesheet" href="/kafka4s/css/light-style.css" /></head><body class="docs"><div id="wrapper"><div id="sidebar-wrapper"><div id="sidebar-brand"><a href="/kafka4s/" class="brand"><div class="brand-wrapper"></div><span>kafka4s</span></a><button id="main-toggle" class="sidebar-toggle"><span class="close"></span></button></div><div class="sidebar-nav"> <div class="sidebar-nav-item active "><a href="/kafka4s/docs/index.html" title="Getting Started" class="active">Getting Started</a></div> <div class="sidebar-nav-item  "><a href="/kafka4s/docs/kafka-producers.html" title="Kafka Producers" class="">Kafka Producers</a></div> <div class="sidebar-nav-item  "><a href="/kafka4s/docs/kafka-consumers.html" title="Kafka Consumers" class="">Kafka Consumers</a></div> <div class="sidebar-nav-item  "><a href="/kafka4s/docs/schema-registry.html" title="Schema Registry Utils" class="">Schema Registry Utils</a></div> <div class="sidebar-nav-item  "><a href="/kafka4s/docs/kafka-client-metrics.html" title="Kafka Client Metrics" class="">Kafka Client Metrics</a></div></div></div><div id="page-content-wrapper"><div class="nav"><div class="container-fluid"><div class="row"><div class="col-lg-12"><div class="action-menu pull-left clearfix"><a href="#menu-toggle" id="menu-toggle"><i class="fa fa-bars" aria-hidden="true"></i></a></div><ul class="pull-right"><li class="search-nav"><div id="search-dropdown"><label><i class="fa fa-search"></i>Search</label><input id="search-bar" type="text" placeholder="Enter keywords here..." onclick="displayToggleSearch(event)" /><ul id="search-dropdown-content" class="dropdown dropdown-content"></ul></div></li><li id="gh-eyes-item" class="hidden-xs to-uppercase"><a href="https://github.com/Banno/kafka4s" target="_blank" rel="noopener noreferrer"><i class="fa fa-eye"></i><span>Watchers<span id="eyes" class="label label-default">--</span></span></a></li><li id="gh-stars-item" class="hidden-xs to-uppercase"><a href="https://github.com/Banno/kafka4s" target="_blank" rel="noopener noreferrer"><i class="fa fa-star-o"></i><span>Stars<span id="stars" class="label label-default">--</span></span></a></li></ul></div></div></div></div><div id="content" data-github-owner="Banno" data-github-repo="kafka4s"><div class="content-wrapper"><section><h1 id="getting-dependency">Getting dependency</h1>
+<!DOCTYPE html>
+<html lang="en">
+  
+  <head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="generator" content="Typelevel Laika + Helium Theme" />
+  <title>Getting dependency</title>
+  
+  <meta name="author" content="Andrew Mohrland"/>
+  
+  <meta name="author" content="Zach Cox"/>
+  
+  <meta name="author" content="Keith Pinson"/>
+  
+  <meta name="author" content="Jack Henry & Associates, Inc.®"/>
+  
+  <meta name="author" content="Andrew Mohrland"/>
+  
+  <meta name="author" content="Zach Cox"/>
+  
+  <meta name="author" content="Keith Pinson"/>
+  
+  
+  <meta name="description" content="Functional programming with Kafka and Scala"/>
+  
+  
+  
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700">
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Fira+Mono:500">
+  
+  <link rel="stylesheet" type="text/css" href="../helium/icofont.min.css" />
+    <link rel="stylesheet" type="text/css" href="../helium/laika-helium.css" />
+  
+  <script src="../helium/laika-helium.js"></script>
+  
+  
+  
+  <script> /* for avoiding page load transitions */ </script>
+</head>
 
-<p>To use kafka4s in an existing SBT project with Scala 2.13 or a later version, add the following dependencies to your
-<code class="language-plaintext highlighter-rouge">build.sbt</code> depending on your needs:</p>
+  <body>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">libraryDependencies</span> <span class="o">++=</span> <span class="nc">Seq</span><span class="o">(</span>
-  <span class="s">"com.banno"</span> <span class="o">%%</span> <span class="s">"kafka4s"</span> <span class="o">%</span> <span class="s">"&lt;version&gt;"</span>
-<span class="o">)</span>
-</code></pre></div></div>
+    <header id="top-bar" class="light-default dark-default">
 
-<h1 id="some-quick-examples">Some quick examples</h1>
+  <div class="row">
+    <a id="nav-icon">
+      <i class="icofont-laika navigationMenu" title="Navigation">&#xefa2;</i>
+    </a>
+    
+    
+  </div>
 
-<p>First, some initial imports:</p>
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">cats._</span><span class="o">,</span> <span class="nv">cats</span><span class="o">.</span><span class="py">effect</span><span class="o">.</span><span class="py">_</span><span class="o">,</span> <span class="nv">cats</span><span class="o">.</span><span class="py">implicits</span><span class="o">.</span><span class="py">_</span><span class="o">,</span> <span class="nv">scala</span><span class="o">.</span><span class="py">concurrent</span><span class="o">.</span><span class="py">duration</span><span class="o">.</span><span class="py">_</span>
-</code></pre></div></div>
+  <a class="icon-link glyph-link" href="https://banno.github.io/kafka4s"><i class="icofont-laika home" title="Home">&#xef47;</i></a>
 
-<h3 id="define-our-data">Define our data</h3>
+  <div class="row links">
+    
+    <a class="icon-link svg-link" href="https://www.javadoc.io/doc/com.banno/site_2.13/5.0.3/"><span class="api" title="API"><svg class="svg-icon" width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+  <g class="svg-shape">
+    <path d="M75,47.5c13.246,0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm-50,-0c13.246,-0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,-0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm2.705,16.735l7.239,0l0.622,-4.904l-21.833,0l-0,4.904l7.589,0l0,22.067l6.383,0l-0,-22.067Zm58.076,7.265c-0,-8.757 -3.698,-14.166 -10.781,-14.166c-7.083,-0 -10.781,5.604 -10.781,14.166c0,8.757 3.698,14.166 10.781,14.166c7.083,0 10.781,-5.604 10.781,-14.166Zm-6.539,0c0,6.538 -1.128,9.496 -4.242,9.496c-2.997,0 -4.242,-2.88 -4.242,-9.496c-0,-6.616 1.206,-9.496 4.242,-9.496c3.036,-0 4.242,2.88 4.242,9.496Zm-29.242,-67c13.246,0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm0.512,9.834c-7.122,-0 -12.609,5.098 -12.609,14.127c-0,9.263 5.215,14.205 12.532,14.205c4.164,0 7.083,-1.634 9.068,-3.658l-2.88,-3.697c-1.518,1.206 -3.153,2.413 -5.838,2.413c-3.697,-0 -6.266,-2.763 -6.266,-9.263c-0,-6.616 2.724,-9.379 6.149,-9.379c2.102,-0 3.892,0.778 5.371,1.984l3.113,-3.775c-2.257,-1.868 -4.748,-2.957 -8.64,-2.957Z"/>
+  </g>
+</svg></span></a>
+    
+    <a class="icon-link svg-link" href="https://github.com/Banno/kafka4s"><span class="github" title="Source Code"><svg class="svg-icon" width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+  <g class="svg-shape">
+    <path d="M49.995,1c-27.609,-0 -49.995,22.386 -49.995,50.002c-0,22.09 14.325,40.83 34.194,47.444c2.501,0.458 3.413,-1.086 3.413,-2.412c0,-1.185 -0.043,-4.331 -0.067,-8.503c-13.908,3.021 -16.843,-6.704 -16.843,-6.704c-2.274,-5.773 -5.552,-7.311 -5.552,-7.311c-4.54,-3.103 0.344,-3.042 0.344,-3.042c5.018,0.356 7.658,5.154 7.658,5.154c4.46,7.64 11.704,5.433 14.552,4.156c0.454,-3.232 1.744,-5.436 3.174,-6.685c-11.102,-1.262 -22.775,-5.553 -22.775,-24.713c-0,-5.457 1.949,-9.92 5.147,-13.416c-0.516,-1.265 -2.231,-6.348 0.488,-13.233c0,0 4.199,-1.344 13.751,5.126c3.988,-1.108 8.266,-1.663 12.518,-1.682c4.245,0.019 8.523,0.574 12.517,1.682c9.546,-6.47 13.736,-5.126 13.736,-5.126c2.728,6.885 1.013,11.968 0.497,13.233c3.204,3.496 5.141,7.959 5.141,13.416c0,19.209 -11.691,23.436 -22.83,24.673c1.795,1.544 3.394,4.595 3.394,9.26c0,6.682 -0.061,12.076 -0.061,13.715c0,1.338 0.899,2.894 3.438,2.406c19.853,-6.627 34.166,-25.354 34.166,-47.438c-0,-27.616 -22.389,-50.002 -50.005,-50.002"/>
+  </g>
+</svg></span></a>
+    
+  </div>  
 
-<p>We’ll define a toy message type for data we want to store in our Kafka topic.</p>
+</header>
+    
+    <nav id="sidebar">
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">case</span> <span class="k">class</span> <span class="nc">Customer</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">address</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span>
-<span class="k">case</span> <span class="k">class</span> <span class="nc">CustomerId</span><span class="o">(</span><span class="n">id</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span>
-</code></pre></div></div>
+  <div class="row">
+    
+    <a class="icon-link svg-link" href="https://www.javadoc.io/doc/com.banno/site_2.13/5.0.3/"><span class="api" title="API"><svg class="svg-icon" width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+  <g class="svg-shape">
+    <path d="M75,47.5c13.246,0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm-50,-0c13.246,-0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,-0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm2.705,16.735l7.239,0l0.622,-4.904l-21.833,0l-0,4.904l7.589,0l0,22.067l6.383,0l-0,-22.067Zm58.076,7.265c-0,-8.757 -3.698,-14.166 -10.781,-14.166c-7.083,-0 -10.781,5.604 -10.781,14.166c0,8.757 3.698,14.166 10.781,14.166c7.083,0 10.781,-5.604 10.781,-14.166Zm-6.539,0c0,6.538 -1.128,9.496 -4.242,9.496c-2.997,0 -4.242,-2.88 -4.242,-9.496c-0,-6.616 1.206,-9.496 4.242,-9.496c3.036,-0 4.242,2.88 4.242,9.496Zm-29.242,-67c13.246,0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm0.512,9.834c-7.122,-0 -12.609,5.098 -12.609,14.127c-0,9.263 5.215,14.205 12.532,14.205c4.164,0 7.083,-1.634 9.068,-3.658l-2.88,-3.697c-1.518,1.206 -3.153,2.413 -5.838,2.413c-3.697,-0 -6.266,-2.763 -6.266,-9.263c-0,-6.616 2.724,-9.379 6.149,-9.379c2.102,-0 3.892,0.778 5.371,1.984l3.113,-3.775c-2.257,-1.868 -4.748,-2.957 -8.64,-2.957Z"/>
+  </g>
+</svg></span></a>
+    
+    <a class="icon-link svg-link" href="https://github.com/Banno/kafka4s"><span class="github" title="Source Code"><svg class="svg-icon" width="100%" height="100%" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+  <g class="svg-shape">
+    <path d="M49.995,1c-27.609,-0 -49.995,22.386 -49.995,50.002c-0,22.09 14.325,40.83 34.194,47.444c2.501,0.458 3.413,-1.086 3.413,-2.412c0,-1.185 -0.043,-4.331 -0.067,-8.503c-13.908,3.021 -16.843,-6.704 -16.843,-6.704c-2.274,-5.773 -5.552,-7.311 -5.552,-7.311c-4.54,-3.103 0.344,-3.042 0.344,-3.042c5.018,0.356 7.658,5.154 7.658,5.154c4.46,7.64 11.704,5.433 14.552,4.156c0.454,-3.232 1.744,-5.436 3.174,-6.685c-11.102,-1.262 -22.775,-5.553 -22.775,-24.713c-0,-5.457 1.949,-9.92 5.147,-13.416c-0.516,-1.265 -2.231,-6.348 0.488,-13.233c0,0 4.199,-1.344 13.751,5.126c3.988,-1.108 8.266,-1.663 12.518,-1.682c4.245,0.019 8.523,0.574 12.517,1.682c9.546,-6.47 13.736,-5.126 13.736,-5.126c2.728,6.885 1.013,11.968 0.497,13.233c3.204,3.496 5.141,7.959 5.141,13.416c0,19.209 -11.691,23.436 -22.83,24.673c1.795,1.544 3.394,4.595 3.394,9.26c0,6.682 -0.061,12.076 -0.061,13.715c0,1.338 0.899,2.894 3.438,2.406c19.853,-6.627 34.166,-25.354 34.166,-47.438c-0,-27.616 -22.389,-50.002 -50.005,-50.002"/>
+  </g>
+</svg></span></a>
+    
+  </div>
 
-<h3 id="create-our-kafka-topic">Create our Kafka topic</h3>
+  <ul class="nav-list">
+    <li class="level1 nav-leaf"><a href="../">kafka4s - Functional programming with Kafka and Scala</a></li>
+    <li class="level1 nav-header">docs</li>
+    <li class="level2 active nav-leaf"><a href="#">Getting dependency</a></li>
+    <li class="level2 nav-leaf"><a href="kafka-client-metrics.html">Kafka Client Metrics</a></li>
+    <li class="level2 nav-leaf"><a href="kafka-consumers.html">Using Kafka Consumers</a></li>
+    <li class="level2 nav-leaf"><a href="kafka-producers.html">Using Kafka Producers</a></li>
+    <li class="level2 nav-leaf"><a href="schema-registry.html">Schema Registry Utils</a></li>
+  </ul>
 
-<p>Now we’ll tell Kafka to create a topic that we’ll write our Kafka records to.</p>
+</nav>
 
-<p>First, let’s bring some types and implicits into scope:</p>
+    <div id="container">
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">com.banno.kafka._</span><span class="o">,</span> <span class="nv">com</span><span class="o">.</span><span class="py">banno</span><span class="o">.</span><span class="py">kafka</span><span class="o">.</span><span class="py">admin</span><span class="o">.</span><span class="py">_</span>
-<span class="k">import</span> <span class="nn">org.apache.kafka.clients.admin.NewTopic</span>
-</code></pre></div></div>
+      
+<nav id="page-nav">
+  <p class="header"><a href="#">Getting dependency</a></p>
 
-<p>We’ll use Avro4s for serialization.</p>
+  <ul class="nav-list">
+    <li class="level1 nav-node"><a href="#some-quick-examples">Some quick examples</a></li>
+    <li class="level2 nav-leaf"><a href="#define-our-data">Define our data</a></li>
+    <li class="level2 nav-leaf"><a href="#create-our-kafka-topic">Create our Kafka topic</a></li>
+    <li class="level2 nav-leaf"><a href="#register-our-topic-schema">Register our topic schema</a></li>
+    <li class="level2 nav-leaf"><a href="#write-our-records-to-kafka">Write our records to Kafka</a></li>
+    <li class="level2 nav-leaf"><a href="#read-our-records-from-kafka">Read our records from Kafka</a></li>
+  </ul>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">com.banno.kafka.avro4s._</span>
-</code></pre></div></div>
+  <p class="footer"></p>
+</nav>
 
-<p>Now we can create a topic named <code class="language-plaintext highlighter-rouge">customers.v1</code> with 1 partition and 1 replica:</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="nv">topic</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">NewTopic</span><span class="o">(</span><span class="s">"customers.v1"</span><span class="o">,</span> <span class="mi">1</span><span class="o">,</span> <span class="mf">1.</span><span class="n">toShort</span><span class="o">)</span>
-<span class="c1">// topic: NewTopic = (name=customers.v1, numPartitions=1, replicationFactor=1, replicasAssignments=null, configs=null)</span>
-<span class="k">val</span> <span class="nv">kafkaBootstrapServers</span> <span class="k">=</span> <span class="s">"localhost:9092"</span> <span class="c1">// Change as needed</span>
-<span class="c1">// kafkaBootstrapServers: String = "localhost:9092"</span>
-</code></pre></div></div>
+      <main class="content">
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">cats.effect.unsafe.implicits.global</span>
-<span class="nv">AdminApi</span><span class="o">.</span><span class="py">createTopicsIdempotent</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">kafkaBootstrapServers</span><span class="o">,</span> <span class="n">topic</span> <span class="o">::</span> <span class="nc">Nil</span><span class="o">).</span><span class="py">unsafeRunSync</span><span class="o">()</span>
-</code></pre></div></div>
+        <hr>
+        <p>layout: docs
+        title: Getting Started
+        ---</p>
+        <h1 id="getting-dependency" class="title">Getting dependency</h1>
+        <p>To use kafka4s in an existing SBT project with Scala 2.13 or a later version, add the following dependencies to your
+        <code>build.sbt</code> depending on your needs:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">libraryDependencies</span><span> ++= </span><span class="type-name">Seq</span><span>(
+  </span><span class="string-literal">&quot;com.banno&quot;</span><span> %% </span><span class="string-literal">&quot;kafka4s&quot;</span><span> % </span><span class="string-literal">&quot;&lt;version&gt;&quot;</span><span>
+)</span></code></pre>
+        
+        <h1 id="some-quick-examples" class="section"><a class="anchor-link left" href="#some-quick-examples"><i class="icofont-laika link">&#xef71;</i></a>Some quick examples</h1>
+        <p>First, some initial imports:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">_</span><span>, </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="identifier">_</span><span>, </span><span class="identifier">cats</span><span>.</span><span class="identifier">implicits</span><span>.</span><span class="identifier">_</span><span>, </span><span class="identifier">scala</span><span>.</span><span class="identifier">concurrent</span><span>.</span><span class="identifier">duration</span><span>.</span><span class="identifier">_</span></code></pre>
+        
+        <h3 id="define-our-data" class="section"><a class="anchor-link left" href="#define-our-data"><i class="icofont-laika link">&#xef71;</i></a>Define our data</h3>
+        <p>We&#39;ll define a toy message type for data we want to store in our Kafka topic.</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">Customer</span><span>(</span><span class="identifier">name</span><span>: </span><span class="type-name">String</span><span>, </span><span class="identifier">address</span><span>: </span><span class="type-name">String</span><span>)
+</span><span class="keyword">case</span><span> </span><span class="keyword">class</span><span> </span><span class="type-name">CustomerId</span><span>(</span><span class="identifier">id</span><span>: </span><span class="type-name">String</span><span>)</span></code></pre>
+        
+        <h3 id="create-our-kafka-topic" class="section"><a class="anchor-link left" href="#create-our-kafka-topic"><i class="icofont-laika link">&#xef71;</i></a>Create our Kafka topic</h3>
+        <p>Now we&#39;ll tell Kafka to create a topic that we&#39;ll write our Kafka records to.</p>
+        <p>First, let&#39;s bring some types and implicits into scope:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">com</span><span>.</span><span class="identifier">banno</span><span>.</span><span class="identifier">kafka</span><span>.</span><span class="identifier">_</span><span>, </span><span class="identifier">com</span><span>.</span><span class="identifier">banno</span><span>.</span><span class="identifier">kafka</span><span>.</span><span class="identifier">admin</span><span>.</span><span class="identifier">_</span><span>
+</span><span class="keyword">import</span><span> </span><span class="identifier">org</span><span>.</span><span class="identifier">apache</span><span>.</span><span class="identifier">kafka</span><span>.</span><span class="identifier">clients</span><span>.</span><span class="identifier">admin</span><span>.</span><span class="type-name">NewTopic</span></code></pre>
+        <p>We&#39;ll use Avro4s for serialization.</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">com</span><span>.</span><span class="identifier">banno</span><span>.</span><span class="identifier">kafka</span><span>.</span><span class="identifier">avro4s</span><span>.</span><span class="identifier">_</span></code></pre>
+        <p>Now we can create a topic named <code>customers.v1</code> with 1 partition and 1 replica:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">topic</span><span> = </span><span class="keyword">new</span><span> </span><span class="type-name">NewTopic</span><span>(</span><span class="string-literal">&quot;customers.v1&quot;</span><span>, </span><span class="number-literal">1</span><span>, </span><span class="number-literal">1</span><span>.</span><span class="identifier">toShort</span><span>)
+</span><span class="comment">// topic: NewTopic = (name=customers.v1, numPartitions=1, replicationFactor=1, replicasAssignments=null, configs=null)
+</span><span class="keyword">val</span><span> </span><span class="identifier">kafkaBootstrapServers</span><span> = </span><span class="string-literal">&quot;localhost:9092&quot;</span><span> </span><span class="comment">// Change as needed
+// kafkaBootstrapServers: String = &quot;localhost:9092&quot;</span></code></pre>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="identifier">unsafe</span><span>.</span><span class="identifier">implicits</span><span>.</span><span class="identifier">global</span><span>
+</span><span class="type-name">AdminApi</span><span>.</span><span class="identifier">createTopicsIdempotent</span><span>[</span><span class="type-name">IO</span><span>](</span><span class="identifier">kafkaBootstrapServers</span><span>, </span><span class="identifier">topic</span><span> :: </span><span class="type-name">Nil</span><span>).</span><span class="identifier">unsafeRunSync</span><span>()</span></code></pre>
+        
+        <h3 id="register-our-topic-schema" class="section"><a class="anchor-link left" href="#register-our-topic-schema"><i class="icofont-laika link">&#xef71;</i></a>Register our topic schema</h3>
+        <p>Let&#39;s register a schema for our topic with the schema registry!</p>
+        <p>First, we bring types and implicits into scope:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">com</span><span>.</span><span class="identifier">banno</span><span>.</span><span class="identifier">kafka</span><span>.</span><span class="identifier">schemaregistry</span><span>.</span><span class="identifier">_</span></code></pre>
+        <p>We&#39;ll use the name of the topic we created above:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">topicName</span><span> = </span><span class="identifier">topic</span><span>.</span><span class="identifier">name</span><span>
+</span><span class="comment">// topicName: String = &quot;customers.v1&quot;</span></code></pre>
+        <p>Now we can register our topic key and topic value schemas:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">schemaRegistryUri</span><span> = </span><span class="string-literal">&quot;http://localhost:8091&quot;</span><span> </span><span class="comment">// Change as needed
+// schemaRegistryUri: String = &quot;http://localhost:8091&quot;</span></code></pre>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="identifier">unsafe</span><span>.</span><span class="identifier">implicits</span><span>.</span><span class="identifier">global</span><span>
+</span><span class="type-name">SchemaRegistryApi</span><span>.</span><span class="identifier">avro4s</span><span>.</span><span class="identifier">register</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">CustomerId</span><span>, </span><span class="type-name">Customer</span><span>](
+  </span><span class="identifier">schemaRegistryUri</span><span>, </span><span class="identifier">topicName</span><span>
+).</span><span class="identifier">unsafeRunSync</span><span>()</span></code></pre>
+        
+        <h3 id="write-our-records-to-kafka" class="section"><a class="anchor-link left" href="#write-our-records-to-kafka"><i class="icofont-laika link">&#xef71;</i></a>Write our records to Kafka</h3>
+        <p>Now let&#39;s create a producer and send some records to our Kafka topic!</p>
+        <p>We first bring our Kafka producer utils into scope:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">com</span><span>.</span><span class="identifier">banno</span><span>.</span><span class="identifier">kafka</span><span>.</span><span class="identifier">producer</span><span>.</span><span class="identifier">_</span></code></pre>
+        <p>Now we can create our producer instance:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">producer</span><span> = </span><span class="type-name">ProducerApi</span><span>.</span><span class="type-name">Avro</span><span>.</span><span class="type-name">Generic</span><span>.</span><span class="identifier">resource</span><span>[</span><span class="type-name">IO</span><span>](
+  </span><span class="type-name">BootstrapServers</span><span>(</span><span class="identifier">kafkaBootstrapServers</span><span>),
+  </span><span class="type-name">SchemaRegistryUrl</span><span>(</span><span class="identifier">schemaRegistryUri</span><span>),
+  </span><span class="type-name">ClientId</span><span>(</span><span class="string-literal">&quot;producer-example&quot;</span><span>)
+)
+</span><span class="comment">// producer: Resource[IO, ProducerApi[IO, org.apache.avro.generic.GenericRecord, org.apache.avro.generic.GenericRecord]] = Allocate(
+//   resource = cats.effect.kernel.Resource$$$Lambda$10714/0x0000000102da8040@5e1a6964
+// )</span></code></pre>
+        <p>And we&#39;ll define some customer records to be written:</p>
+        <pre><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">org</span><span>.</span><span class="identifier">apache</span><span>.</span><span class="identifier">kafka</span><span>.</span><span class="identifier">clients</span><span>.</span><span class="identifier">producer</span><span>.</span><span class="type-name">ProducerRecord</span><span>
+</span><span class="keyword">val</span><span> </span><span class="identifier">recordsToBeWritten</span><span> = (</span><span class="number-literal">1</span><span> </span><span class="identifier">to</span><span> </span><span class="number-literal">10</span><span>).</span><span class="identifier">map</span><span>(</span><span class="identifier">a</span><span> =&gt; </span><span class="keyword">new</span><span> </span><span class="type-name">ProducerRecord</span><span>(</span><span class="identifier">topicName</span><span>, </span><span class="type-name">CustomerId</span><span>(</span><span class="identifier">a</span><span>.</span><span class="identifier">toString</span><span>), </span><span class="type-name">Customer</span><span>(</span><span class="string-literal">s&quot;name-</span><span class="substitution">${a}</span><span class="string-literal">&quot;</span><span>, </span><span class="string-literal">s&quot;address-</span><span class="substitution">${a}</span><span class="string-literal">&quot;</span><span>))).</span><span class="identifier">toVector</span><span>
+</span><span class="comment">// recordsToBeWritten: Vector[ProducerRecord[CustomerId, Customer]] = Vector(
+//   ProducerRecord(topic=customers.v1, partition=null, headers=RecordHeaders(headers = [], isReadOnly = false), key=CustomerId(1), value=Customer(name-1,address-1), timestamp=null),
+//   ProducerRecord(topic=customers.v1, partition=null, headers=RecordHeaders(headers = [], isReadOnly = false), key=CustomerId(2), value=Customer(name-2,address-2), timestamp=null),
+//   ProducerRecord(topic=customers.v1, partition=null, headers=RecordHeaders(headers = [], isReadOnly = false), key=CustomerId(3), value=Customer(name-3,address-3), timestamp=null),
+//   ProducerRecord(topic=customers.v1, partition=null, headers=RecordHeaders(headers = [], isReadOnly = false), key=CustomerId(4), value=Customer(name-4,address-4), timestamp=null),
+//   ProducerRecord(topic=customers.v1, partition=null, headers=RecordHeaders(headers = [], isReadOnly = false), key=CustomerId(5), value=Customer(name-5,address-5), timestamp=null),
+//   ProducerRecord(topic=customers.v1, partition=null, headers=RecordHeaders(headers = [], isReadOnly = false), key=CustomerId(6), value=Customer(name-6,address-6), timestamp=null),
+//   ProducerRecord(topic=customers.v1, partition=null, headers=RecordHeaders(headers = [], isReadOnly = false), key=CustomerId(7), value=Customer(name-7,address-7), timestamp=null),
+//   ProducerRecord(topic=customers.v1, partition=null, headers=RecordHeaders(headers = [], isReadOnly = false), key=CustomerId(8), value=Customer(name-8,address-8), timestamp=null),
+//   ProducerRecord(topic=customers.v1, partition=null, headers=RecordHeaders(headers = [], isReadOnly = false), key=CustomerId(9), value=Customer(name-9,address-9), timestamp=null),
+//   ProducerRecord(topic=customers.v1, partition=null, headers=RecordHeaders(headers = [], isReadOnly = false), key=CustomerId(10), value=Customer(name-10,address-10), timestamp=null)
+// )</span></code></pre>
+        <p>And now we can (attempt to) write our records to Kafka:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="identifier">producer</span><span>.</span><span class="identifier">use</span><span>(</span><span class="identifier">p</span><span> =&gt; </span><span class="identifier">recordsToBeWritten</span><span>.</span><span class="identifier">traverse_</span><span>(</span><span class="identifier">p</span><span>.</span><span class="identifier">sendSync</span><span>))
+</span><span class="comment">// error: type mismatch;
+//   org.apache.kafka.clients.producer.ProducerRecord[org.apache.avro.generic.GenericRecord|repl.MdocSession.MdocApp.CustomerId, org.apache.avro.generic.GenericRecord|repl.MdocSession.MdocApp.Customer] =&gt; cats.effect.IO[org.apache.kafka.clients.producer.RecordMetadata|?]
+// producer.use(p =&gt; recordsToBeWritten.traverse_(p.sendSync))
+//                                                ^^^^^^^^^^</span></code></pre>
+        <p>The above fails to compile, however! Our producer writes generic
+        <code>ProducerRecord</code>s, but we&#39;d like to send typed records, to ensure that
+        our <code>CustomerId</code> key and our <code>Customer</code> value are compatible with our
+        topic. For this, we can use Kafka4s&#39; <code>avro4s</code> integration!</p>
+        
+        <h4 id="writing-typed-records-with-an-avro4s-producer" class="section"><a class="anchor-link left" href="#writing-typed-records-with-an-avro4s-producer"><i class="icofont-laika link">&#xef71;</i></a>Writing typed records with an Avro4s producer</h4>
+        <p>Turning a generic producer into a typed producer is simple. We first ensure that <code>com.sksamuel.avro4s.RecordFormat</code> instances for our data are in scope:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">implicit</span><span> </span><span class="keyword">val</span><span> </span><span class="type-name">CustomerRecordFormat</span><span> = </span><span class="identifier">com</span><span>.</span><span class="identifier">sksamuel</span><span>.</span><span class="identifier">avro4s</span><span>.</span><span class="type-name">RecordFormat</span><span>[</span><span class="type-name">Customer</span><span>]
+</span><span class="comment">// CustomerRecordFormat: com.sksamuel.avro4s.RecordFormat[Customer] = com.sksamuel.avro4s.RecordFormat$$anon$1@533f5cd2
+</span><span class="keyword">implicit</span><span> </span><span class="keyword">val</span><span> </span><span class="type-name">CustomerIdRecordFormat</span><span> = </span><span class="identifier">com</span><span>.</span><span class="identifier">sksamuel</span><span>.</span><span class="identifier">avro4s</span><span>.</span><span class="type-name">RecordFormat</span><span>[</span><span class="type-name">CustomerId</span><span>]
+</span><span class="comment">// CustomerIdRecordFormat: com.sksamuel.avro4s.RecordFormat[CustomerId] = com.sksamuel.avro4s.RecordFormat$$anon$1@2054af9</span></code></pre>
+        <p>And with those implicits in scope, we can create our producer:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">avro4sProducer</span><span> = </span><span class="identifier">producer</span><span>.</span><span class="identifier">map</span><span>(</span><span class="identifier">_</span><span>.</span><span class="identifier">toAvro4s</span><span>[</span><span class="type-name">CustomerId</span><span>, </span><span class="type-name">Customer</span><span>])
+</span><span class="comment">// avro4sProducer: Resource[IO, ProducerApi[[A]IO[A], CustomerId, Customer]] = Bind(
+//   source = Allocate(
+//     resource = cats.effect.kernel.Resource$$$Lambda$10714/0x0000000102da8040@5e1a6964
+//   ),
+//   fs = cats.effect.kernel.Resource$$Lambda$10807/0x0000000102ea3840@5299c69
+// )</span></code></pre>
+        <p>We can now write our typed customer records successfully!</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="identifier">unsafe</span><span>.</span><span class="identifier">implicits</span><span>.</span><span class="identifier">global</span><span>
+</span><span class="identifier">avro4sProducer</span><span>.</span><span class="identifier">use</span><span>(</span><span class="identifier">p</span><span> =&gt;
+  </span><span class="identifier">recordsToBeWritten</span><span>.</span><span class="identifier">traverse_</span><span>(</span><span class="identifier">r</span><span> =&gt; </span><span class="identifier">p</span><span>.</span><span class="identifier">sendSync</span><span>(</span><span class="identifier">r</span><span>).</span><span class="identifier">flatMap</span><span>(</span><span class="identifier">rmd</span><span> =&gt; </span><span class="type-name">IO</span><span>(</span><span class="identifier">println</span><span>(</span><span class="string-literal">s&quot;Wrote record to </span><span class="substitution">${rmd}</span><span class="string-literal">&quot;</span><span>))))
+).</span><span class="identifier">unsafeRunSync</span><span>()</span></code></pre>
+        
+        <h3 id="read-our-records-from-kafka" class="section"><a class="anchor-link left" href="#read-our-records-from-kafka"><i class="icofont-laika link">&#xef71;</i></a>Read our records from Kafka</h3>
+        <p>Now that we&#39;ve stored some records in Kafka, let&#39;s read them as an <code>fs2.Stream</code>!</p>
+        <p>We first import our Kafka consumer utilities:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">com</span><span>.</span><span class="identifier">banno</span><span>.</span><span class="identifier">kafka</span><span>.</span><span class="identifier">consumer</span><span>.</span><span class="identifier">_</span></code></pre>
+        <p>Now we can create our consumer instance.</p>
+        <p>By default, <code>kafka4s</code> consumers shift blocking calls to a dedicated
+        <code>ExecutionContext</code> backed by a singleton thread pool, to avoid blocking the main
+        work pool&#39;s (typically <code>ExecutionContext.global</code>) threads, and as a simple
+        synchronization mechanism because the underlying Java client <code>KafkaConsumer</code> is
+        not thread-safe. After receiving records, work is then shifted back to the work
+        pool.</p>
+        <p>And here&#39;s our consumer, which is using Avro4s to deserialize the records:</p>
+        <pre><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">consumer</span><span> = </span><span class="type-name">Avro4sConsumer</span><span>.</span><span class="identifier">resource</span><span>[</span><span class="type-name">IO</span><span>, </span><span class="type-name">CustomerId</span><span>, </span><span class="type-name">Customer</span><span>](
+  </span><span class="type-name">BootstrapServers</span><span>(</span><span class="identifier">kafkaBootstrapServers</span><span>),
+  </span><span class="type-name">SchemaRegistryUrl</span><span>(</span><span class="identifier">schemaRegistryUri</span><span>),
+  </span><span class="type-name">ClientId</span><span>(</span><span class="string-literal">&quot;consumer-example&quot;</span><span>),
+  </span><span class="type-name">GroupId</span><span>(</span><span class="string-literal">&quot;consumer-example-group&quot;</span><span>)
+)
+</span><span class="comment">// consumer: Resource[IO, ConsumerApi[IO, CustomerId, Customer]] = Bind(
+//   source = Bind(
+//     source = Allocate(
+//       resource = cats.effect.kernel.Resource$$$Lambda$10714/0x0000000102da8040@3e0bd851
+//     ),
+//     fs = com.banno.kafka.consumer.ConsumerApi$Avro$$$Lambda$10810/0x0000000102ea5840@177bca8e
+//   ),
+//   fs = cats.effect.kernel.Resource$$Lambda$10807/0x0000000102ea3840@3f81081a
+// )</span></code></pre>
+        <p>With our Kafka consumer in hand, we&#39;ll assign to our consumer our topic partition, with no offsets, so that it starts reading from the first record, and read a stream of records from our Kafka topic:</p>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">org</span><span>.</span><span class="identifier">apache</span><span>.</span><span class="identifier">kafka</span><span>.</span><span class="identifier">common</span><span>.</span><span class="type-name">TopicPartition</span><span>
+</span><span class="keyword">val</span><span> </span><span class="identifier">initialOffsets</span><span> = </span><span class="type-name">Map</span><span>.</span><span class="identifier">empty</span><span>[</span><span class="type-name">TopicPartition</span><span>, </span><span class="type-name">Long</span><span>] </span><span class="comment">// Start from beginning
+// initialOffsets: Map[TopicPartition, Long] = Map()</span></code></pre>
+        <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="identifier">unsafe</span><span>.</span><span class="identifier">implicits</span><span>.</span><span class="identifier">global</span><span>
+</span><span class="keyword">val</span><span> </span><span class="identifier">messages</span><span> = </span><span class="identifier">consumer</span><span>.</span><span class="identifier">use</span><span>(</span><span class="identifier">c</span><span> =&gt;
+  </span><span class="identifier">c</span><span>.</span><span class="identifier">assign</span><span>(</span><span class="identifier">topicName</span><span>, </span><span class="identifier">initialOffsets</span><span>) *&gt; </span><span class="identifier">c</span><span>.</span><span class="identifier">recordStream</span><span>(</span><span class="number-literal">1</span><span>.</span><span class="identifier">second</span><span>).</span><span class="identifier">take</span><span>(</span><span class="number-literal">5</span><span>).</span><span class="identifier">compile</span><span>.</span><span class="identifier">toVector</span><span>
+).</span><span class="identifier">unsafeRunSync</span><span>()</span></code></pre>
+        <p>Because the producer and consumer above were created within a <code>Resource</code> context, everything was closed and shut down properly.</p>
+        <p>Now that we&#39;ve seen a quick overview, we can take a look at more in-depth documentation of Kafka4s utilities.</p>
 
-<h3 id="register-our-topic-schema">Register our topic schema</h3>
+        
+<hr class="footer-rule"/>
+<footer>
+  Site generated by <a href="https://typelevel.org/Laika/">Laika</a> with the Helium theme.
+</footer>
 
-<p>Let’s register a schema for our topic with the schema registry!</p>
 
-<p>First, we bring types and implicits into scope:</p>
+      </main>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">com.banno.kafka.schemaregistry._</span>
-</code></pre></div></div>
+    </div>
 
-<p>We’ll use the name of the topic we created above:</p>
+  </body>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="nv">topicName</span> <span class="k">=</span> <span class="nv">topic</span><span class="o">.</span><span class="py">name</span>
-<span class="c1">// topicName: String = "customers.v1"</span>
-</code></pre></div></div>
-
-<p>Now we can register our topic key and topic value schemas:</p>
-
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="nv">schemaRegistryUri</span> <span class="k">=</span> <span class="s">"http://localhost:8091"</span> <span class="c1">// Change as needed</span>
-<span class="c1">// schemaRegistryUri: String = "http://localhost:8091"</span>
-</code></pre></div></div>
-
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">cats.effect.unsafe.implicits.global</span>
-<span class="nv">SchemaRegistryApi</span><span class="o">.</span><span class="py">avro4s</span><span class="o">.</span><span class="py">register</span><span class="o">[</span><span class="kt">IO</span>, <span class="kt">CustomerId</span>, <span class="kt">Customer</span><span class="o">](</span>
-  <span class="n">schemaRegistryUri</span><span class="o">,</span> <span class="n">topicName</span>
-<span class="o">).</span><span class="py">unsafeRunSync</span><span class="o">()</span>
-</code></pre></div></div>
-
-<h3 id="write-our-records-to-kafka">Write our records to Kafka</h3>
-
-<p>Now let’s create a producer and send some records to our Kafka topic!</p>
-
-<p>We first bring our Kafka producer utils into scope:</p>
-
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">com.banno.kafka.producer._</span>
-</code></pre></div></div>
-
-<p>Now we can create our producer instance:</p>
-
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="nv">producer</span> <span class="k">=</span> <span class="nv">ProducerApi</span><span class="o">.</span><span class="py">Avro</span><span class="o">.</span><span class="py">Generic</span><span class="o">.</span><span class="py">resource</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span>
-  <span class="nc">BootstrapServers</span><span class="o">(</span><span class="n">kafkaBootstrapServers</span><span class="o">),</span>
-  <span class="nc">SchemaRegistryUrl</span><span class="o">(</span><span class="n">schemaRegistryUri</span><span class="o">),</span>
-  <span class="nc">ClientId</span><span class="o">(</span><span class="s">"producer-example"</span><span class="o">)</span>
-<span class="o">)</span>
-<span class="c1">// producer: Resource[IO, ProducerApi[IO, org.apache.avro.generic.GenericRecord, org.apache.avro.generic.GenericRecord]] = Allocate(</span>
-<span class="c1">//   resource = cats.effect.kernel.Resource$$$Lambda$7335/1741249493@5817cc50</span>
-<span class="c1">// )</span>
-</code></pre></div></div>
-
-<p>And we’ll define some customer records to be written:</p>
-
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">org.apache.kafka.clients.producer.ProducerRecord</span>
-<span class="k">val</span> <span class="nv">recordsToBeWritten</span> <span class="k">=</span> <span class="o">(</span><span class="mi">1</span> <span class="n">to</span> <span class="mi">10</span><span class="o">).</span><span class="py">map</span><span class="o">(</span><span class="n">a</span> <span class="k">=&gt;</span> <span class="k">new</span> <span class="nc">ProducerRecord</span><span class="o">(</span><span class="n">topicName</span><span class="o">,</span> <span class="nc">CustomerId</span><span class="o">(</span><span class="nv">a</span><span class="o">.</span><span class="py">toString</span><span class="o">),</span> <span class="nc">Customer</span><span class="o">(</span><span class="n">s</span><span class="s">"name-${a}"</span><span class="o">,</span> <span class="n">s</span><span class="s">"address-${a}"</span><span class="o">))).</span><span class="py">toVector</span>
-<span class="c1">// recordsToBeWritten: Vector[ProducerRecord[CustomerId, Customer]] = Vector(</span>
-<span class="c1">//   ProducerRecord(topic=customers.v1, partition=null, headers=RecordHeaders(headers = [], isReadOnly = false), key=CustomerId(1), value=Customer(name-1,address-1), timestamp=null),</span>
-<span class="c1">//   ProducerRecord(topic=customers.v1, partition=null, headers=RecordHeaders(headers = [], isReadOnly = false), key=CustomerId(2), value=Customer(name-2,address-2), timestamp=null),</span>
-<span class="c1">//   ProducerRecord(topic=customers.v1, partition=null, headers=RecordHeaders(headers = [], isReadOnly = false), key=CustomerId(3), value=Customer(name-3,address-3), timestamp=null),</span>
-<span class="c1">//   ProducerRecord(topic=customers.v1, partition=null, headers=RecordHeaders(headers = [], isReadOnly = false), key=CustomerId(4), value=Customer(name-4,address-4), timestamp=null),</span>
-<span class="c1">//   ProducerRecord(topic=customers.v1, partition=null, headers=RecordHeaders(headers = [], isReadOnly = false), key=CustomerId(5), value=Customer(name-5,address-5), timestamp=null),</span>
-<span class="c1">//   ProducerRecord(topic=customers.v1, partition=null, headers=RecordHeaders(headers = [], isReadOnly = false), key=CustomerId(6), value=Customer(name-6,address-6), timestamp=null),</span>
-<span class="c1">//   ProducerRecord(topic=customers.v1, partition=null, headers=RecordHeaders(headers = [], isReadOnly = false), key=CustomerId(7), value=Customer(name-7,address-7), timestamp=null),</span>
-<span class="c1">//   ProducerRecord(topic=customers.v1, partition=null, headers=RecordHeaders(headers = [], isReadOnly = false), key=CustomerId(8), value=Customer(name-8,address-8), timestamp=null),</span>
-<span class="c1">//   ProducerRecord(topic=customers.v1, partition=null, headers=RecordHeaders(headers = [], isReadOnly = false), key=CustomerId(9), value=Customer(name-9,address-9), timestamp=null),</span>
-<span class="c1">//   ProducerRecord(topic=customers.v1, partition=null, headers=RecordHeaders(headers = [], isReadOnly = false), key=CustomerId(10), value=Customer(name-10,address-10), timestamp=null)</span>
-<span class="c1">// )</span>
-</code></pre></div></div>
-
-<p>And now we can (attempt to) write our records to Kafka:</p>
-
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">producer</span><span class="o">.</span><span class="py">use</span><span class="o">(</span><span class="n">p</span> <span class="k">=&gt;</span> <span class="nv">recordsToBeWritten</span><span class="o">.</span><span class="py">traverse_</span><span class="o">(</span><span class="nv">p</span><span class="o">.</span><span class="py">sendSync</span><span class="o">))</span>
-<span class="c1">// error: type mismatch;</span>
-<span class="c1">//   org.apache.kafka.clients.producer.ProducerRecord[org.apache.avro.generic.GenericRecord|repl.MdocSession.MdocApp.CustomerId, org.apache.avro.generic.GenericRecord|repl.MdocSession.MdocApp.Customer] =&gt; cats.effect.IO[org.apache.kafka.clients.producer.RecordMetadata|?]</span>
-<span class="c1">// producer.use(p =&gt; recordsToBeWritten.traverse_(p.sendSync))</span>
-<span class="c1">//                                                ^^^^^^^^^^</span>
-</code></pre></div></div>
-
-<p>The above fails to compile, however! Our producer writes generic
-<code class="language-plaintext highlighter-rouge">ProducerRecord</code>s, but we’d like to send typed records, to ensure that
-our <code class="language-plaintext highlighter-rouge">CustomerId</code> key and our <code class="language-plaintext highlighter-rouge">Customer</code> value are compatible with our
-topic. For this, we can use Kafka4s’ <code class="language-plaintext highlighter-rouge">avro4s</code> integration!</p>
-
-<h4 id="writing-typed-records-with-an-avro4s-producer">Writing typed records with an Avro4s producer</h4>
-
-<p>Turning a generic producer into a typed producer is simple. We first ensure that <code class="language-plaintext highlighter-rouge">com.sksamuel.avro4s.RecordFormat</code> instances for our data are in scope:</p>
-
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">implicit</span> <span class="k">val</span> <span class="nv">CustomerRecordFormat</span> <span class="k">=</span> <span class="nv">com</span><span class="o">.</span><span class="py">sksamuel</span><span class="o">.</span><span class="py">avro4s</span><span class="o">.</span><span class="py">RecordFormat</span><span class="o">[</span><span class="kt">Customer</span><span class="o">]</span>
-<span class="c1">// CustomerRecordFormat: com.sksamuel.avro4s.RecordFormat[Customer] = com.sksamuel.avro4s.RecordFormat$$anon$1@5955bdc4</span>
-<span class="k">implicit</span> <span class="k">val</span> <span class="nv">CustomerIdRecordFormat</span> <span class="k">=</span> <span class="nv">com</span><span class="o">.</span><span class="py">sksamuel</span><span class="o">.</span><span class="py">avro4s</span><span class="o">.</span><span class="py">RecordFormat</span><span class="o">[</span><span class="kt">CustomerId</span><span class="o">]</span>
-<span class="c1">// CustomerIdRecordFormat: com.sksamuel.avro4s.RecordFormat[CustomerId] = com.sksamuel.avro4s.RecordFormat$$anon$1@30eff3c9</span>
-</code></pre></div></div>
-
-<p>And with those implicits in scope, we can create our producer:</p>
-
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="nv">avro4sProducer</span> <span class="k">=</span> <span class="nv">producer</span><span class="o">.</span><span class="py">map</span><span class="o">(</span><span class="nv">_</span><span class="o">.</span><span class="py">toAvro4s</span><span class="o">[</span><span class="kt">CustomerId</span>, <span class="kt">Customer</span><span class="o">])</span>
-<span class="c1">// avro4sProducer: Resource[IO, ProducerApi[[A]IO[A], CustomerId, Customer]] = Bind(</span>
-<span class="c1">//   source = Allocate(</span>
-<span class="c1">//     resource = cats.effect.kernel.Resource$$$Lambda$7335/1741249493@5817cc50</span>
-<span class="c1">//   ),</span>
-<span class="c1">//   fs = cats.effect.kernel.Resource$$Lambda$7422/1246361038@5398fbb2</span>
-<span class="c1">// )</span>
-</code></pre></div></div>
-
-<p>We can now write our typed customer records successfully!</p>
-
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">cats.effect.unsafe.implicits.global</span>
-<span class="nv">avro4sProducer</span><span class="o">.</span><span class="py">use</span><span class="o">(</span><span class="n">p</span> <span class="k">=&gt;</span>
-  <span class="nv">recordsToBeWritten</span><span class="o">.</span><span class="py">traverse_</span><span class="o">(</span><span class="n">r</span> <span class="k">=&gt;</span> <span class="nv">p</span><span class="o">.</span><span class="py">sendSync</span><span class="o">(</span><span class="n">r</span><span class="o">).</span><span class="py">flatMap</span><span class="o">(</span><span class="n">rmd</span> <span class="k">=&gt;</span> <span class="nc">IO</span><span class="o">(</span><span class="nf">println</span><span class="o">(</span><span class="n">s</span><span class="s">"Wrote record to ${rmd}"</span><span class="o">))))</span>
-<span class="o">).</span><span class="py">unsafeRunSync</span><span class="o">()</span>
-</code></pre></div></div>
-
-<h3 id="read-our-records-from-kafka">Read our records from Kafka</h3>
-
-<p>Now that we’ve stored some records in Kafka, let’s read them as an <code class="language-plaintext highlighter-rouge">fs2.Stream</code>!</p>
-
-<p>We first import our Kafka consumer utilities:</p>
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">com.banno.kafka.consumer._</span>
-</code></pre></div></div>
-
-<p>Now we can create our consumer instance.</p>
-
-<p>By default, <code class="language-plaintext highlighter-rouge">kafka4s</code> consumers shift blocking calls to a dedicated
-<code class="language-plaintext highlighter-rouge">ExecutionContext</code> backed by a singleton thread pool, to avoid blocking the main
-work pool’s (typically <code class="language-plaintext highlighter-rouge">ExecutionContext.global</code>) threads, and as a simple
-synchronization mechanism because the underlying Java client <code class="language-plaintext highlighter-rouge">KafkaConsumer</code> is
-not thread-safe. After receiving records, work is then shifted back to the work
-pool.</p>
-
-<p>And here’s our consumer, which is using Avro4s to deserialize the records:</p>
-
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="nv">consumer</span> <span class="k">=</span> <span class="nv">Avro4sConsumer</span><span class="o">.</span><span class="py">resource</span><span class="o">[</span><span class="kt">IO</span>, <span class="kt">CustomerId</span>, <span class="kt">Customer</span><span class="o">](</span>
-  <span class="nc">BootstrapServers</span><span class="o">(</span><span class="n">kafkaBootstrapServers</span><span class="o">),</span>
-  <span class="nc">SchemaRegistryUrl</span><span class="o">(</span><span class="n">schemaRegistryUri</span><span class="o">),</span>
-  <span class="nc">ClientId</span><span class="o">(</span><span class="s">"consumer-example"</span><span class="o">),</span>
-  <span class="nc">GroupId</span><span class="o">(</span><span class="s">"consumer-example-group"</span><span class="o">)</span>
-<span class="o">)</span>
-<span class="c1">// consumer: Resource[IO, ConsumerApi[IO, CustomerId, Customer]] = Bind(</span>
-<span class="c1">//   source = Bind(</span>
-<span class="c1">//     source = Allocate(</span>
-<span class="c1">//       resource = cats.effect.kernel.Resource$$$Lambda$7335/1741249493@2d3536dd</span>
-<span class="c1">//     ),</span>
-<span class="c1">//     fs = com.banno.kafka.consumer.ConsumerApi$Avro$$$Lambda$7425/1304739311@597a0522</span>
-<span class="c1">//   ),</span>
-<span class="c1">//   fs = cats.effect.kernel.Resource$$Lambda$7422/1246361038@16c4c47f</span>
-<span class="c1">// )</span>
-</code></pre></div></div>
-
-<p>With our Kafka consumer in hand, we’ll assign to our consumer our topic partition, with no offsets, so that it starts reading from the first record, and read a stream of records from our Kafka topic:</p>
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">org.apache.kafka.common.TopicPartition</span>
-<span class="k">val</span> <span class="nv">initialOffsets</span> <span class="k">=</span> <span class="nv">Map</span><span class="o">.</span><span class="py">empty</span><span class="o">[</span><span class="kt">TopicPartition</span>, <span class="kt">Long</span><span class="o">]</span> <span class="c1">// Start from beginning</span>
-<span class="c1">// initialOffsets: Map[TopicPartition, Long] = Map()</span>
-</code></pre></div></div>
-
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">cats.effect.unsafe.implicits.global</span>
-<span class="k">val</span> <span class="nv">messages</span> <span class="k">=</span> <span class="nv">consumer</span><span class="o">.</span><span class="py">use</span><span class="o">(</span><span class="n">c</span> <span class="k">=&gt;</span>
-  <span class="nv">c</span><span class="o">.</span><span class="py">assign</span><span class="o">(</span><span class="n">topicName</span><span class="o">,</span> <span class="n">initialOffsets</span><span class="o">)</span> <span class="o">*&gt;</span> <span class="nv">c</span><span class="o">.</span><span class="py">recordStream</span><span class="o">(</span><span class="mf">1.</span><span class="n">second</span><span class="o">).</span><span class="py">take</span><span class="o">(</span><span class="mi">5</span><span class="o">).</span><span class="py">compile</span><span class="o">.</span><span class="py">toVector</span>
-<span class="o">).</span><span class="py">unsafeRunSync</span><span class="o">()</span>
-</code></pre></div></div>
-
-<p>Because the producer and consumer above were created within a <code class="language-plaintext highlighter-rouge">Resource</code> context, everything was closed and shut down properly.</p>
-
-<p>Now that we’ve seen a quick overview, we can take a look at more in-depth documentation of Kafka4s utilities.</p>
-</section></div></div></div></div><script src="/kafka4s/highlight/highlight.pack.js"></script><script src="/kafka4s/lunr/lunr.js"></script><script>
-// For all code blocks, copy the language from the containing div
-// to the inner code tag (where hljs expects it to be)
-const langPrefix = 'language-';
-document.querySelectorAll(`div[class^='${langPrefix}']`).forEach(function(div) {
-  div.classList.forEach(function(cssClass) {
-    if (cssClass.startsWith(langPrefix)) {
-      const lang = cssClass.substring(langPrefix.length);
-      div.querySelectorAll('pre code').forEach(function(code) {
-        code.classList.add(lang);
-      });
-    }
-  });
-});
-
-hljs.configure({languages:['scala','java','bash']});
-hljs.initHighlightingOnLoad();
-      </script><script>console.info('\x57\x65\x62\x73\x69\x74\x65\x20\x62\x75\x69\x6c\x74\x20\x77\x69\x74\x68\x3a\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x5f\x5f\x20\x20\x20\x20\x5f\x5f\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x5f\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x5f\x20\x5f\x5f\x0a\x20\x20\x20\x5f\x5f\x5f\x5f\x5f\x2f\x20\x2f\x5f\x20\x20\x2f\x20\x2f\x5f\x20\x20\x20\x20\x20\x20\x5f\x5f\x5f\x5f\x20\x5f\x5f\x5f\x20\x20\x28\x5f\x29\x5f\x5f\x5f\x5f\x5f\x5f\x5f\x5f\x5f\x5f\x5f\x5f\x5f\x20\x20\x5f\x5f\x5f\x5f\x5f\x28\x5f\x29\x20\x2f\x5f\x5f\x5f\x5f\x20\x20\x5f\x5f\x5f\x5f\x5f\x0a\x20\x20\x2f\x20\x5f\x5f\x5f\x2f\x20\x5f\x5f\x20\x5c\x2f\x20\x5f\x5f\x2f\x5f\x5f\x5f\x5f\x5f\x2f\x20\x5f\x5f\x20\x60\x5f\x5f\x20\x5c\x2f\x20\x2f\x20\x5f\x5f\x5f\x2f\x20\x5f\x5f\x5f\x2f\x20\x5f\x5f\x20\x5c\x2f\x20\x5f\x5f\x5f\x2f\x20\x2f\x20\x5f\x5f\x2f\x20\x5f\x20\x5c\x2f\x20\x5f\x5f\x5f\x2f\x0a\x20\x28\x5f\x5f\x20\x20\x29\x20\x2f\x5f\x2f\x20\x2f\x20\x2f\x5f\x2f\x5f\x5f\x5f\x5f\x5f\x2f\x20\x2f\x20\x2f\x20\x2f\x20\x2f\x20\x2f\x20\x2f\x20\x2f\x5f\x5f\x2f\x20\x2f\x20\x20\x2f\x20\x2f\x5f\x2f\x20\x28\x5f\x5f\x20\x20\x29\x20\x2f\x20\x2f\x5f\x2f\x20\x20\x5f\x5f\x28\x5f\x5f\x20\x20\x29\x0a\x2f\x5f\x5f\x5f\x5f\x2f\x5f\x2e\x5f\x5f\x5f\x2f\x5c\x5f\x5f\x2f\x20\x20\x20\x20\x20\x2f\x5f\x2f\x20\x2f\x5f\x2f\x20\x2f\x5f\x2f\x5f\x2f\x5c\x5f\x5f\x5f\x2f\x5f\x2f\x20\x20\x20\x5c\x5f\x5f\x5f\x5f\x2f\x5f\x5f\x5f\x5f\x2f\x5f\x2f\x5c\x5f\x5f\x2f\x5c\x5f\x5f\x5f\x2f\x5f\x5f\x5f\x5f\x2f\x0a\x0a\x68\x74\x74\x70\x73\x3a\x2f\x2f\x34\x37\x64\x65\x67\x2e\x67\x69\x74\x68\x75\x62\x2e\x69\x6f\x2f\x73\x62\x74\x2d\x6d\x69\x63\x72\x6f\x73\x69\x74\x65\x73')</script><script>((window.gitter = {}).chat = {}).options = {
-room: 'Banno/kafka4s'};</script><script src="https://sidecar.gitter.im/dist/sidecar.v1.js"></script><script src="/kafka4s/js/search.js"></script><script src="/kafka4s/js/docs.js"></script></body></html>
+</html>
