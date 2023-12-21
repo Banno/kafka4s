@@ -106,6 +106,8 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
     */
   def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata] =
     F.async(sendRaw(record, _))
+
+  def send2(record: ProducerRecord[K, V]): F[F[RecordMetadata]] = ???
 }
 
 object ProducerImpl {

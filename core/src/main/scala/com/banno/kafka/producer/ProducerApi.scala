@@ -50,6 +50,9 @@ trait ProducerApi[F[_], K, V] {
   def sendSync(record: ProducerRecord[K, V]): F[RecordMetadata]
   def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata]
 
+  // TODO obviously need to rename this
+  def send2(record: ProducerRecord[K, V]): F[F[RecordMetadata]]
+
   // Cats doesn't have `Bicontravariant`
   final def contrabimap[A, B](f: A => K, g: B => V): ProducerApi[F, A, B] = {
     val self = this
@@ -84,6 +87,9 @@ trait ProducerApi[F[_], K, V] {
         self.sendSync(record.bimap(f, g))
       override def sendAsync(record: ProducerRecord[A, B]): F[RecordMetadata] =
         self.sendAsync(record.bimap(f, g))
+
+      override def send2(record: ProducerRecord[A, B]): F[F[RecordMetadata]] =
+        self.send2(record.bimap(f, g))
     }
   }
 
@@ -123,10 +129,13 @@ trait ProducerApi[F[_], K, V] {
         record.bitraverse(f, g) >>= self.sendSync
       override def sendAsync(record: ProducerRecord[A, B]): F[RecordMetadata] =
         record.bitraverse(f, g) >>= self.sendAsync
+
+      override def send2(record: ProducerRecord[A, B]): F[F[RecordMetadata]] =
+        record.bitraverse(f, g) >>= self.send2
     }
   }
 
-  final def mapK[G[_]](f: F ~> G): ProducerApi[G, K, V] = {
+  final def mapK[G[_]: Functor](f: F ~> G): ProducerApi[G, K, V] = {
     val self = this
     new ProducerApi[G, K, V] {
       override def abortTransaction: G[Unit] = f(self.abortTransaction)
@@ -153,6 +162,10 @@ trait ProducerApi[F[_], K, V] {
         f(self.sendSync(record))
       override def sendAsync(record: ProducerRecord[K, V]): G[RecordMetadata] =
         f(self.sendAsync(record))
+
+      // TODO is G[G[_]] correct here? is this impl correct? requires G have a Functor, is that cool?
+      override def send2(record: ProducerRecord[K, V]): G[G[RecordMetadata]] =
+        f(self.send2(record)).map(f(_))
     }
   }
 }
