@@ -72,7 +72,7 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
     Some(F.delay(jFuture.cancel(false)).void)
   }
 
-  /** The outer effect sends the record. The inner effect cancels the send. */
+  /** The outer effect sends the record on a blocking context and is cancelable. The inner effect cancels the underlying send. */
   private def sendRaw2(
       record: ProducerRecord[K, V],
       callback: Try[RecordMetadata] => Unit,
@@ -81,10 +81,7 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
     F.interruptible(
       sendRaw(
         record,
-        new Callback() {
-          override def onCompletion(rm: RecordMetadata, e: Exception): Unit =
-            callback(Option(e).toLeft(rm).toTry)
-        },
+        { (rm, e) => callback(Option(e).toLeft(rm).toTry) },
       )
     ).map(jf => F.delay(jf.cancel(true)).void)
 
@@ -125,8 +122,9 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
   def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata] =
     F.async(sendRaw(record, _))
 
-  // inspired by https://github.com/fd4s/fs2-kafka/blob/series/3.x/modules/core/src/main/scala/fs2/kafka/KafkaProducer.scala
+  
   def send2(record: ProducerRecord[K, V]): F[F[RecordMetadata]] =
+    // inspired by https://github.com/fd4s/fs2-kafka/blob/series/3.x/modules/core/src/main/scala/fs2/kafka/KafkaProducer.scala
     F.delay(Promise[RecordMetadata]())
       .flatMap { promise =>
         sendRaw2(record, promise.complete)
