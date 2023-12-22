@@ -24,6 +24,7 @@ import scala.concurrent.duration._
 import org.apache.kafka.common._
 import org.apache.kafka.clients.consumer._
 import org.apache.kafka.clients.producer._
+import scala.concurrent.Promise
 
 case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
     extends ProducerApi[F, K, V] {
@@ -70,6 +71,22 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
     Some(F.delay(jFuture.cancel(false)).void)
   }
 
+  /** The outer effect sends the record. The inner effect cancels the send. */
+  private def sendRaw2(
+      record: ProducerRecord[K, V],
+      callback: Either[Throwable, RecordMetadata] => Unit,
+  ): F[F[Unit]] =
+    // KafkaProducer.send should be interruptible via InterruptedException, so use F.interruptible instead of F.blocking or F.delay
+    F.interruptible(
+      sendRaw(
+        record,
+        new Callback() {
+          override def onCompletion(rm: RecordMetadata, e: Exception): Unit =
+            if (e == null) callback(Right(rm)) else callback(Left(e))
+        },
+      )
+    ).map(jf => F.delay(jf.cancel(true)).void)
+
   /** The returned F[_] completes as soon as the underlying
     * Producer.send(record) call returns. This is immediately after the producer
     * enqueues the record, not after Kafka accepts the write. If the producer's
@@ -107,7 +124,18 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
   def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata] =
     F.async(sendRaw(record, _))
 
-  def send2(record: ProducerRecord[K, V]): F[F[RecordMetadata]] = ???
+  // inspired by https://github.com/fd4s/fs2-kafka/blob/series/3.x/modules/core/src/main/scala/fs2/kafka/KafkaProducer.scala
+  def send2(record: ProducerRecord[K, V]): F[F[RecordMetadata]] =
+    F.delay(Promise[RecordMetadata]())
+      .flatMap { promise =>
+        sendRaw2(record, e => promise.complete(e.toTry))
+          .map(cancel =>
+            F.fromFutureCancelable(
+              // TODO should this be F.pure? why delay this? could `promise.future` throw?
+              F.delay((promise.future, cancel))
+            )
+          )
+      }
 }
 
 object ProducerImpl {

@@ -27,5 +27,4 @@ class ProducerSendSpec
     extends AnyPropSpec
     with Matchers
     with EitherValues
-    with DockerizedKafkaSpec {
-}
+    with DockerizedKafkaSpec {}
