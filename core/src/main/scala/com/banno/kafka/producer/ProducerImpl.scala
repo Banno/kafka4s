@@ -146,7 +146,6 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
         sendRaw2(record, promise.complete)
           .map(cancel =>
             F.fromFutureCancelable(
-              // TODO should this be F.pure? why delay this? could `promise.future` throw?
               F.delay((promise.future, cancel))
             )
           )
