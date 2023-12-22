@@ -25,7 +25,7 @@ import org.apache.kafka.common._
 import org.apache.kafka.clients.consumer._
 import org.apache.kafka.clients.producer._
 import scala.concurrent.Promise
-import scala.util.{Try, Success, Failure}
+import scala.util.Try
 
 case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
     extends ProducerApi[F, K, V] {
@@ -83,7 +83,7 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
         record,
         new Callback() {
           override def onCompletion(rm: RecordMetadata, e: Exception): Unit =
-            if (e == null) callback(Success(rm)) else callback(Failure(e))
+            callback(Option(e).toLeft(rm).toTry)
         },
       )
     ).map(jf => F.delay(jf.cancel(true)).void)
