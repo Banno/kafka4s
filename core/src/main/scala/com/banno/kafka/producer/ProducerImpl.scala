@@ -25,6 +25,7 @@ import org.apache.kafka.common._
 import org.apache.kafka.clients.consumer._
 import org.apache.kafka.clients.producer._
 import scala.concurrent.Promise
+import scala.util.{Try, Success, Failure}
 
 case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
     extends ProducerApi[F, K, V] {
@@ -74,7 +75,7 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
   /** The outer effect sends the record. The inner effect cancels the send. */
   private def sendRaw2(
       record: ProducerRecord[K, V],
-      callback: Either[Throwable, RecordMetadata] => Unit,
+      callback: Try[RecordMetadata] => Unit,
   ): F[F[Unit]] =
     // KafkaProducer.send should be interruptible via InterruptedException, so use F.interruptible instead of F.blocking or F.delay
     F.interruptible(
@@ -82,7 +83,7 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
         record,
         new Callback() {
           override def onCompletion(rm: RecordMetadata, e: Exception): Unit =
-            if (e == null) callback(Right(rm)) else callback(Left(e))
+            if (e == null) callback(Success(rm)) else callback(Failure(e))
         },
       )
     ).map(jf => F.delay(jf.cancel(true)).void)
@@ -128,7 +129,7 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
   def send2(record: ProducerRecord[K, V]): F[F[RecordMetadata]] =
     F.delay(Promise[RecordMetadata]())
       .flatMap { promise =>
-        sendRaw2(record, e => promise.complete(e.toTry))
+        sendRaw2(record, promise.complete)
           .map(cancel =>
             F.fromFutureCancelable(
               // TODO should this be F.pure? why delay this? could `promise.future` throw?
