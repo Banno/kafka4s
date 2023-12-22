@@ -87,7 +87,6 @@ trait ProducerApi[F[_], K, V] {
         self.sendSync(record.bimap(f, g))
       override def sendAsync(record: ProducerRecord[A, B]): F[RecordMetadata] =
         self.sendAsync(record.bimap(f, g))
-
       override def send2(record: ProducerRecord[A, B]): F[F[RecordMetadata]] =
         self.send2(record.bimap(f, g))
     }
@@ -129,7 +128,6 @@ trait ProducerApi[F[_], K, V] {
         record.bitraverse(f, g) >>= self.sendSync
       override def sendAsync(record: ProducerRecord[A, B]): F[RecordMetadata] =
         record.bitraverse(f, g) >>= self.sendAsync
-
       override def send2(record: ProducerRecord[A, B]): F[F[RecordMetadata]] =
         record.bitraverse(f, g) >>= self.send2
     }
@@ -162,8 +160,6 @@ trait ProducerApi[F[_], K, V] {
         f(self.sendSync(record))
       override def sendAsync(record: ProducerRecord[K, V]): G[RecordMetadata] =
         f(self.sendAsync(record))
-
-      // TODO is G[G[_]] correct here? is this impl correct? requires G have a Functor, is that cool?
       override def send2(record: ProducerRecord[K, V]): G[G[RecordMetadata]] =
         f(self.send2(record)).map(f(_))
     }
