@@ -72,7 +72,9 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
     Some(F.delay(jFuture.cancel(false)).void)
   }
 
-  /** The outer effect sends the record on a blocking context and is cancelable. The inner effect cancels the underlying send. */
+  /** The outer effect sends the record on a blocking context and is cancelable.
+    * The inner effect cancels the underlying send.
+    */
   private def sendRaw2(
       record: ProducerRecord[K, V],
       callback: Try[RecordMetadata] => Unit,
@@ -110,32 +112,32 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
     * future.get() call throws an exception. You should use this method if your
     * program should not proceed until Kafka accepts the write, or you need to
     * use the RecordMetadata, or you need to explicitly handle any possible
-    * error. Note that traversing many records with this operation prevents 
-    * the underlying producer from batching multiple records.
+    * error. Note that traversing many records with this operation prevents the
+    * underlying producer from batching multiple records.
     */
   def sendSync(record: ProducerRecord[K, V]): F[RecordMetadata] =
     F.delay(sendRaw(record)).map(_.get())
 
   /** Similar to sendSync, except the returned F[_] is completed asynchronously,
-    * usually on the producer's I/O thread. 
-    * Note that traversing many records with this operation prevents 
-    * the underlying producer from batching multiple records.
+    * usually on the producer's I/O thread. Note that traversing many records
+    * with this operation prevents the underlying producer from batching
+    * multiple records.
     */
   def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata] =
     F.async(sendRaw(record, _))
 
-  /** The outer effect completes synchronously when the underlying Producer.send call returns. 
-    * This is immediately after the producer
-    * enqueues the record, not after Kafka accepts the write. If the producer's
-    * internal queue is full, it will block until the record can be enqueued (i.e. backpressure).
-    * The outer effect is executed on a blocking context and is cancelable.
-    * The outer effect will only contain an error if the Producer.send
-    * call throws an exception.
-    * The inner effect completes asynchronously after Kafka acknowledges the write, and the
-    * RecordMetadata is available. The inner effect will only contain an error if the write failed.
-    * The inner effect is also cancelable.
-    * With this operation, user code can react to both the producer's initial buffering of the record to be sent, 
-    * and the final result of the write (either success or failure).
+  /** The outer effect completes synchronously when the underlying Producer.send
+    * call returns. This is immediately after the producer enqueues the record,
+    * not after Kafka accepts the write. If the producer's internal queue is
+    * full, it will block until the record can be enqueued (i.e. backpressure).
+    * The outer effect is executed on a blocking context and is cancelable. The
+    * outer effect will only contain an error if the Producer.send call throws
+    * an exception. The inner effect completes asynchronously after Kafka
+    * acknowledges the write, and the RecordMetadata is available. The inner
+    * effect will only contain an error if the write failed. The inner effect is
+    * also cancelable. With this operation, user code can react to both the
+    * producer's initial buffering of the record to be sent, and the final
+    * result of the write (either success or failure).
     */
   def send2(record: ProducerRecord[K, V]): F[F[RecordMetadata]] =
     // inspired by https://github.com/fd4s/fs2-kafka/blob/series/3.x/modules/core/src/main/scala/fs2/kafka/KafkaProducer.scala
