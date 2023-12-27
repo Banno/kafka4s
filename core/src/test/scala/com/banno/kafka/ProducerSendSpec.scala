@@ -21,9 +21,15 @@ import cats.effect.{Sync, IO}
 import munit.CatsEffectSuite
 import org.scalacheck.Gen
 import org.apache.kafka.clients.admin.NewTopic
-import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.clients.producer.*
 import com.banno.kafka.admin.AdminApi
-import com.banno.kafka.producer.ProducerApi
+import com.banno.kafka.producer.*
+import java.util.concurrent.{
+  Future => JFuture,
+  TimeUnit,
+  Executors,
+  CompletableFuture,
+}
 
 /*
 verify outer effect succeeds as soon as send returns
@@ -100,4 +106,120 @@ class ProducerSendSpec extends CatsEffectSuite {
       }
   }
 
+  test("outer effect fails on send throw") {
+    val producer =
+      ProducerImpl[IO, String, String](ThrowOnSendProducer[String, String]())
+    for {
+      topic <- createTestTopic[IO]()
+      result <- producer.send(new ProducerRecord(topic, "a", "a")).attempt
+    } yield {
+      assertEquals(result, Left(SendThrowTestException()))
+    }
+  }
+
+  test("inner effect fails on callback with exception") {
+    val producer =
+      ProducerImpl[IO, String, String](FailedCallbackProducer[String, String]())
+    for {
+      topic <- createTestTopic[IO]()
+      ack <- producer.send(new ProducerRecord(topic, "a", "a"))
+      result <- ack.attempt
+    } yield {
+      assertEquals(result, Left(CallbackFailureTestException()))
+    }
+  }
+
+}
+
+case class SendThrowTestException() extends RuntimeException("Send throw test")
+
+case class ThrowOnSendProducer[K, V]() extends Producer[K, V] {
+  def send(r: ProducerRecord[K, V], cb: Callback): JFuture[RecordMetadata] =
+    throw SendThrowTestException()
+
+  def abortTransaction(): Unit = ???
+  def beginTransaction(): Unit = ???
+  def close(x$1: java.time.Duration): Unit = ???
+  def close(): Unit = ???
+  def commitTransaction(): Unit = ???
+  def flush(): Unit = ???
+  def initTransactions(): Unit = ???
+  def metrics(): java.util.Map[
+    org.apache.kafka.common.MetricName,
+    _ <: org.apache.kafka.common.Metric,
+  ] = ???
+  def partitionsFor(
+      x$1: String
+  ): java.util.List[org.apache.kafka.common.PartitionInfo] = ???
+  def send(
+      x$1: org.apache.kafka.clients.producer.ProducerRecord[K, V]
+  ): java.util.concurrent.Future[
+    org.apache.kafka.clients.producer.RecordMetadata
+  ] = ???
+  def sendOffsetsToTransaction(
+      x$1: java.util.Map[
+        org.apache.kafka.common.TopicPartition,
+        org.apache.kafka.clients.consumer.OffsetAndMetadata,
+      ],
+      x$2: org.apache.kafka.clients.consumer.ConsumerGroupMetadata,
+  ): Unit = ???
+  def sendOffsetsToTransaction(
+      x$1: java.util.Map[
+        org.apache.kafka.common.TopicPartition,
+        org.apache.kafka.clients.consumer.OffsetAndMetadata,
+      ],
+      x$2: String,
+  ): Unit = ???
+}
+
+case class CallbackFailureTestException()
+    extends RuntimeException("Callback throw test")
+
+case class FailedCallbackProducer[K, V]() extends Producer[K, V] {
+  val scheduler = Executors.newSingleThreadScheduledExecutor()
+  def send(r: ProducerRecord[K, V], cb: Callback): JFuture[RecordMetadata] = {
+    scheduler.schedule(
+      new Runnable() {
+        override def run(): Unit =
+          cb.onCompletion(null, CallbackFailureTestException())
+      },
+      100L,
+      TimeUnit.MILLISECONDS,
+    )
+    new CompletableFuture()
+  }
+
+  def abortTransaction(): Unit = ???
+  def beginTransaction(): Unit = ???
+  def close(x$1: java.time.Duration): Unit = ???
+  def close(): Unit = ???
+  def commitTransaction(): Unit = ???
+  def flush(): Unit = ???
+  def initTransactions(): Unit = ???
+  def metrics(): java.util.Map[
+    org.apache.kafka.common.MetricName,
+    _ <: org.apache.kafka.common.Metric,
+  ] = ???
+  def partitionsFor(
+      x$1: String
+  ): java.util.List[org.apache.kafka.common.PartitionInfo] = ???
+  def send(
+      x$1: org.apache.kafka.clients.producer.ProducerRecord[K, V]
+  ): java.util.concurrent.Future[
+    org.apache.kafka.clients.producer.RecordMetadata
+  ] = ???
+  def sendOffsetsToTransaction(
+      x$1: java.util.Map[
+        org.apache.kafka.common.TopicPartition,
+        org.apache.kafka.clients.consumer.OffsetAndMetadata,
+      ],
+      x$2: org.apache.kafka.clients.consumer.ConsumerGroupMetadata,
+  ): Unit = ???
+  def sendOffsetsToTransaction(
+      x$1: java.util.Map[
+        org.apache.kafka.common.TopicPartition,
+        org.apache.kafka.clients.consumer.OffsetAndMetadata,
+      ],
+      x$2: String,
+  ): Unit = ???
 }
