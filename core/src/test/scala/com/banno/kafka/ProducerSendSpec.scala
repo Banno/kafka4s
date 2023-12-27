@@ -36,7 +36,7 @@ verify inner effect fails on callback with exception
 verify batching? or sequencing/traversing multiple effects?
 
 verify cancelation?
-*/
+ */
 
 class ProducerSendSpec
     extends AnyPropSpec

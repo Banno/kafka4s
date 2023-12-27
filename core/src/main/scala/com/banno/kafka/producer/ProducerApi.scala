@@ -51,7 +51,7 @@ trait ProducerApi[F[_], K, V] {
   def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata]
 
   // TODO obviously need to rename this
-  def send2(record: ProducerRecord[K, V]): F[F[RecordMetadata]]
+  def send(record: ProducerRecord[K, V]): F[F[RecordMetadata]]
 
   // Cats doesn't have `Bicontravariant`
   final def contrabimap[A, B](f: A => K, g: B => V): ProducerApi[F, A, B] = {
@@ -87,8 +87,8 @@ trait ProducerApi[F[_], K, V] {
         self.sendSync(record.bimap(f, g))
       override def sendAsync(record: ProducerRecord[A, B]): F[RecordMetadata] =
         self.sendAsync(record.bimap(f, g))
-      override def send2(record: ProducerRecord[A, B]): F[F[RecordMetadata]] =
-        self.send2(record.bimap(f, g))
+      override def send(record: ProducerRecord[A, B]): F[F[RecordMetadata]] =
+        self.send(record.bimap(f, g))
     }
   }
 
@@ -128,8 +128,8 @@ trait ProducerApi[F[_], K, V] {
         record.bitraverse(f, g) >>= self.sendSync
       override def sendAsync(record: ProducerRecord[A, B]): F[RecordMetadata] =
         record.bitraverse(f, g) >>= self.sendAsync
-      override def send2(record: ProducerRecord[A, B]): F[F[RecordMetadata]] =
-        record.bitraverse(f, g) >>= self.send2
+      override def send(record: ProducerRecord[A, B]): F[F[RecordMetadata]] =
+        record.bitraverse(f, g) >>= self.send
     }
   }
 
@@ -160,8 +160,8 @@ trait ProducerApi[F[_], K, V] {
         f(self.sendSync(record))
       override def sendAsync(record: ProducerRecord[K, V]): G[RecordMetadata] =
         f(self.sendAsync(record))
-      override def send2(record: ProducerRecord[K, V]): G[G[RecordMetadata]] =
-        f(self.send2(record)).map(f(_))
+      override def send(record: ProducerRecord[K, V]): G[G[RecordMetadata]] =
+        f(self.send(record)).map(f(_))
     }
   }
 }

@@ -139,7 +139,7 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
     * producer's initial buffering of the record to be sent, and the final
     * result of the write (either success or failure).
     */
-  def send2(record: ProducerRecord[K, V]): F[F[RecordMetadata]] =
+  def send(record: ProducerRecord[K, V]): F[F[RecordMetadata]] =
     // inspired by https://github.com/fd4s/fs2-kafka/blob/series/3.x/modules/core/src/main/scala/fs2/kafka/KafkaProducer.scala
     F.delay(Promise[RecordMetadata]())
       .flatMap { promise =>
