@@ -50,7 +50,6 @@ trait ProducerApi[F[_], K, V] {
   def sendSync(record: ProducerRecord[K, V]): F[RecordMetadata]
   def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata]
 
-  // TODO obviously need to rename this
   def send(record: ProducerRecord[K, V]): F[F[RecordMetadata]]
 
   // Cats doesn't have `Bicontravariant`
