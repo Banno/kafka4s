@@ -31,21 +31,6 @@ import java.util.concurrent.{
   CompletableFuture,
 }
 
-/*
-verify outer effect succeeds as soon as send returns
-verify inner effect succeeds as soon as kafka acks (callback is called/record is written)
-
-verify outer effect fails after max.block.ms
-verify inner effect fails after delivery.timeout.ms
-
-verify outer effect fails on send throw
-verify inner effect fails on callback with exception
-
-verify batching? or sequencing/traversing multiple effects?
-
-verify cancelation?
- */
-
 class ProducerSendSpec extends CatsEffectSuite {
 
   val bootstrapServer = "localhost:9092"
