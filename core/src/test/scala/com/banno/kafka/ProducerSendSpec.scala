@@ -16,12 +16,14 @@
 
 package com.banno.kafka
 
-// import org.scalacheck.*
-// import org.scalacheck.magnolia.*
-import org.scalatest.EitherValues
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.propspec.AnyPropSpec
-// import org.scalatestplus.scalacheck.*
+import cats.syntax.all.*
+import cats.effect.{Sync, IO}
+import munit.CatsEffectSuite
+import org.scalacheck.Gen
+import org.apache.kafka.clients.admin.NewTopic
+import org.apache.kafka.clients.producer.ProducerRecord
+import com.banno.kafka.admin.AdminApi
+import com.banno.kafka.producer.ProducerApi
 
 /*
 verify outer effect succeeds as soon as send returns
@@ -38,8 +40,40 @@ verify batching? or sequencing/traversing multiple effects?
 verify cancelation?
  */
 
-class ProducerSendSpec
-    extends AnyPropSpec
-    with Matchers
-    with EitherValues
-    with DockerizedKafkaSpec {}
+class ProducerSendSpec extends CatsEffectSuite {
+
+  val bootstrapServer = "localhost:9092"
+  val schemaRegistryUrl = "http://localhost:8091"
+
+  def randomId: String =
+    Gen.listOfN(10, Gen.alphaChar).map(_.mkString).sample.get
+  // def genGroupId: String = randomId
+  def genTopic: String = randomId
+
+  def createTestTopic[F[_]: Sync](partitionCount: Int = 1): F[String] = {
+    val topicName = genTopic
+    AdminApi
+      .createTopicsIdempotent[F](
+        bootstrapServer,
+        List(new NewTopic(topicName, partitionCount, 1.toShort)),
+      )
+      .as(topicName)
+  }
+
+  test("send one record") {
+    ProducerApi
+      .resource[IO, String, String](
+        BootstrapServers(bootstrapServer)
+      )
+      .use { producer =>
+        for {
+          topic <- createTestTopic[IO]()
+          ack <- producer.send(new ProducerRecord(topic, "a", "a"))
+          rm <- ack
+        } yield {
+          assertEquals(rm.topic, topic)
+          assertEquals(rm.offset, 0L)
+        }
+      }
+  }
+}
