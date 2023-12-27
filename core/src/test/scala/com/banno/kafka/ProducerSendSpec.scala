@@ -76,4 +76,28 @@ class ProducerSendSpec extends CatsEffectSuite {
         }
       }
   }
+
+  test("send many records") {
+    ProducerApi
+      .resource[IO, String, String](
+        BootstrapServers(bootstrapServer)
+      )
+      .use { producer =>
+        for {
+          topic <- createTestTopic[IO]()
+          values = (0 to 9).toList.map(_.toString)
+          sends = values
+            .map(s => producer.send(new ProducerRecord(topic, s, s)))
+          acks <- sends.sequence
+          rms <- acks.sequence
+        } yield {
+          assertEquals(rms.size, values.size)
+          for ((rm, i) <- rms.zipWithIndex) {
+            assertEquals(rm.topic, topic)
+            assertEquals(rm.offset, i.toLong)
+          }
+        }
+      }
+  }
+
 }
