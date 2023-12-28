@@ -58,6 +58,18 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
     } yield rms
   }
 
+  def sendBatchWithCallbacks[G[_]: Traverse](
+      records: G[ProducerRecord[K, V]],
+      onSend: ProducerRecord[K, V] => F[Unit],
+  )(implicit F: Monad[F]): F[G[RecordMetadata]] = {
+    val sends: G[F[F[RecordMetadata]]] =
+      records.map(r => producer.send(r) <* onSend(r))
+    for {
+      acks <- sends.sequence
+      rms <- acks.sequence
+    } yield rms
+  }
+
   def pipeSync: Pipe[F, ProducerRecord[K, V], RecordMetadata] =
     _.evalMap(producer.sendSync)
 
@@ -76,7 +88,9 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
     s =>
       pipeSendBatch[Chunk](Traverse[Chunk], F)(s.chunks).flatMap(Stream.chunk)
 
-  /** Calls chunkN on the input stream, to create chunks of size `n`, and sends those chunks as batches to the producer. */
+  /** Calls chunkN on the input stream, to create chunks of size `n`, and sends
+    * those chunks as batches to the producer.
+    */
   def pipeSendBatchChunkN(n: Int, allowFewer: Boolean = true)(implicit
       F: Monad[F]
   ): Pipe[F, ProducerRecord[K, V], RecordMetadata] =
