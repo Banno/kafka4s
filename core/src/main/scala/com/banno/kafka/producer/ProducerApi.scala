@@ -50,6 +50,8 @@ trait ProducerApi[F[_], K, V] {
   def sendSync(record: ProducerRecord[K, V]): F[RecordMetadata]
   def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata]
 
+  def send(record: ProducerRecord[K, V]): F[F[RecordMetadata]]
+
   // Cats doesn't have `Bicontravariant`
   final def contrabimap[A, B](f: A => K, g: B => V): ProducerApi[F, A, B] = {
     val self = this
@@ -84,6 +86,8 @@ trait ProducerApi[F[_], K, V] {
         self.sendSync(record.bimap(f, g))
       override def sendAsync(record: ProducerRecord[A, B]): F[RecordMetadata] =
         self.sendAsync(record.bimap(f, g))
+      override def send(record: ProducerRecord[A, B]): F[F[RecordMetadata]] =
+        self.send(record.bimap(f, g))
     }
   }
 
@@ -123,10 +127,12 @@ trait ProducerApi[F[_], K, V] {
         record.bitraverse(f, g) >>= self.sendSync
       override def sendAsync(record: ProducerRecord[A, B]): F[RecordMetadata] =
         record.bitraverse(f, g) >>= self.sendAsync
+      override def send(record: ProducerRecord[A, B]): F[F[RecordMetadata]] =
+        record.bitraverse(f, g) >>= self.send
     }
   }
 
-  final def mapK[G[_]](f: F ~> G): ProducerApi[G, K, V] = {
+  final def mapK[G[_]: Functor](f: F ~> G): ProducerApi[G, K, V] = {
     val self = this
     new ProducerApi[G, K, V] {
       override def abortTransaction: G[Unit] = f(self.abortTransaction)
@@ -153,6 +159,8 @@ trait ProducerApi[F[_], K, V] {
         f(self.sendSync(record))
       override def sendAsync(record: ProducerRecord[K, V]): G[RecordMetadata] =
         f(self.sendAsync(record))
+      override def send(record: ProducerRecord[K, V]): G[G[RecordMetadata]] =
+        f(self.send(record)).map(f(_))
     }
   }
 }

@@ -65,7 +65,17 @@ lazy val core = project
     mimaBinaryIssueFilters ++= {
       import com.typesafe.tools.mima.core._
       import com.typesafe.tools.mima.core.ProblemFilters._
-      Seq()
+      Seq(
+        ProblemFilters.exclude[DirectMissingMethodProblem](
+          "com.banno.kafka.producer.ProducerApi.mapK"
+        ),
+        ProblemFilters.exclude[ReversedMissingMethodProblem](
+          "com.banno.kafka.producer.ProducerApi.send"
+        ),
+        ProblemFilters.exclude[DirectMissingMethodProblem](
+          "com.banno.kafka.producer.ProducerImpl.mapK"
+        ),
+      )
     },
   )
   .settings(
