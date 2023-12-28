@@ -17,6 +17,7 @@
 package com.banno.kafka.producer
 
 import cats.*
+import cats.data.NonEmptyList
 import cats.syntax.all.*
 import fs2.*
 import org.apache.kafka.common.*
@@ -114,6 +115,14 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
   ): Pipe[F, ProducerRecord[K, V], RecordMetadata] =
     s =>
       pipeSendBatch[Chunk](Traverse[Chunk], F)(s.chunks).flatMap(Stream.chunk)
+
+  def pipeSendBatchChunksNonEmpty(implicit
+      F: FlatMap[F]
+  ): Pipe[F, ProducerRecord[K, V], RecordMetadata] =
+    s =>
+      pipeSendBatchNonEmpty[NonEmptyList](NonEmptyTraverse[NonEmptyList], F)(
+        s.chunks.map(_.toNel).unNone
+      ).flatMap(nel => Stream.emits(nel.toList))
 
   /** Calls chunkN on the input stream, to create chunks of size `n`, and sends
     * those chunks as batches to the producer.
