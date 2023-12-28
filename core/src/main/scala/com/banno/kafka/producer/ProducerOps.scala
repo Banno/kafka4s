@@ -40,11 +40,49 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
   )(implicit F: Applicative[F]): F[G[RecordMetadata]] =
     records.traverse(producer.sendAsync)
 
+  /** Sends all of the records to the producer (synchronously), so the producer
+    * may batch them. After all records are sent, asynchronously waits for all
+    * acks. Returns the write metadatas, in order. This is the only batch write
+    * operation that allows the producer to perform its own batching, while
+    * semantically blocking until all writes have succeeded. It maximizes
+    * concurrency and producer batching, and also simplicity of usage. Fails if
+    * any individual send or ack fails.
+    */
+  def sendBatch[G[_]: Traverse](
+      records: G[ProducerRecord[K, V]]
+  )(implicit F: Monad[F]): F[G[RecordMetadata]] = {
+    val sends: G[F[F[RecordMetadata]]] = records.map(producer.send)
+    for {
+      acks <- sends.sequence
+      rms <- acks.sequence
+    } yield rms
+  }
+
   def pipeSync: Pipe[F, ProducerRecord[K, V], RecordMetadata] =
     _.evalMap(producer.sendSync)
 
   def pipeAsync: Pipe[F, ProducerRecord[K, V], RecordMetadata] =
     _.evalMap(producer.sendAsync)
+
+  def pipeSendBatch[G[_]: Traverse](implicit
+      F: Monad[F]
+  ): Pipe[F, G[ProducerRecord[K, V]], G[RecordMetadata]] =
+    _.evalMap(sendBatch[G])
+
+  /** Uses the stream's chunks as batches of records to send to the producer. */
+  def pipeSendBatchChunks(implicit
+      F: Monad[F]
+  ): Pipe[F, ProducerRecord[K, V], RecordMetadata] =
+    s =>
+      pipeSendBatch[Chunk](Traverse[Chunk], F)(s.chunks).flatMap(Stream.chunk)
+
+  /** Calls chunkN on the input stream, to create chunks of size `n`, and sends those chunks as batches to the producer. */
+  def pipeSendBatchChunkN(n: Int, allowFewer: Boolean = true)(implicit
+      F: Monad[F]
+  ): Pipe[F, ProducerRecord[K, V], RecordMetadata] =
+    s =>
+      pipeSendBatch[Chunk](Traverse[Chunk], F)(s.chunkN(n, allowFewer))
+        .flatMap(Stream.chunk)
 
   def sink: Pipe[F, ProducerRecord[K, V], Unit] =
     _.evalMap(producer.sendAndForget)
@@ -54,6 +92,11 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
 
   def sinkAsync: Pipe[F, ProducerRecord[K, V], Unit] =
     pipeAsync.apply(_).void
+
+  def sinkSendBatch[G[_]: Traverse](implicit
+      F: Monad[F]
+  ): Pipe[F, G[ProducerRecord[K, V]], Unit] =
+    pipeSendBatch.apply(_).void
 
   def transaction[G[_]: Foldable](
       records: G[ProducerRecord[K, V]]
