@@ -24,12 +24,14 @@ import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.producer.*
 import com.banno.kafka.admin.AdminApi
 import com.banno.kafka.producer.*
+import com.banno.kafka.consumer.*
 import java.util.concurrent.{
   Future => JFuture,
   TimeUnit,
   Executors,
   CompletableFuture,
 }
+import scala.concurrent.duration.*
 
 class ProducerSendSpec extends CatsEffectSuite {
 
@@ -38,7 +40,7 @@ class ProducerSendSpec extends CatsEffectSuite {
 
   def randomId: String =
     Gen.listOfN(10, Gen.alphaChar).map(_.mkString).sample.get
-  // def genGroupId: String = randomId
+  def genGroupId: String = randomId
   def genTopic: String = randomId
 
   def createTestTopic[F[_]: Sync](partitionCount: Int = 1): F[String] = {
@@ -70,24 +72,39 @@ class ProducerSendSpec extends CatsEffectSuite {
 
   test("send many records") {
     ProducerApi
-      .resource[IO, String, String](
+      .resource[IO, Int, Int](
         BootstrapServers(bootstrapServer)
       )
       .use { producer =>
-        for {
-          topic <- createTestTopic[IO]()
-          values = (0 to 9).toList.map(_.toString)
-          sends = values
-            .map(s => producer.send(new ProducerRecord(topic, s, s)))
-          acks <- sends.sequence
-          rms <- acks.sequence
-        } yield {
-          assertEquals(rms.size, values.size)
-          for ((rm, i) <- rms.zipWithIndex) {
-            assertEquals(rm.topic, topic)
-            assertEquals(rm.offset, i.toLong)
+        ConsumerApi
+          .resource[IO, Int, Int](
+            BootstrapServers(bootstrapServer),
+            GroupId(genGroupId),
+            AutoOffsetReset.earliest,
+          )
+          .use { consumer =>
+            for {
+              topic <- createTestTopic[IO]()
+              values = (0 to 9).toList
+              sends = values
+                .map(v => producer.send(new ProducerRecord(topic, v, v)))
+              acks <- sends.sequence
+              rms <- acks.sequence
+              () <- consumer.subscribe(topic)
+              records <- consumer
+                .recordStream(100.millis)
+                .take(values.size.toLong)
+                .compile
+                .toList
+            } yield {
+              assertEquals(rms.size, values.size)
+              for ((rm, i) <- rms.zipWithIndex) {
+                assertEquals(rm.topic, topic)
+                assertEquals(rm.offset, i.toLong)
+              }
+              assertEquals(values, records.map(_.value))
+            }
           }
-        }
       }
   }
 
