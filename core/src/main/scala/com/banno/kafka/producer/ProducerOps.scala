@@ -112,6 +112,16 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
   ): Pipe[F, G[ProducerRecord[K, V]], Unit] =
     pipeSendBatch.apply(_).void
 
+  def sinkSendBatchChunks(implicit
+      F: Monad[F]
+  ): Pipe[F, ProducerRecord[K, V], Unit] =
+    pipeSendBatchChunks.apply(_).void
+
+  def sinkSendBatchChunkN(n: Int, allowFewer: Boolean = true)(implicit
+      F: Monad[F]
+  ): Pipe[F, ProducerRecord[K, V], Unit] =
+    pipeSendBatchChunkN(n, allowFewer).apply(_).void
+
   def transaction[G[_]: Foldable](
       records: G[ProducerRecord[K, V]]
   )(implicit F: MonadError[F, Throwable]): F[Unit] =
