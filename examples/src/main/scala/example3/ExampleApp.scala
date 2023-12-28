@@ -27,6 +27,7 @@ import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.producer.ProducerRecord
 import scala.concurrent.duration._
 import scala.util.Random
+import natchez.Trace.Implicits.noop
 
 final class ExampleApp[F[_]: Async] {
 

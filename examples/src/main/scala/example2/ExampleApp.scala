@@ -27,6 +27,7 @@ import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
 import scala.concurrent.duration.*
+import natchez.Trace.Implicits.noop
 
 final class ExampleApp[F[_]: Async] {
 

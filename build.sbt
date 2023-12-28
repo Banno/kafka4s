@@ -41,6 +41,7 @@ val V = new {
   val kindProjector = "0.13.2"
   val log4cats = "2.6.0"
   val logback = "1.4.14"
+  val natchez = "0.3.5"
   val scalacheck = "1.17.0"
   val scalacheckEffect = "1.0.4"
   val scalacheckMagnolia = "0.6.0"
@@ -99,6 +100,7 @@ lazy val core = project
       "org.typelevel" %% "cats-laws" % V.cats % Test,
       "org.scalatest" %% "scalatest" % V.scalatest % Test,
       "org.typelevel" %% "discipline-munit" % V.disciplineMunit % Test,
+      "org.tpolecat" %% "natchez-opentelemetry" % V.natchez,
     ),
   )
 

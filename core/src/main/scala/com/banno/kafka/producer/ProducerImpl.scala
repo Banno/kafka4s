@@ -18,6 +18,9 @@ package com.banno.kafka.producer
 
 import cats.syntax.all._
 import cats.effect.Async
+import cats.effect.Deferred
+import cats.effect.Resource
+import cats.effect.std.Supervisor
 import java.util.concurrent.{Future => JFuture}
 import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
@@ -26,8 +29,9 @@ import org.apache.kafka.clients.consumer._
 import org.apache.kafka.clients.producer._
 import scala.concurrent.Promise
 import scala.util.Try
+import natchez.Trace
 
-case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
+case class ProducerImpl[F[_], K, V](p: Producer[K, V], supervisor: Supervisor[F])(implicit F: Async[F], T: Trace[F])
     extends ProducerApi[F, K, V] {
   def abortTransaction: F[Unit] = F.delay(p.abortTransaction())
   def beginTransaction: F[Unit] = F.delay(p.beginTransaction())
@@ -141,21 +145,30 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
     */
   def send(record: ProducerRecord[K, V]): F[F[RecordMetadata]] =
     // inspired by https://github.com/fd4s/fs2-kafka/blob/series/3.x/modules/core/src/main/scala/fs2/kafka/KafkaProducer.scala
-    F.delay(Promise[RecordMetadata]())
-      .flatMap { promise =>
-        sendRaw2(record, promise.complete)
-          .map(cancel =>
-            F.fromFutureCancelable(
-              F.delay((promise.future, cancel))
-            )
-          )
-      }
+    for {
+      promise <- F.delay(Promise[RecordMetadata]())
+      sent <- Deferred[F, Unit]
+      cancelToken <- Deferred[F, F[Unit]]
+      _ <- supervisor.supervise(
+        T.spanR("kafka4s-send").use(wrap =>
+          for {
+            cancel <- wrap(T.span("buffer")(sendRaw2(record, promise.complete)))
+            _ <- sent.complete(())
+            _ <- cancelToken.complete(cancel)
+            _ <- wrap(T.span("ack")(F.fromFuture(F.delay(promise.future))))
+          } yield ()
+        )
+      )
+      _ <- sent.get
+    } yield F.fromFuture(F.delay(promise.future))
 }
 
 object ProducerImpl {
   // returns the type expected when creating a Resource
-  def create[F[_]: Async, K, V](
+  def create[F[_]: Async: Trace, K, V](
       p: Producer[K, V]
-  ): ProducerApi[F, K, V] =
-    ProducerImpl(p)
+  ): Resource[F, ProducerApi[F, K, V]] =
+    Supervisor[F](true).map { supervisor =>
+      ProducerImpl(p, supervisor)
+    }
 }
