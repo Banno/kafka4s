@@ -58,6 +58,16 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
     } yield rms
   }
 
+  def sendBatchNonEmpty[G[_]: NonEmptyTraverse](
+      records: G[ProducerRecord[K, V]]
+  )(implicit F: FlatMap[F]): F[G[RecordMetadata]] = {
+    val sends: G[F[F[RecordMetadata]]] = records.map(producer.send)
+    for {
+      acks <- sends.nonEmptySequence
+      rms <- acks.nonEmptySequence
+    } yield rms
+  }
+
   def sendBatchWithCallbacks[G[_]: Traverse](
       records: G[ProducerRecord[K, V]],
       onSend: ProducerRecord[K, V] => F[Unit],
@@ -67,6 +77,18 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
     for {
       acks <- sends.sequence
       rms <- acks.sequence
+    } yield rms
+  }
+
+  def sendBatchWithCallbacks[G[_]: NonEmptyTraverse](
+      records: G[ProducerRecord[K, V]],
+      onSend: ProducerRecord[K, V] => F[Unit],
+  )(implicit F: FlatMap[F]): F[G[RecordMetadata]] = {
+    val sends: G[F[F[RecordMetadata]]] =
+      records.map(r => producer.send(r) <* onSend(r))
+    for {
+      acks <- sends.nonEmptySequence
+      rms <- acks.nonEmptySequence
     } yield rms
   }
 
@@ -80,6 +102,11 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
       F: Monad[F]
   ): Pipe[F, G[ProducerRecord[K, V]], G[RecordMetadata]] =
     _.evalMap(sendBatch[G])
+
+  def pipeSendBatchNonEmpty[G[_]: NonEmptyTraverse](implicit
+      F: FlatMap[F]
+  ): Pipe[F, G[ProducerRecord[K, V]], G[RecordMetadata]] =
+    _.evalMap(sendBatchNonEmpty[G])
 
   /** Uses the stream's chunks as batches of records to send to the producer. */
   def pipeSendBatchChunks(implicit
@@ -111,6 +138,11 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
       F: Monad[F]
   ): Pipe[F, G[ProducerRecord[K, V]], Unit] =
     pipeSendBatch.apply(_).void
+
+  def sinkSendBatch[G[_]: NonEmptyTraverse](implicit
+      F: FlatMap[F]
+  ): Pipe[F, G[ProducerRecord[K, V]], Unit] =
+    pipeSendBatchNonEmpty.apply(_).void
 
   def sinkSendBatchChunks(implicit
       F: Monad[F]
