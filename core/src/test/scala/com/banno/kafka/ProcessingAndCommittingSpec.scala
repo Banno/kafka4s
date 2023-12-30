@@ -20,6 +20,33 @@ import munit.CatsEffectSuite
 
 class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
 
-  test("todo") {}
+  test("processingAndCommitting commits after number of records") {
+    
+    /*
+    assert no committed offsets
+    process record
+    assert no committed offsets
+    process record
+    assert no committed offsets
+    ...
+    process record
+    assert offsets got committed
+     */
+  }
+
+  test("processingAndCommitting commits after elapsed time") {
+    /*
+    assert no committed offsets
+    process records
+    ...
+    after elapsed time
+    assert offsets got committed
+     */
+    
+  }
+
+  test("processingAndCommitting does not commit after failure") {
+    
+  }
 
 }

@@ -264,35 +264,6 @@ class ConsumerAndProducerApiSpec
     ) // verifies that no successfully processed record was ever reprocessed
   }
 
-  property("processingAndCommitting commits after number of records") {
-    pending
-    /*
-    assert no committed offsets
-    process record
-    assert no committed offsets
-    process record
-    assert no committed offsets
-    ...
-    process record
-    assert offsets got committed
-     */
-  }
-
-  property("processingAndCommitting commits after elapsed time") {
-    /*
-    assert no committed offsets
-    process records
-    ...
-    after elapsed time
-    assert offsets got committed
-     */
-    pending
-  }
-
-  property("processingAndCommitting does not commit after failure") {
-    pending
-  }
-
   property("Producer transaction works") {
     pending
   }
