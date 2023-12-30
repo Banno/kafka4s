@@ -63,9 +63,9 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
               c0 <- consumer.partitionQueries.committed(ps)
               // commit offsets every 2 records (and never commit after elapsed time)
               pac = consumer.processingAndCommitting(
-                100.millis,
-                2,
-                Long.MaxValue,
+                pollTimeout = 100.millis,
+                maxRecordCount = 2,
+                maxCommitTime = Long.MaxValue,
               )(_.value.pure[IO])
               committed = Stream.repeatEval(
                 consumer.partitionQueries.committed(ps)
@@ -105,18 +105,59 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
   }
 
   test("processingAndCommitting commits after elapsed time") {
-    /*
-    assert no committed offsets
-    process records
-    ...
-    after elapsed time
-    assert offsets got committed
-     */
-
+    // TODO
   }
 
-  test(
-    "on failure, processingAndCommitting commits successful offsets, but not the failed offset"
-  ) {}
+  case class CommitOnFailureException()
+      extends RuntimeException("Commit on failure exception")
+
+  test("on failure, commits successful offsets, but not the failed offset") {
+    ProducerApi
+      .resource[IO, Int, Int](
+        BootstrapServers(bootstrapServer)
+      )
+      .use { producer =>
+        ConsumerApi
+          .resource[IO, Int, Int](
+            BootstrapServers(bootstrapServer),
+            GroupId(genGroupId),
+            AutoOffsetReset.earliest,
+            EnableAutoCommit(false),
+          )
+          .use { consumer =>
+            for {
+              topic <- createTestTopic[IO]()
+              p = new TopicPartition(topic, 0)
+              ps = Set(p)
+              values = (0 to 9).toList
+              throwOn = 7
+              _ <- producer.sendAsyncBatch(
+                values.map(v => new ProducerRecord(topic, v, v))
+              )
+              () <- consumer.subscribe(topic)
+              c0 <- consumer.partitionQueries.committed(ps)
+              // do not regularly commit offsets; we're testing commit-on-failure
+              pac = consumer.processingAndCommitting(
+                pollTimeout = 100.millis,
+                maxRecordCount = Long.MaxValue,
+                maxCommitTime = Long.MaxValue,
+              ) { r =>
+                val v = r.value
+                if (v == throwOn)
+                  IO.raiseError(CommitOnFailureException())
+                else
+                  v.pure[IO]
+              }
+              results <- pac.compile.toList.attempt
+              c1 <- consumer.partitionQueries.committed(ps)
+            } yield {
+              assertEquals(c0, empty)
+              assertEquals(results, Left(CommitOnFailureException()))
+              // on failure, the committed offset should be the one that failed, so processing will resume there next time and try again
+              assertEquals(c1, offsets(p, throwOn.toLong))
+            }
+          }
+      }
+  }
 
 }
