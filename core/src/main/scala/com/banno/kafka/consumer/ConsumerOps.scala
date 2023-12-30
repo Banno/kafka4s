@@ -368,13 +368,16 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
   def processingAndCommitting[A](
       pollTimeout: FiniteDuration,
       maxRecordCount: Long = 1000L,
-      maxCommitTime: Long = 60000L,
+      maxElapsedTime: FiniteDuration = 60.seconds,
   )(
       process: ConsumerRecord[K, V] => F[A]
   )(implicit C: Clock[F], S: Concurrent[F]): Stream[F, A] =
     for {
       state <- Stream.eval(
-        Ref.of[F, OffsetCommitState](OffsetCommitState.empty)
+        C.realTime
+          .flatMap(now =>
+            Ref.of[F, OffsetCommitState](OffsetCommitState.empty(now))
+          )
       )
       record <- consumer.recordStream(pollTimeout)
       a <- Stream.eval(
@@ -386,9 +389,9 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
           )
       )
       s <- Stream.eval(state.updateAndGet(_.update(record)))
-      now <- Stream.eval(C.realTime.map(_.toNanos))
+      now <- Stream.eval(C.realTime)
       () <- Stream.eval(
-        s.needToCommit(maxRecordCount, now, maxCommitTime)
+        s.needToCommit(maxRecordCount, now, maxElapsedTime)
           .traverse_(os =>
             consumer.commitSync(os) *>
             state.update(_.reset(now))
@@ -399,7 +402,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
   case class OffsetCommitState(
       offsets: Map[TopicPartition, Long],
       recordCount: Long,
-      lastCommitTime: Long,
+      lastCommitTime: FiniteDuration,
   ) {
     def update(record: ConsumerRecord[_, _]): OffsetCommitState =
       copy(
@@ -412,20 +415,21 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
 
     def needToCommit(
         maxRecordCount: Long,
-        now: Long,
-        maxCommitTime: Long,
-    ): Option[Map[TopicPartition, OffsetAndMetadata]] =
+        now: FiniteDuration,
+        maxElapsedTime: FiniteDuration,
+    ): Option[Map[TopicPartition, OffsetAndMetadata]] = {
       if (
-        recordCount >= maxRecordCount || (now - lastCommitTime) >= maxCommitTime
+        recordCount >= maxRecordCount || (now - lastCommitTime) >= maxElapsedTime
       )
         nextOffsets.some
       else
         none
+    }
 
     def nextOffsets: Map[TopicPartition, OffsetAndMetadata] =
       offsets.view.mapValues(o => new OffsetAndMetadata(o + 1)).toMap
 
-    def reset(time: Long): OffsetCommitState =
+    def reset(time: FiniteDuration): OffsetCommitState =
       copy(
         offsets = Map.empty,
         recordCount = 0L,
@@ -437,7 +441,12 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
     val empty = OffsetCommitState(
       offsets = Map.empty,
       recordCount = 0L,
-      lastCommitTime = 0L,
+      lastCommitTime = 0.millis,
+    )
+    def empty(time: FiniteDuration) = OffsetCommitState(
+      offsets = Map.empty,
+      recordCount = 0L,
+      lastCommitTime = time,
     )
   }
 
