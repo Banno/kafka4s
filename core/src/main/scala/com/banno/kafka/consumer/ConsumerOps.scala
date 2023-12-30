@@ -372,7 +372,6 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
   )(
       process: ConsumerRecord[K, V] => F[A]
   )(implicit C: Clock[F], S: Concurrent[F]): Stream[F, A] =
-    // TODO on any error, commit offsets of successfully processed records
     for {
       state <- Stream.eval(
         Ref.of[F, OffsetCommitState](OffsetCommitState.empty)
