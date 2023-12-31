@@ -61,7 +61,6 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
               )
               () <- consumer.subscribe(topic)
               c0 <- consumer.partitionQueries.committed(ps)
-              // commit offsets every 2 records (and never commit after elapsed time)
               pac = consumer.processingAndCommitting(
                 pollTimeout = 100.millis,
                 maxRecordCount = 2,
@@ -129,7 +128,6 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
               )
               () <- consumer.subscribe(topic)
               c0 <- consumer.partitionQueries.committed(ps)
-              // commit every 100 millis
               pac = consumer.processingAndCommitting(
                 pollTimeout = 100.millis,
                 maxRecordCount = Long.MaxValue,
@@ -200,7 +198,6 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
               )
               () <- consumer.subscribe(topic)
               c0 <- consumer.partitionQueries.committed(ps)
-              // do not regularly commit offsets; we're testing commit-on-failure
               pac = consumer.processingAndCommitting(
                 pollTimeout = 100.millis,
                 maxRecordCount = Long.MaxValue,
