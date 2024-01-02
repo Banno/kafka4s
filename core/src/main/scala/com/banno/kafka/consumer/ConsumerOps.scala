@@ -436,11 +436,10 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       recordCount = 0L,
       lastCommitTime = 0.millis,
     )
-    def empty(time: FiniteDuration) = OffsetCommitState(
-      offsets = Map.empty,
-      recordCount = 0L,
-      lastCommitTime = time,
-    )
+    def empty(time: FiniteDuration): OffsetCommitState =
+      empty.copy(
+        lastCommitTime = time
+      )
   }
 
 }
