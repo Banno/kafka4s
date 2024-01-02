@@ -26,8 +26,10 @@ import org.apache.kafka.clients.consumer._
 import org.apache.kafka.clients.producer._
 import scala.concurrent.Promise
 import scala.util.Try
+import natchez.Span
+import natchez.Trace
 
-case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
+case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F], T: Trace[F])
     extends ProducerApi[F, K, V] {
   def abortTransaction: F[Unit] = F.delay(p.abortTransaction())
   def beginTransaction: F[Unit] = F.delay(p.beginTransaction())
@@ -80,12 +82,19 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
       callback: Try[RecordMetadata] => Unit,
   ): F[F[Unit]] =
     // KafkaProducer.send should be interruptible via InterruptedException, so use F.interruptible instead of F.blocking or F.delay
-    F.interruptible(
-      sendRaw(
-        record,
-        { (rm, e) => callback(Option(e).toLeft(rm).toTry) },
+    T.span("buffer")(
+      (
+        T.kernel,
+        F.interruptible(
+          sendRaw(
+            record,
+            { (rm, e) => callback(Option(e).toLeft(rm).toTry) },
+          )
+        )
+      ).mapN((kernel, jf) => T.span("ack", Span.Options.parentKernel(kernel))(
+        F.delay(jf.cancel(true)).void)
       )
-    ).map(jf => F.delay(jf.cancel(true)).void)
+    )
 
   /** The returned F[_] completes as soon as the underlying
     * Producer.send(record) call returns. This is immediately after the producer
@@ -154,7 +163,7 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
 
 object ProducerImpl {
   // returns the type expected when creating a Resource
-  def create[F[_]: Async, K, V](
+  def create[F[_]: Async: Trace, K, V](
       p: Producer[K, V]
   ): ProducerApi[F, K, V] =
     ProducerImpl(p)

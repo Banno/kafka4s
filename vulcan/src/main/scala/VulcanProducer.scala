@@ -21,6 +21,7 @@ import cats.effect.*
 import com.banno.kafka.producer.*
 import org.apache.avro.generic.GenericRecord
 import vulcan.*
+import natchez.Trace
 
 object VulcanProducer {
   def apply[F[_]: MonadThrow, K: Codec, V: Codec](
@@ -31,7 +32,7 @@ object VulcanProducer {
       Codec.encodeGenericRecord[F, V](_),
     )
 
-  def resource[F[_]: Async, K: Codec, V: Codec](
+  def resource[F[_]: Async: Trace, K: Codec, V: Codec](
       configs: (String, AnyRef)*
   ): Resource[F, ProducerApi[F, K, V]] =
     ProducerApi.Avro.Generic.resource[F](configs: _*).map(apply(_))
