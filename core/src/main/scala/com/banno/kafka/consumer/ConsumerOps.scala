@@ -374,7 +374,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
   )(implicit C: Clock[F], S: Concurrent[F]): Stream[F, A] =
     for {
       state <- Stream.eval(
-        C.realTime
+        C.monotonic
           .flatMap(now =>
             Ref.of[F, OffsetCommitState](OffsetCommitState.empty(now))
           )
@@ -389,7 +389,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
           )
       )
       s <- Stream.eval(state.updateAndGet(_.update(record)))
-      now <- Stream.eval(C.realTime)
+      now <- Stream.eval(C.monotonic)
       () <- Stream.eval(
         s.needToCommit(maxRecordCount, now, maxElapsedTime)
           .traverse_(os =>
