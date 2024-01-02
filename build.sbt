@@ -5,11 +5,7 @@ import org.typelevel.sbt.site.GenericSiteSettings
 
 ThisBuild / scalaVersion := "2.13.10"
 ThisBuild / crossScalaVersions := List(scalaVersion.value)
-ThisBuild / tlBaseVersion := "5.0"
-ThisBuild / tlMimaPreviousVersions ~= { versions =>
-  val failedReleases = Set("5.0.1", "5.0.2")
-  versions -- failedReleases
-}
+ThisBuild / tlBaseVersion := "6.0"
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("11"))
 ThisBuild / githubWorkflowTargetBranches := Seq("*", "series/*")
 ThisBuild / githubWorkflowBuildPreamble := Seq(
@@ -67,15 +63,6 @@ lazy val core = project
       import com.typesafe.tools.mima.core._
       import com.typesafe.tools.mima.core.ProblemFilters._
       Seq(
-        ProblemFilters.exclude[DirectMissingMethodProblem](
-          "com.banno.kafka.producer.ProducerApi.mapK"
-        ),
-        ProblemFilters.exclude[ReversedMissingMethodProblem](
-          "com.banno.kafka.producer.ProducerApi.send"
-        ),
-        ProblemFilters.exclude[DirectMissingMethodProblem](
-          "com.banno.kafka.producer.ProducerImpl.mapK"
-        ),
       )
     },
   )
