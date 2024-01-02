@@ -427,11 +427,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       offsets.view.mapValues(o => new OffsetAndMetadata(o + 1)).toMap
 
     def reset(time: FiniteDuration): OffsetCommitState =
-      copy(
-        offsets = Map.empty,
-        recordCount = 0L,
-        lastCommitTime = time,
-      )
+      OffsetCommitState.empty(time)
   }
 
   object OffsetCommitState {
