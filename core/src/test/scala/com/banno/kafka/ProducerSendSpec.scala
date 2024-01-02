@@ -17,12 +17,9 @@
 package com.banno.kafka
 
 import cats.syntax.all.*
-import cats.effect.{Sync, IO}
+import cats.effect.IO
 import munit.CatsEffectSuite
-import org.scalacheck.Gen
-import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.producer.*
-import com.banno.kafka.admin.AdminApi
 import com.banno.kafka.producer.*
 import com.banno.kafka.consumer.*
 import java.util.concurrent.{
@@ -34,25 +31,7 @@ import java.util.concurrent.{
 import scala.concurrent.duration.*
 import natchez.Trace.Implicits.noop
 
-class ProducerSendSpec extends CatsEffectSuite {
-
-  val bootstrapServer = "localhost:9092"
-  val schemaRegistryUrl = "http://localhost:8091"
-
-  def randomId: String =
-    Gen.listOfN(10, Gen.alphaChar).map(_.mkString).sample.get
-  def genGroupId: String = randomId
-  def genTopic: String = randomId
-
-  def createTestTopic[F[_]: Sync](partitionCount: Int = 1): F[String] = {
-    val topicName = genTopic
-    AdminApi
-      .createTopicsIdempotent[F](
-        bootstrapServer,
-        List(new NewTopic(topicName, partitionCount, 1.toShort)),
-      )
-      .as(topicName)
-  }
+class ProducerSendSpec extends CatsEffectSuite with KafkaSpec {
 
   test("send one record") {
     ProducerApi
