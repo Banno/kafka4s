@@ -29,8 +29,10 @@ import scala.util.Try
 import natchez.Span
 import natchez.Trace
 
-case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F], T: Trace[F])
-    extends ProducerApi[F, K, V] {
+case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit
+    F: Async[F],
+    T: Trace[F],
+) extends ProducerApi[F, K, V] {
   def abortTransaction: F[Unit] = F.delay(p.abortTransaction())
   def beginTransaction: F[Unit] = F.delay(p.beginTransaction())
   def close: F[Unit] = F.delay(p.close())
@@ -82,19 +84,12 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F], T: 
       callback: Try[RecordMetadata] => Unit,
   ): F[F[Unit]] =
     // KafkaProducer.send should be interruptible via InterruptedException, so use F.interruptible instead of F.blocking or F.delay
-    T.span("buffer")(
-      (
-        T.kernel,
-        F.interruptible(
-          sendRaw(
-            record,
-            { (rm, e) => callback(Option(e).toLeft(rm).toTry) },
-          )
-        )
-      ).mapN((kernel, jf) => T.span("ack", Span.Options.parentKernel(kernel))(
-        F.delay(jf.cancel(true)).void)
+    F.interruptible(
+      sendRaw(
+        record,
+        { (rm, e) => callback(Option(e).toLeft(rm).toTry) },
       )
-    )
+    ).map(jf => F.delay(jf.cancel(true)).void)
 
   /** The returned F[_] completes as soon as the underlying
     * Producer.send(record) call returns. This is immediately after the producer
@@ -150,15 +145,22 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F], T: 
     */
   def send(record: ProducerRecord[K, V]): F[F[RecordMetadata]] =
     // inspired by https://github.com/fd4s/fs2-kafka/blob/series/3.x/modules/core/src/main/scala/fs2/kafka/KafkaProducer.scala
-    F.delay(Promise[RecordMetadata]())
-      .flatMap { promise =>
-        sendRaw2(record, promise.complete)
-          .map(cancel =>
-            F.fromFutureCancelable(
-              F.delay((promise.future, cancel))
-            )
-          )
-      }
+    T.span("buffer")(
+      (
+        T.kernel,
+        F.delay(Promise[RecordMetadata]())
+          .flatMap(promise =>
+            sendRaw2(record, promise.complete)
+              .map(cancel =>
+                F.fromFutureCancelable(
+                  F.delay((promise.future, cancel))
+                )
+              )
+          ),
+      ).mapN((kernel, ack) =>
+        T.span("ack", Span.Options.parentKernel(kernel))(ack)
+      )
+    )
 }
 
 object ProducerImpl {
