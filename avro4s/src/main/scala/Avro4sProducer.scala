@@ -20,6 +20,7 @@ import cats.effect.*
 import com.banno.kafka.producer.*
 import com.sksamuel.avro4s.ToRecord
 import org.apache.avro.generic.GenericRecord
+import natchez.Trace
 
 object Avro4sProducer {
   def apply[F[_], K, V](
@@ -30,7 +31,7 @@ object Avro4sProducer {
   ): ProducerApi[F, K, V] =
     p.contrabimap(ktr.to, vtr.to)
 
-  def resource[F[_]: Async, K: ToRecord, V: ToRecord](
+  def resource[F[_]: Async: Trace, K: ToRecord, V: ToRecord](
       configs: (String, AnyRef)*
   ): Resource[F, ProducerApi[F, K, V]] =
     ProducerApi.Avro.Generic.resource[F](configs: _*).map(Avro4sProducer(_))

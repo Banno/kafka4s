@@ -30,6 +30,7 @@ import org.apache.kafka.common.serialization.Serializer
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
+import natchez.Trace
 
 trait ProducerApi[F[_], K, V] {
   def abortTransaction: F[Unit]
@@ -197,7 +198,7 @@ object ProducerApi {
       )
     )
 
-  def resource[F[_]: Async, K, V](
+  def resource[F[_]: Async: Trace, K, V](
       keySerializer: Serializer[K],
       valueSerializer: Serializer[V],
       configs: (String, AnyRef)*
@@ -207,7 +208,7 @@ object ProducerApi {
         .map(ProducerImpl.create[F, K, V](_))
     )(_.close)
 
-  def resource[F[_]: Async, K: Serializer, V: Serializer](
+  def resource[F[_]: Async: Trace, K: Serializer, V: Serializer](
       configs: (String, AnyRef)*
   ): Resource[F, ProducerApi[F, K, V]] =
     resource[F, K, V](
@@ -217,7 +218,7 @@ object ProducerApi {
     )
 
   object Avro {
-    def resource[F[_]: Async, K, V](
+    def resource[F[_]: Async: Trace, K, V](
         configs: (String, AnyRef)*
     ): Resource[F, ProducerApi[F, K, V]] =
       Resource.make(
@@ -231,7 +232,7 @@ object ProducerApi {
       )(_.close)
 
     object Generic {
-      def resource[F[_]: Async](
+      def resource[F[_]: Async: Trace](
           configs: (String, AnyRef)*
       ): Resource[F, ProducerApi[F, GenericRecord, GenericRecord]] =
         ProducerApi.Avro.resource[F, GenericRecord, GenericRecord](configs: _*)

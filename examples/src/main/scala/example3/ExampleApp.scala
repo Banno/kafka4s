@@ -23,6 +23,7 @@ import com.banno.kafka._
 import com.banno.kafka.admin._
 import com.banno.kafka.consumer._
 import com.banno.kafka.producer._
+import natchez.Trace.Implicits.noop
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.producer.ProducerRecord
 import scala.concurrent.duration._

@@ -26,9 +26,13 @@ import org.apache.kafka.clients.consumer._
 import org.apache.kafka.clients.producer._
 import scala.concurrent.Promise
 import scala.util.Try
+import natchez.Span
+import natchez.Trace
 
-case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
-    extends ProducerApi[F, K, V] {
+case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit
+    F: Async[F],
+    T: Trace[F],
+) extends ProducerApi[F, K, V] {
   def abortTransaction: F[Unit] = F.delay(p.abortTransaction())
   def beginTransaction: F[Unit] = F.delay(p.beginTransaction())
   def close: F[Unit] = F.delay(p.close())
@@ -141,20 +145,27 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
     */
   def send(record: ProducerRecord[K, V]): F[F[RecordMetadata]] =
     // inspired by https://github.com/fd4s/fs2-kafka/blob/series/3.x/modules/core/src/main/scala/fs2/kafka/KafkaProducer.scala
-    F.delay(Promise[RecordMetadata]())
-      .flatMap { promise =>
-        sendRaw2(record, promise.complete)
-          .map(cancel =>
-            F.fromFutureCancelable(
-              F.delay((promise.future, cancel))
-            )
-          )
-      }
+    T.span("buffer")(
+      (
+        T.kernel,
+        F.delay(Promise[RecordMetadata]())
+          .flatMap(promise =>
+            sendRaw2(record, promise.complete)
+              .map(cancel =>
+                F.fromFutureCancelable(
+                  F.delay((promise.future, cancel))
+                )
+              )
+          ),
+      ).mapN((kernel, ack) =>
+        T.span("ack", Span.Options.parentKernel(kernel))(ack)
+      )
+    )
 }
 
 object ProducerImpl {
   // returns the type expected when creating a Resource
-  def create[F[_]: Async, K, V](
+  def create[F[_]: Async: Trace, K, V](
       p: Producer[K, V]
   ): ProducerApi[F, K, V] =
     ProducerImpl(p)

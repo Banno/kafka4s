@@ -29,6 +29,7 @@ import java.util.concurrent.{
   CompletableFuture,
 }
 import scala.concurrent.duration.*
+import natchez.Trace.Implicits.noop
 
 class ProducerSendSpec extends CatsEffectSuite with KafkaSpec {
 
