@@ -418,12 +418,9 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
         now: FiniteDuration,
         maxElapsedTime: FiniteDuration,
     ): Option[Map[TopicPartition, OffsetAndMetadata]] = {
-      if (
-        recordCount >= maxRecordCount || (now - lastCommitTime) >= maxElapsedTime
-      )
-        nextOffsets.some
-      else
-        none
+      (recordCount >= maxRecordCount || (now - lastCommitTime) >= maxElapsedTime)
+        .guard[Option]
+        .as(nextOffsets)
     }
 
     def nextOffsets: Map[TopicPartition, OffsetAndMetadata] =
