@@ -98,9 +98,20 @@ We first bring our Kafka producer utils into scope:
 import com.banno.kafka.producer._
 ```
 
+As of kafka4s-6.x, producers are traced with
+[Natchez](https://typelevel.org/natchez/), so an implicit `Trace[IO]`
+is required.  See the [Natchez
+backends](https://typelevel.org/natchez/backends/index.html) for more
+production solutions.
+
+```scala mdoc
+import natchez.Trace.Implicits.noop
+```
+
 Now we can create our producer instance:
 
 ```scala mdoc
+
 val producer = ProducerApi.Avro.Generic.resource[IO](
   BootstrapServers(kafkaBootstrapServers),
   SchemaRegistryUrl(schemaRegistryUri),
