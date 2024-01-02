@@ -88,21 +88,20 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
     F.delay(sendRaw(record))
       .void // discard the returned JFuture[RecordMetadata]
 
-  /** Like `sendSync`, but blocks a compute thread awaiting the
-    * acknlowedgement.  Do not use.
+  /** Like `sendSync`, but blocks a compute thread awaiting the acknowledgement.
+    * Do not use.
     */
   @deprecated("Use sendAsync, or send in kafka4s-6.x", "5.0.4")
   def sendSync(record: ProducerRecord[K, V]): F[RecordMetadata] =
     F.delay(sendRaw(record)).flatMap(jFut => F.interruptible(jFut.get()))
 
   /** The returned F[_] completes after Kafka accepts the write, and the
-    * RecordMetadata is available. The returned F[_] will raise a
-    * failure if either the synchronous buffering or write callback fail.
+    * RecordMetadata is available. The returned F[_] will raise a failure if
+    * either the synchronous buffering or write callback fail.
     *
-    * You should use this method if your program should not proceed
-    * until Kafka accepts the write, or you need to use the
-    * RecordMetadata, or you need to explicitly handle any possible
-    * error.
+    * You should use this method if your program should not proceed until Kafka
+    * accepts the write, or you need to use the RecordMetadata, or you need to
+    * explicitly handle any possible error.
     */
   def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata] =
     F.async(sendRaw(record, _))
