@@ -26,6 +26,7 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import com.banno.kafka.producer.*
 import com.banno.kafka.consumer.*
 import scala.concurrent.duration.*
+import natchez.Trace.Implicits.noop
 
 class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
 
