@@ -83,7 +83,7 @@ final class ExampleApp[F[_]: Async] {
 
       _ <- producerResource.use(producer =>
         producerRecords.traverse_(pr =>
-          producer.sendSync(pr) *> Sync[F]
+          producer.sendAsync(pr) *> Sync[F]
             .delay(
               println(
                 s"Wrote producer record: key ${pr.key} and value ${pr.value}"

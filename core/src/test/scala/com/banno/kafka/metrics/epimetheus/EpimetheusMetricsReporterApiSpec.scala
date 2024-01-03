@@ -87,7 +87,7 @@ class EpimetheusMetricsReporterApiSpec
                 )
                 .use(c2 =>
                   for {
-                    _ <- p.sendSyncBatch(records)
+                    _ <- p.sendAsyncBatch(records)
 
                     _ <- c1.assign(topic, Map.empty[TopicPartition, Long])
                     _ <- c1.poll(1 second)
