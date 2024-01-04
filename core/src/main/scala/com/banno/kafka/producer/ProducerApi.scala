@@ -48,7 +48,7 @@ trait ProducerApi[F[_], K, V] {
   ): F[Unit]
 
   def sendAndForget(record: ProducerRecord[K, V]): F[Unit]
-  def sendSync(record: ProducerRecord[K, V]): F[RecordMetadata]
+
   def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata]
 
   def send(record: ProducerRecord[K, V]): F[F[RecordMetadata]]
@@ -83,8 +83,7 @@ trait ProducerApi[F[_], K, V] {
 
       override def sendAndForget(record: ProducerRecord[A, B]): F[Unit] =
         self.sendAndForget(record.bimap(f, g))
-      override def sendSync(record: ProducerRecord[A, B]): F[RecordMetadata] =
-        self.sendSync(record.bimap(f, g))
+
       override def sendAsync(record: ProducerRecord[A, B]): F[RecordMetadata] =
         self.sendAsync(record.bimap(f, g))
       override def send(record: ProducerRecord[A, B]): F[F[RecordMetadata]] =
@@ -124,8 +123,7 @@ trait ProducerApi[F[_], K, V] {
 
       override def sendAndForget(record: ProducerRecord[A, B]): F[Unit] =
         record.bitraverse(f, g) >>= self.sendAndForget
-      override def sendSync(record: ProducerRecord[A, B]): F[RecordMetadata] =
-        record.bitraverse(f, g) >>= self.sendSync
+
       override def sendAsync(record: ProducerRecord[A, B]): F[RecordMetadata] =
         record.bitraverse(f, g) >>= self.sendAsync
       override def send(record: ProducerRecord[A, B]): F[F[RecordMetadata]] =
@@ -156,8 +154,7 @@ trait ProducerApi[F[_], K, V] {
 
       override def sendAndForget(record: ProducerRecord[K, V]): G[Unit] =
         f(self.sendAndForget(record))
-      override def sendSync(record: ProducerRecord[K, V]): G[RecordMetadata] =
-        f(self.sendSync(record))
+
       override def sendAsync(record: ProducerRecord[K, V]): G[RecordMetadata] =
         f(self.sendAsync(record))
       override def send(record: ProducerRecord[K, V]): G[G[RecordMetadata]] =

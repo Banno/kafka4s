@@ -158,7 +158,7 @@ We can now write our typed customer records successfully!
 ```scala mdoc:compile-only
 import cats.effect.unsafe.implicits.global
 avro4sProducer.use(p =>
-  recordsToBeWritten.traverse_(r => p.sendSync(r).flatMap(rmd => IO(println(s"Wrote record to ${rmd}"))))
+  recordsToBeWritten.traverse_(r => p.sendAsync(r).flatMap(rmd => IO(println(s"Wrote record to ${rmd}"))))
 ).unsafeRunSync()
 ```
 
