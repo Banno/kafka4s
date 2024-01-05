@@ -38,188 +38,213 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
 
   val empty = Map.empty[TopicPartition, OffsetAndMetadata]
 
-  test("processingAndCommitting commits after number of records") {
+  def producerResource =
     ProducerApi
       .resource[IO, Int, Int](
         BootstrapServers(bootstrapServer)
       )
-      .use { producer =>
-        ConsumerApi
-          .resource[IO, Int, Int](
-            BootstrapServers(bootstrapServer),
-            GroupId(genGroupId),
-            AutoOffsetReset.earliest,
-            EnableAutoCommit(false),
+
+  def consumerResource =
+    ConsumerApi
+      .resource[IO, Int, Int](
+        BootstrapServers(bootstrapServer),
+        GroupId(genGroupId),
+        AutoOffsetReset.earliest,
+        EnableAutoCommit(false),
+      )
+
+  test("processingAndCommitting commits after number of records") {
+    producerResource.use { producer =>
+      consumerResource.use { consumer =>
+        for {
+          topic <- createTestTopic[IO]()
+          p = new TopicPartition(topic, 0)
+          ps = Set(p)
+          values = (0 to 9).toList
+          _ <- producer.sendAsyncBatch(
+            values.map(v => new ProducerRecord(topic, v, v))
           )
-          .use { consumer =>
-            for {
-              topic <- createTestTopic[IO]()
-              p = new TopicPartition(topic, 0)
-              ps = Set(p)
-              values = (0 to 9).toList
-              _ <- producer.sendAsyncBatch(
-                values.map(v => new ProducerRecord(topic, v, v))
-              )
-              () <- consumer.subscribe(topic)
-              c0 <- consumer.partitionQueries.committed(ps)
-              pac = consumer.processingAndCommitting(
-                pollTimeout = 100.millis,
-                maxRecordCount = 2,
-                maxElapsedTime = Long.MaxValue.nanos,
-              )(_.value.pure[IO])
-              committed = Stream.repeatEval(
-                consumer.partitionQueries.committed(ps)
-              )
-              results <- pac
-                .take(values.size.toLong)
-                .interleave(committed)
-                .compile
-                .toList
-            } yield {
-              assertEquals(c0, empty)
-              assertEquals(results.size, values.size * 2)
-              // TODO rewrite this to use values, not so hard-coded
-              assertEquals(results(0), 0)
-              assertEquals(results(1), empty)
-              assertEquals(results(2), 1)
-              assertEquals(results(3), offsets(p, 2))
-              assertEquals(results(4), 2)
-              assertEquals(results(5), offsets(p, 2))
-              assertEquals(results(6), 3)
-              assertEquals(results(7), offsets(p, 4))
-              assertEquals(results(8), 4)
-              assertEquals(results(9), offsets(p, 4))
-              assertEquals(results(10), 5)
-              assertEquals(results(11), offsets(p, 6))
-              assertEquals(results(12), 6)
-              assertEquals(results(13), offsets(p, 6))
-              assertEquals(results(14), 7)
-              assertEquals(results(15), offsets(p, 8))
-              assertEquals(results(16), 8)
-              assertEquals(results(17), offsets(p, 8))
-              assertEquals(results(18), 9)
-              assertEquals(results(19), offsets(p, 10))
-            }
-          }
+          () <- consumer.subscribe(topic)
+          c0 <- consumer.partitionQueries.committed(ps)
+          pac = consumer.processingAndCommitting(
+            pollTimeout = 100.millis,
+            maxRecordCount = 2,
+            maxElapsedTime = Long.MaxValue.nanos,
+          )(_.value.pure[IO])
+          committed = Stream.repeatEval(
+            consumer.partitionQueries.committed(ps)
+          )
+          results <- pac
+            .take(values.size.toLong)
+            .interleave(committed)
+            .compile
+            .toList
+        } yield {
+          assertEquals(c0, empty)
+          assertEquals(results.size, values.size * 2)
+          // TODO rewrite this to use values, not so hard-coded
+          assertEquals(results(0), 0)
+          assertEquals(results(1), empty)
+          assertEquals(results(2), 1)
+          assertEquals(results(3), offsets(p, 2))
+          assertEquals(results(4), 2)
+          assertEquals(results(5), offsets(p, 2))
+          assertEquals(results(6), 3)
+          assertEquals(results(7), offsets(p, 4))
+          assertEquals(results(8), 4)
+          assertEquals(results(9), offsets(p, 4))
+          assertEquals(results(10), 5)
+          assertEquals(results(11), offsets(p, 6))
+          assertEquals(results(12), 6)
+          assertEquals(results(13), offsets(p, 6))
+          assertEquals(results(14), 7)
+          assertEquals(results(15), offsets(p, 8))
+          assertEquals(results(16), 8)
+          assertEquals(results(17), offsets(p, 8))
+          assertEquals(results(18), 9)
+          assertEquals(results(19), offsets(p, 10))
+        }
       }
+    }
   }
 
   // this has a real danger of becoming a "flaky test" due to its timing assumptions
   test("processingAndCommitting commits after elapsed time") {
-    ProducerApi
-      .resource[IO, Int, Int](
-        BootstrapServers(bootstrapServer)
-      )
-      .use { producer =>
-        ConsumerApi
-          .resource[IO, Int, Int](
-            BootstrapServers(bootstrapServer),
-            GroupId(genGroupId),
-            AutoOffsetReset.earliest,
-            EnableAutoCommit(false),
+    producerResource.use { producer =>
+      consumerResource.use { consumer =>
+        for {
+          topic <- createTestTopic[IO]()
+          p = new TopicPartition(topic, 0)
+          ps = Set(p)
+          values = (0 to 9).toList
+          _ <- producer.sendAsyncBatch(
+            values.map(v => new ProducerRecord(topic, v, v))
           )
-          .use { consumer =>
-            for {
-              topic <- createTestTopic[IO]()
-              p = new TopicPartition(topic, 0)
-              ps = Set(p)
-              values = (0 to 9).toList
-              _ <- producer.sendAsyncBatch(
-                values.map(v => new ProducerRecord(topic, v, v))
-              )
-              () <- consumer.subscribe(topic)
-              c0 <- consumer.partitionQueries.committed(ps)
-              pac = consumer.processingAndCommitting(
-                pollTimeout = 100.millis,
-                maxRecordCount = Long.MaxValue,
-                maxElapsedTime = 200.millis,
-              )(r => IO.sleep(101.millis).as(r.value))
-              committed = Stream.repeatEval(
-                consumer.partitionQueries.committed(ps)
-              )
-              results <- pac
-                .take(values.size.toLong)
-                .interleave(committed)
-                .compile
-                .toList
-            } yield {
-              assertEquals(c0, empty)
-              assertEquals(results.size, values.size * 2)
-              // TODO rewrite this to use values, not so hard-coded
-              assertEquals(results(0), 0)
-              assertEquals(results(1), empty)
-              assertEquals(results(2), 1)
-              assertEquals(results(3), offsets(p, 2))
-              assertEquals(results(4), 2)
-              assertEquals(results(5), offsets(p, 2))
-              assertEquals(results(6), 3)
-              assertEquals(results(7), offsets(p, 4))
-              assertEquals(results(8), 4)
-              assertEquals(results(9), offsets(p, 4))
-              assertEquals(results(10), 5)
-              assertEquals(results(11), offsets(p, 6))
-              assertEquals(results(12), 6)
-              assertEquals(results(13), offsets(p, 6))
-              assertEquals(results(14), 7)
-              assertEquals(results(15), offsets(p, 8))
-              assertEquals(results(16), 8)
-              assertEquals(results(17), offsets(p, 8))
-              assertEquals(results(18), 9)
-              assertEquals(results(19), offsets(p, 10))
-            }
-          }
+          () <- consumer.subscribe(topic)
+          c0 <- consumer.partitionQueries.committed(ps)
+          pac = consumer.processingAndCommitting(
+            pollTimeout = 100.millis,
+            maxRecordCount = Long.MaxValue,
+            maxElapsedTime = 200.millis,
+          )(r => IO.sleep(101.millis).as(r.value))
+          committed = Stream.repeatEval(
+            consumer.partitionQueries.committed(ps)
+          )
+          results <- pac
+            .take(values.size.toLong)
+            .interleave(committed)
+            .compile
+            .toList
+        } yield {
+          assertEquals(c0, empty)
+          assertEquals(results.size, values.size * 2)
+          // TODO rewrite this to use values, not so hard-coded
+          assertEquals(results(0), 0)
+          assertEquals(results(1), empty)
+          assertEquals(results(2), 1)
+          assertEquals(results(3), offsets(p, 2))
+          assertEquals(results(4), 2)
+          assertEquals(results(5), offsets(p, 2))
+          assertEquals(results(6), 3)
+          assertEquals(results(7), offsets(p, 4))
+          assertEquals(results(8), 4)
+          assertEquals(results(9), offsets(p, 4))
+          assertEquals(results(10), 5)
+          assertEquals(results(11), offsets(p, 6))
+          assertEquals(results(12), 6)
+          assertEquals(results(13), offsets(p, 6))
+          assertEquals(results(14), 7)
+          assertEquals(results(15), offsets(p, 8))
+          assertEquals(results(16), 8)
+          assertEquals(results(17), offsets(p, 8))
+          assertEquals(results(18), 9)
+          assertEquals(results(19), offsets(p, 10))
+        }
       }
+    }
   }
 
   case class CommitOnFailureException()
       extends RuntimeException("Commit on failure exception")
 
   test("on failure, commits successful offsets, but not the failed offset") {
-    ProducerApi
-      .resource[IO, Int, Int](
-        BootstrapServers(bootstrapServer)
-      )
-      .use { producer =>
-        ConsumerApi
-          .resource[IO, Int, Int](
-            BootstrapServers(bootstrapServer),
-            GroupId(genGroupId),
-            AutoOffsetReset.earliest,
-            EnableAutoCommit(false),
+    producerResource.use { producer =>
+      consumerResource.use { consumer =>
+        for {
+          topic <- createTestTopic[IO]()
+          p = new TopicPartition(topic, 0)
+          ps = Set(p)
+          values = (0 to 9).toList
+          throwOn = 7
+          _ <- producer.sendAsyncBatch(
+            values.map(v => new ProducerRecord(topic, v, v))
           )
-          .use { consumer =>
-            for {
-              topic <- createTestTopic[IO]()
-              p = new TopicPartition(topic, 0)
-              ps = Set(p)
-              values = (0 to 9).toList
-              throwOn = 7
-              _ <- producer.sendAsyncBatch(
-                values.map(v => new ProducerRecord(topic, v, v))
-              )
-              () <- consumer.subscribe(topic)
-              c0 <- consumer.partitionQueries.committed(ps)
-              pac = consumer.processingAndCommitting(
-                pollTimeout = 100.millis,
-                maxRecordCount = Long.MaxValue,
-                maxElapsedTime = Long.MaxValue.nanos,
-              ) { r =>
-                val v = r.value
-                if (v == throwOn)
-                  IO.raiseError(CommitOnFailureException())
-                else
-                  v.pure[IO]
-              }
-              results <- pac.compile.toList.attempt
-              c1 <- consumer.partitionQueries.committed(ps)
-            } yield {
-              assertEquals(c0, empty)
-              assertEquals(results, Left(CommitOnFailureException()))
-              // on failure, the committed offset should be the one that failed, so processing will resume there next time and try again
-              assertEquals(c1, offsets(p, throwOn.toLong))
-            }
+          () <- consumer.subscribe(topic)
+          c0 <- consumer.partitionQueries.committed(ps)
+          pac = consumer.processingAndCommitting(
+            pollTimeout = 100.millis,
+            maxRecordCount = Long.MaxValue,
+            maxElapsedTime = Long.MaxValue.nanos,
+          ) { r =>
+            val v = r.value
+            if (v == throwOn)
+              IO.raiseError(CommitOnFailureException())
+            else
+              v.pure[IO]
           }
+          results <- pac.compile.toList.attempt
+          c1 <- consumer.partitionQueries.committed(ps)
+        } yield {
+          assertEquals(c0, empty)
+          assertEquals(results, Left(CommitOnFailureException()))
+          // on failure, the committed offset should be the one that failed, so processing will resume there next time and try again
+          assertEquals(c1, offsets(p, throwOn.toLong))
+        }
       }
+    }
+  }
+
+  test("commits offsets on successful stream finalization") {
+    producerResource.use { producer =>
+      createTestTopic[IO]().flatMap { topic =>
+        val p = new TopicPartition(topic, 0)
+        val ps = Set(p)
+        val values = (0 to 9).toList
+        consumerResource.use { consumer =>
+          for {
+            // topic <- createTestTopic[IO]()
+            // p = new TopicPartition(topic, 0)
+            // ps = Set(p)
+            // values = (0 to 9).toList
+            _ <- producer.sendAsyncBatch(
+              values.map(v => new ProducerRecord(topic, v, v))
+            )
+            () <- consumer.subscribe(topic)
+            c0 <- consumer.partitionQueries.committed(ps)
+            pac = consumer.processingAndCommitting(
+              pollTimeout = 100.millis,
+              maxRecordCount = Long.MaxValue,
+              maxElapsedTime = Long.MaxValue.nanos,
+            )(_.value.pure[IO])
+            results <- pac.take(values.size.toLong).compile.toList
+            c1 <- consumer.partitionQueries.committed(ps)
+          } yield {
+            assertEquals(c0, empty)
+            assertEquals(results, values)
+            assertEquals(c1, offsets(p, 10))
+          }
+        } /**>
+        // previous consumer resource should be closed now, which should have committed consumer offsets
+        consumerResource.use { consumer =>
+          for {
+            () <- consumer.subscribe(topic)
+            c2 <- consumer.partitionQueries.committed(ps)
+          } yield {
+            assertEquals(c2, offsets(p, 10))
+          }
+        }*/
+      }
+    }
   }
 
 }

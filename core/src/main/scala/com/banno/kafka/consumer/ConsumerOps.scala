@@ -372,32 +372,71 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
   )(
       process: ConsumerRecord[K, V] => F[A]
   )(implicit C: Clock[F], S: Concurrent[F]): Stream[F, A] =
-    for {
-      state <- Stream.eval(
+    Stream
+      .eval(
         C.monotonic
           .flatMap(now =>
             Ref.of[F, OffsetCommitState](OffsetCommitState.empty(now))
           )
       )
-      record <- consumer.recordStream(pollTimeout)
-      a <- Stream.eval(
-        process(record)
-          .onError(_ =>
-            // we can still commit offsets that were successfully processed, before this stream halts, consumer is closed, etc
-            // this is still at-least-once processing, but minimizes the amount of reprocessing after restart
-            state.get.flatMap(s => consumer.commitSync(s.nextOffsets))
-          )
-      )
-      s <- Stream.eval(state.updateAndGet(_.update(record)))
-      now <- Stream.eval(C.monotonic)
-      () <- Stream.eval(
-        s.needToCommit(maxRecordCount, now, maxElapsedTime)
-          .traverse_(os =>
-            consumer.commitSync(os) *>
-            state.update(_.reset(now))
-          )
-      )
-    } yield a
+      .flatMap { state =>
+        consumer
+          .recordStream(pollTimeout)
+          .evalMap { record =>
+            for {
+              a <- process(record)
+                .onError(_ =>
+                  // we can still commit offsets that were successfully processed, before this stream halts, consumer is closed, etc
+                  // this is still at-least-once processing, but minimizes the amount of reprocessing after restart
+                  state.get.flatMap(s => consumer.commitSync(s.nextOffsets))
+                )
+              s <- state.updateAndGet(_.update(record))
+              now <- C.monotonic
+              () <- s
+                .needToCommit(maxRecordCount, now, maxElapsedTime)
+                .traverse_(os =>
+                  // TODO this is probably synchronously blocking a thread, and we should use commitAsync instead
+                  consumer.commitSync(os) *>
+                  state.update(_.reset(now))
+                )
+            } yield a
+          }
+          .onFinalizeCase {
+            // on a clean shutdown, commit offsets of successfully processed records
+            case Resource.ExitCase.Succeeded =>
+              state.get.flatMap(s => consumer.commitSync(s.nextOffsets))
+            // don't commit offsets on Errored or Canceled
+            case _ =>
+              Applicative[F].unit
+          }
+      }
+
+  // for {
+  //   state <- Stream.eval(
+  //     C.monotonic
+  //       .flatMap(now =>
+  //         Ref.of[F, OffsetCommitState](OffsetCommitState.empty(now))
+  //       )
+  //   )
+  //   record <- consumer.recordStream(pollTimeout)
+  //   a <- Stream.eval(
+  //     process(record)
+  //       .onError(_ =>
+  //         // we can still commit offsets that were successfully processed, before this stream halts, consumer is closed, etc
+  //         // this is still at-least-once processing, but minimizes the amount of reprocessing after restart
+  //         state.get.flatMap(s => consumer.commitSync(s.nextOffsets))
+  //       )
+  //   )
+  //   s <- Stream.eval(state.updateAndGet(_.update(record)))
+  //   now <- Stream.eval(C.monotonic)
+  //   () <- Stream.eval(
+  //     s.needToCommit(maxRecordCount, now, maxElapsedTime)
+  //       .traverse_(os =>
+  //         consumer.commitSync(os) *>
+  //         state.update(_.reset(now))
+  //       )
+  //   )
+  // } yield a
 
   case class OffsetCommitState(
       offsets: Map[TopicPartition, Long],
