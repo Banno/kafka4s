@@ -233,16 +233,14 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
             assertEquals(results, values)
             assertEquals(c1, offsets(p, 10))
           }
-        } /**>
-        // previous consumer resource should be closed now, which should have committed consumer offsets
-        consumerResource.use { consumer =>
-          for {
-            () <- consumer.subscribe(topic)
-            c2 <- consumer.partitionQueries.committed(ps)
-          } yield {
-            assertEquals(c2, offsets(p, 10))
-          }
-        }*/
+        }
+
+        /** > // previous consumer resource should be closed now, which should
+          * have committed consumer offsets consumerResource.use { consumer =>
+          * for { () <- consumer.subscribe(topic) c2 <-
+          * consumer.partitionQueries.committed(ps) } yield { assertEquals(c2,
+          * offsets(p, 10)) } }
+          */
       }
     }
   }

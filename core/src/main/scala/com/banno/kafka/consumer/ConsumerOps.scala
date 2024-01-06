@@ -353,6 +353,8 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       .recordStream(pollTimeout)
       .evalMap(r => process(r) <* consumer.commitSync(r.nextOffset))
 
+  // TODO document commit on error & successful finalize
+
   /** Returns a stream that processes records using the specified function,
     * committing offsets for successfully processed records, either after
     * processing the specified number of records, or after the specified time
@@ -380,23 +382,22 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
           )
       )
       .flatMap { state =>
+        def commit(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] =
+          consumer.commitSync(offsets)
+        val commitNextOffsets: F[Unit] =
+          state.get.map(_.nextOffsets).flatMap(commit)
         consumer
           .recordStream(pollTimeout)
           .evalMap { record =>
             for {
-              a <- process(record)
-                .onError(_ =>
-                  // we can still commit offsets that were successfully processed, before this stream halts, consumer is closed, etc
-                  // this is still at-least-once processing, but minimizes the amount of reprocessing after restart
-                  state.get.flatMap(s => consumer.commitSync(s.nextOffsets))
-                )
+              a <- process(record).onError(_ => commitNextOffsets)
               s <- state.updateAndGet(_.update(record))
               now <- C.monotonic
               () <- s
                 .needToCommit(maxRecordCount, now, maxElapsedTime)
                 .traverse_(os =>
                   // TODO this is probably synchronously blocking a thread, and we should use commitAsync instead
-                  consumer.commitSync(os) *>
+                  commit(os) *>
                   state.update(_.reset(now))
                 )
             } yield a
@@ -404,7 +405,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
           .onFinalizeCase {
             // on a clean shutdown, commit offsets of successfully processed records
             case Resource.ExitCase.Succeeded =>
-              state.get.flatMap(s => consumer.commitSync(s.nextOffsets))
+              commitNextOffsets
             // don't commit offsets on Errored or Canceled
             case _ =>
               Applicative[F].unit
