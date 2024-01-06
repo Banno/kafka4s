@@ -390,7 +390,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
           .recordStream(pollTimeout)
           .evalMap { record =>
             for {
-              a <- process(record).onError(_ => commitNextOffsets)
+              a <- process(record) /*.onError(_ => commitNextOffsets)*/
               s <- state.updateAndGet(_.update(record))
               now <- C.monotonic
               () <- s
@@ -403,11 +403,11 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
             } yield a
           }
           .onFinalizeCase {
-            // on a clean shutdown, commit offsets of successfully processed records
             case Resource.ExitCase.Succeeded =>
               commitNextOffsets
-            // don't commit offsets on Errored or Canceled
-            case _ =>
+            case Resource.ExitCase.Errored(_) =>
+              commitNextOffsets
+            case Resource.ExitCase.Canceled =>
               Applicative[F].unit
           }
       }
