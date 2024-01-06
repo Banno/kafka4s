@@ -353,8 +353,6 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       .recordStream(pollTimeout)
       .evalMap(r => process(r) <* consumer.commitSync(r.nextOffset))
 
-  // TODO document commit on error & successful finalize
-
   /** Returns a stream that processes records using the specified function,
     * committing offsets for successfully processed records, either after
     * processing the specified number of records, or after the specified time
@@ -362,10 +360,12 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
     * returns a failure, offsets for records successfully processed before that
     * failure will be committed, and then the stream will halt with that
     * failure. This is at-least-once processing: after a restart, the record
-    * that failed will be reprocessed. In some use cases this pattern is more
+    * that failed will be reprocessed. On successful stream finalization,
+    * offsets will also be committed. In some use cases this pattern is more
     * appropriate than just using auto-offset-commits, since it will not commit
     * offsets for failed records when the consumer is closed. The consumer must
-    * be configured to disable offset auto-commits.
+    * be configured to disable offset auto-commits, i.e.
+    * `enable.auto.commit=false`.
     */
   def processingAndCommitting[A](
       pollTimeout: FiniteDuration,
