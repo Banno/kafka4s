@@ -206,41 +206,29 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
 
   test("commits offsets on successful stream finalization") {
     producerResource.use { producer =>
-      createTestTopic[IO]().flatMap { topic =>
-        val p = new TopicPartition(topic, 0)
-        val ps = Set(p)
-        val values = (0 to 9).toList
-        consumerResource.use { consumer =>
-          for {
-            // topic <- createTestTopic[IO]()
-            // p = new TopicPartition(topic, 0)
-            // ps = Set(p)
-            // values = (0 to 9).toList
-            _ <- producer.sendAsyncBatch(
-              values.map(v => new ProducerRecord(topic, v, v))
-            )
-            () <- consumer.subscribe(topic)
-            c0 <- consumer.partitionQueries.committed(ps)
-            pac = consumer.processingAndCommitting(
-              pollTimeout = 100.millis,
-              maxRecordCount = Long.MaxValue,
-              maxElapsedTime = Long.MaxValue.nanos,
-            )(_.value.pure[IO])
-            results <- pac.take(values.size.toLong).compile.toList
-            c1 <- consumer.partitionQueries.committed(ps)
-          } yield {
-            assertEquals(c0, empty)
-            assertEquals(results, values)
-            assertEquals(c1, offsets(p, 10))
-          }
+      consumerResource.use { consumer =>
+        for {
+          topic <- createTestTopic[IO]()
+          p = new TopicPartition(topic, 0)
+          ps = Set(p)
+          values = (0 to 9).toList
+          _ <- producer.sendAsyncBatch(
+            values.map(v => new ProducerRecord(topic, v, v))
+          )
+          () <- consumer.subscribe(topic)
+          c0 <- consumer.partitionQueries.committed(ps)
+          pac = consumer.processingAndCommitting(
+            pollTimeout = 100.millis,
+            maxRecordCount = Long.MaxValue,
+            maxElapsedTime = Long.MaxValue.nanos,
+          )(_.value.pure[IO])
+          results <- pac.take(values.size.toLong).compile.toList
+          c1 <- consumer.partitionQueries.committed(ps)
+        } yield {
+          assertEquals(c0, empty)
+          assertEquals(results, values)
+          assertEquals(c1, offsets(p, 10))
         }
-
-        /** > // previous consumer resource should be closed now, which should
-          * have committed consumer offsets consumerResource.use { consumer =>
-          * for { () <- consumer.subscribe(topic) c2 <-
-          * consumer.partitionQueries.committed(ps) } yield { assertEquals(c2,
-          * offsets(p, 10)) } }
-          */
       }
     }
   }

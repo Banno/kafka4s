@@ -412,33 +412,6 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
           }
       }
 
-  // for {
-  //   state <- Stream.eval(
-  //     C.monotonic
-  //       .flatMap(now =>
-  //         Ref.of[F, OffsetCommitState](OffsetCommitState.empty(now))
-  //       )
-  //   )
-  //   record <- consumer.recordStream(pollTimeout)
-  //   a <- Stream.eval(
-  //     process(record)
-  //       .onError(_ =>
-  //         // we can still commit offsets that were successfully processed, before this stream halts, consumer is closed, etc
-  //         // this is still at-least-once processing, but minimizes the amount of reprocessing after restart
-  //         state.get.flatMap(s => consumer.commitSync(s.nextOffsets))
-  //       )
-  //   )
-  //   s <- Stream.eval(state.updateAndGet(_.update(record)))
-  //   now <- Stream.eval(C.monotonic)
-  //   () <- Stream.eval(
-  //     s.needToCommit(maxRecordCount, now, maxElapsedTime)
-  //       .traverse_(os =>
-  //         consumer.commitSync(os) *>
-  //         state.update(_.reset(now))
-  //       )
-  //   )
-  // } yield a
-
   case class OffsetCommitState(
       offsets: Map[TopicPartition, Long],
       recordCount: Long,
