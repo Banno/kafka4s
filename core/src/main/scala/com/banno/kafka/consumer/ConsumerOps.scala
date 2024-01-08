@@ -401,14 +401,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
                 )
             } yield a
           }
-          .onFinalizeCase {
-            case Resource.ExitCase.Succeeded =>
-              commitNextOffsets
-            case Resource.ExitCase.Errored(_) =>
-              commitNextOffsets
-            case Resource.ExitCase.Canceled =>
-              Applicative[F].unit
-          }
+          .onFinalize(commitNextOffsets)
       }
 
   case class OffsetCommitState(
