@@ -390,13 +390,12 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
           .recordStream(pollTimeout)
           .evalMap { record =>
             for {
-              a <- process(record) /*.onError(_ => commitNextOffsets)*/
+              a <- process(record)
               s <- state.updateAndGet(_.update(record))
               now <- C.monotonic
               () <- s
                 .needToCommit(maxRecordCount, now, maxElapsedTime)
                 .traverse_(os =>
-                  // TODO this is probably synchronously blocking a thread, and we should use commitAsync instead
                   commit(os) *>
                   state.update(_.reset(now))
                 )
