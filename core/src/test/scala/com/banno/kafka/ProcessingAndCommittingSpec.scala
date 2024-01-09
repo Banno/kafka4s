@@ -17,7 +17,7 @@
 package com.banno.kafka
 
 import cats.syntax.all.*
-import cats.effect.IO
+import cats.effect.{IO, Deferred}
 import fs2.Stream
 import munit.CatsEffectSuite
 import org.apache.kafka.common.TopicPartition
@@ -228,6 +228,52 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
           assertEquals(c0, empty)
           assertEquals(results, values)
           assertEquals(c1, offsets(p, 10))
+        }
+      }
+    }
+  }
+
+  test("commits offsets on stream cancel".only) {
+    producerResource.use { producer =>
+      consumerResource.use { consumer =>
+        for {
+          topic <- createTestTopic[IO]()
+          p = new TopicPartition(topic, 0)
+          ps = Set(p)
+          values = (0 to 9).toList
+          cancelOn = 5
+          _ <- producer.sendAsyncBatch(
+            values.map(v => new ProducerRecord(topic, v, v))
+          )
+          () <- consumer.subscribe(topic)
+          c0 <- consumer.partitionQueries.committed(ps)
+          cancelSignal <- Deferred[IO, Unit]
+          pac = consumer.processingAndCommitting(
+            pollTimeout = 100.millis,
+            maxRecordCount = Long.MaxValue,
+            maxElapsedTime = Long.MaxValue.nanos,
+          ) { r =>
+            val v = r.value
+            if (v == cancelOn)
+              cancelSignal.complete(()).as(v)
+            else
+              v.pure[IO]
+          }
+          fiber <- pac.compile.toList.start
+          () <- cancelSignal.get *> fiber.cancel
+          outcome <- fiber.join
+          c1 <- consumer.partitionQueries.committed(ps)
+        } yield {
+          assertEquals(c0, empty)
+          assertEquals(outcome.isCanceled, true)
+          // I think there is a bit of a race between completing cancelSignal and getting
+          // cancelSignal to cancel the stream's fiber. The record we cancel on is
+          // processed successfully, so its offset is updated in state, and then
+          // right after that, the fiber gets canceled and the stream halts very quickly.
+          // The committed offset value might be non-deterministic, whether it is
+          // cancelOn or cancelOn + 1. Either is correct. But so far in
+          // testing, the committed value is always cancelOn + 1.
+          assertEquals(c1, offsets(p, (cancelOn + 1).toLong))
         }
       }
     }
