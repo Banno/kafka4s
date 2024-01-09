@@ -42,7 +42,7 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit
   def flush: F[Unit] = F.interruptible(p.flush())
   def initTransactions: F[Unit] = F.interruptible(p.initTransactions())
   def metrics: F[Map[MetricName, Metric]] =
-    F.interruptible(p.metrics().asScala.toMap)
+    F.delay(p.metrics().asScala.toMap)
   def partitionsFor(topic: String): F[Seq[PartitionInfo]] =
     F.interruptible(p.partitionsFor(topic).asScala.toSeq)
   def sendOffsetsToTransaction(
@@ -74,7 +74,7 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit
           if (e == null) callback(Right(rm)) else callback(Left(e))
       },
     )
-    Some(F.interruptible(jFuture.cancel(false)).void)
+    Some(F.delay(jFuture.cancel(false)).void)
   }
 
   /** The outer effect sends the record on a blocking context and is cancelable.
@@ -90,7 +90,7 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit
         record,
         { (rm, e) => callback(Option(e).toLeft(rm).toTry) },
       )
-    ).map(jf => F.interruptible(jf.cancel(true)).void)
+    ).map(jf => F.delay(jf.cancel(true)).void)
 
   /** The returned F[_] completes as soon as the underlying
     * Producer.send(record) call returns. This is immediately after the producer
@@ -115,7 +115,7 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit
     */
   @deprecated("Use sendAsync, or send in kafka4s-6.x", "5.0.4")
   def sendSync(record: ProducerRecord[K, V]): F[RecordMetadata] =
-    F.interruptible(sendRaw(record))
+    F.delay(sendRaw(record))
       .flatMap(jFut => F.interruptible(jFut.get()))
 
   /** The returned F[_] completes after Kafka accepts the write, and the
@@ -147,12 +147,12 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit
     T.span("buffer")(
       (
         T.kernel,
-        F.interruptible(Promise[RecordMetadata]())
+        F.delay(Promise[RecordMetadata]())
           .flatMap(promise =>
             sendRaw2(record, promise.complete)
               .map(cancel =>
                 F.fromFutureCancelable(
-                  F.interruptible((promise.future, cancel))
+                  F.delay((promise.future, cancel))
                 )
               )
           ),
