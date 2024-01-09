@@ -24,6 +24,7 @@ import org.apache.kafka.common.*
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
+import java.time.{Duration => JDuration}
 
 case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
     extends ConsumerApi[F, K, V] {
@@ -36,27 +37,30 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
     F.delay(c.assignment().asScala.toSet)
 
   override def close: F[Unit] =
-    log.debug(s"${Thread.currentThread.getId} consumer.close()...") *> F.delay(
-      c.close()
-    ) *> log
-      .debug(s"${Thread.currentThread.getId} consumer.close()")
+    F.interruptible(c.close())
+
   override def close(timeout: FiniteDuration): F[Unit] =
-    log.debug(s"${Thread.currentThread.getId} consumer.close($timeout)...") *> F
-      .delay(
-        c.close(java.time.Duration.ofMillis(timeout.toMillis))
-      ) *> log.debug(s"${Thread.currentThread.getId} consumer.close($timeout)")
-  override def commitAsync: F[Unit] = F.delay(c.commitAsync())
+    F.interruptible(c.close(JDuration.ofMillis(timeout.toMillis)))
+
+  override def commitAsync: F[Unit] =
+    F.delay(c.commitAsync())
+
   override def commitAsync(
       offsets: Map[TopicPartition, OffsetAndMetadata],
       callback: OffsetCommitCallback,
-  ): F[Unit] = F.delay(c.commitAsync(offsets.asJava, callback))
+  ): F[Unit] =
+    F.delay(c.commitAsync(offsets.asJava, callback))
+
   override def commitAsync(callback: OffsetCommitCallback): F[Unit] =
     F.delay(c.commitAsync(callback))
-  override def commitSync: F[Unit] = F.delay(c.commitSync())
+
+  override def commitSync: F[Unit] =
+    F.interruptible(c.commitSync())
+
   override def commitSync(
       offsets: Map[TopicPartition, OffsetAndMetadata]
   ): F[Unit] =
-    F.delay(c.commitSync(offsets.asJava))
+    F.interruptible(c.commitSync(offsets.asJava))
 
   override def listTopics: F[Map[String, Seq[PartitionInfo]]] =
     F.delay(c.listTopics().asScala.toMap.view.mapValues(_.asScala.toSeq).toMap)
@@ -64,7 +68,7 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
       timeout: FiniteDuration
   ): F[Map[String, Seq[PartitionInfo]]] =
     F.delay(
-      c.listTopics(java.time.Duration.ofMillis(timeout.toMillis))
+      c.listTopics(JDuration.ofMillis(timeout.toMillis))
         .asScala
         .toMap
         .view
@@ -78,10 +82,12 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
     F.delay(c.pause(partitions.asJavaCollection))
   override def paused: F[Set[TopicPartition]] =
     F.delay(c.paused().asScala.toSet)
+
   override def poll(timeout: FiniteDuration): F[ConsumerRecords[K, V]] =
-    log.trace(s"${Thread.currentThread.getId} poll($timeout)...") *> F.delay(
-      c.poll(java.time.Duration.ofMillis(timeout.toMillis))
+    F.interruptible(
+      c.poll(JDuration.ofMillis(timeout.toMillis))
     )
+
   override def position(partition: TopicPartition): F[Long] =
     F.delay(c.position(partition))
   override def resume(partitions: Iterable[TopicPartition]): F[Unit] =
