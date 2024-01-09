@@ -33,22 +33,23 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit
     F: Async[F],
     T: Trace[F],
 ) extends ProducerApi[F, K, V] {
-  def abortTransaction: F[Unit] = F.delay(p.abortTransaction())
-  def beginTransaction: F[Unit] = F.delay(p.beginTransaction())
-  def close: F[Unit] = F.delay(p.close())
+  def abortTransaction: F[Unit] = F.interruptible(p.abortTransaction())
+  def beginTransaction: F[Unit] = F.interruptible(p.beginTransaction())
+  def close: F[Unit] = F.interruptible(p.close())
   def close(timeout: FiniteDuration): F[Unit] =
-    F.delay(p.close(java.time.Duration.ofMillis(timeout.toMillis)))
-  def commitTransaction: F[Unit] = F.delay(p.commitTransaction())
-  def flush: F[Unit] = F.delay(p.flush())
-  def initTransactions: F[Unit] = F.delay(p.initTransactions())
-  def metrics: F[Map[MetricName, Metric]] = F.delay(p.metrics().asScala.toMap)
+    F.interruptible(p.close(java.time.Duration.ofMillis(timeout.toMillis)))
+  def commitTransaction: F[Unit] = F.interruptible(p.commitTransaction())
+  def flush: F[Unit] = F.interruptible(p.flush())
+  def initTransactions: F[Unit] = F.interruptible(p.initTransactions())
+  def metrics: F[Map[MetricName, Metric]] =
+    F.interruptible(p.metrics().asScala.toMap)
   def partitionsFor(topic: String): F[Seq[PartitionInfo]] =
-    F.delay(p.partitionsFor(topic).asScala.toSeq)
+    F.interruptible(p.partitionsFor(topic).asScala.toSeq)
   def sendOffsetsToTransaction(
       offsets: Map[TopicPartition, OffsetAndMetadata],
       groupMetadata: ConsumerGroupMetadata,
   ): F[Unit] =
-    F.delay(p.sendOffsetsToTransaction(offsets.asJava, groupMetadata))
+    F.interruptible(p.sendOffsetsToTransaction(offsets.asJava, groupMetadata))
 
   private def sendRaw(
       record: ProducerRecord[K, V]
@@ -73,7 +74,7 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit
           if (e == null) callback(Right(rm)) else callback(Left(e))
       },
     )
-    Some(F.delay(jFuture.cancel(false)).void)
+    Some(F.interruptible(jFuture.cancel(false)).void)
   }
 
   /** The outer effect sends the record on a blocking context and is cancelable.
@@ -89,7 +90,7 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit
         record,
         { (rm, e) => callback(Option(e).toLeft(rm).toTry) },
       )
-    ).map(jf => F.delay(jf.cancel(true)).void)
+    ).map(jf => F.interruptible(jf.cancel(true)).void)
 
   /** The returned F[_] completes as soon as the underlying
     * Producer.send(record) call returns. This is immediately after the producer
@@ -106,7 +107,7 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit
     * proceeding, you should call sendSync or sendAsync.
     */
   def sendAndForget(record: ProducerRecord[K, V]): F[Unit] =
-    F.delay(sendRaw(record))
+    F.interruptible(sendRaw(record))
       .void // discard the returned JFuture[RecordMetadata]
 
   /** Like `sendSync`, but blocks a compute thread awaiting the acknowledgement.
@@ -114,7 +115,8 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit
     */
   @deprecated("Use sendAsync, or send in kafka4s-6.x", "5.0.4")
   def sendSync(record: ProducerRecord[K, V]): F[RecordMetadata] =
-    F.delay(sendRaw(record)).flatMap(jFut => F.interruptible(jFut.get()))
+    F.interruptible(sendRaw(record))
+      .flatMap(jFut => F.interruptible(jFut.get()))
 
   /** The returned F[_] completes after Kafka accepts the write, and the
     * RecordMetadata is available. The returned F[_] will raise a failure if
@@ -145,12 +147,12 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit
     T.span("buffer")(
       (
         T.kernel,
-        F.delay(Promise[RecordMetadata]())
+        F.interruptible(Promise[RecordMetadata]())
           .flatMap(promise =>
             sendRaw2(record, promise.complete)
               .map(cancel =>
                 F.fromFutureCancelable(
-                  F.delay((promise.future, cancel))
+                  F.interruptible((promise.future, cancel))
                 )
               )
           ),
