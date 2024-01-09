@@ -233,7 +233,7 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
     }
   }
 
-  test("commits offsets on stream cancel".only) {
+  test("commits offsets on stream cancel") {
     producerResource.use { producer =>
       consumerResource.use { consumer =>
         for {
