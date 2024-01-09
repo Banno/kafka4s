@@ -115,7 +115,7 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit
     */
   @deprecated("Use sendAsync, or send in kafka4s-6.x", "5.0.4")
   def sendSync(record: ProducerRecord[K, V]): F[RecordMetadata] =
-    F.delay(sendRaw(record))
+    F.interruptible(sendRaw(record))
       .flatMap(jFut => F.interruptible(jFut.get()))
 
   /** The returned F[_] completes after Kafka accepts the write, and the
