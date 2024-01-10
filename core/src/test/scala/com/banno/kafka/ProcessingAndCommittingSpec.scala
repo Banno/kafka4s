@@ -254,10 +254,10 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
             maxElapsedTime = Long.MaxValue.nanos,
           ) { r =>
             val v = r.value
-            if (v == cancelOn)
-              cancelSignal.complete(()).as(v)
-            else
+            if (v < cancelOn)
               v.pure[IO]
+            else
+              cancelSignal.complete(()) *> IO.never
           }
           fiber <- pac.compile.toList.start
           () <- cancelSignal.get *> fiber.cancel
@@ -266,14 +266,10 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
         } yield {
           assertEquals(c0, empty)
           assertEquals(outcome.isCanceled, true)
-          // I think there is a bit of a race between completing cancelSignal and getting
-          // cancelSignal to cancel the stream's fiber. The record we cancel on is
-          // processed successfully, so its offset is updated in state, and then
-          // right after that, the fiber gets canceled and the stream halts very quickly.
-          // The committed offset value might be non-deterministic, whether it is
-          // cancelOn or cancelOn + 1. Either is correct. But so far in
-          // testing, the committed value is always cancelOn + 1.
-          assertEquals(c1, offsets(p, (cancelOn + 1).toLong))
+          // since the processing of the cancelOn value never completes, the last successfully
+          // processed record was cancelOn - 1, and cancelOn should be the
+          // committed offset, so that it is the first one processed after a restart
+          assertEquals(c1, offsets(p, cancelOn.toLong))
         }
       }
     }
