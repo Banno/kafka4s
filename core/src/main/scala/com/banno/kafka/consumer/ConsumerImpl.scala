@@ -24,50 +24,63 @@ import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 import java.time.{Duration => JDuration}
 
+/*
+Note that the underlying Java KafkaConsumer is (as documented) *not* thread-safe.
+Also note that all operations below are wrapped in F.delay. If used directly,
+this impl may lead to synchronous blocking calls running on the cats-effect
+compute pool. This is not ideal, and it may be tempting to convert these calls
+to Sync[F].blocking or Sync[F].interruptible.
+
+On way around this is ShiftingConsumer, which shifts these operations to a single-thread pool,
+making them all sequential. In this case, F.delay is fine.
+
+There are certainly other ways around this. But do be mindful when changing this code.
+ */
+
 case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
     extends ConsumerApi[F, K, V] {
 
   override def assign(partitions: Iterable[TopicPartition]): F[Unit] =
-    F.interruptible(c.assign(partitions.asJavaCollection))
+    F.delay(c.assign(partitions.asJavaCollection))
 
   override def assignment: F[Set[TopicPartition]] =
     F.delay(c.assignment().asScala.toSet)
 
   override def close: F[Unit] =
-    F.interruptible(c.close())
+    F.delay(c.close())
 
   override def close(timeout: FiniteDuration): F[Unit] =
-    F.interruptible(c.close(JDuration.ofMillis(timeout.toMillis)))
+    F.delay(c.close(JDuration.ofMillis(timeout.toMillis)))
 
   override def commitAsync: F[Unit] =
-    F.interruptible(c.commitAsync())
+    F.delay(c.commitAsync())
 
   override def commitAsync(
       offsets: Map[TopicPartition, OffsetAndMetadata],
       callback: OffsetCommitCallback,
   ): F[Unit] =
-    F.interruptible(c.commitAsync(offsets.asJava, callback))
+    F.delay(c.commitAsync(offsets.asJava, callback))
 
   override def commitAsync(callback: OffsetCommitCallback): F[Unit] =
-    F.interruptible(c.commitAsync(callback))
+    F.delay(c.commitAsync(callback))
 
   override def commitSync: F[Unit] =
-    F.interruptible(c.commitSync())
+    F.delay(c.commitSync())
 
   override def commitSync(
       offsets: Map[TopicPartition, OffsetAndMetadata]
   ): F[Unit] =
-    F.interruptible(c.commitSync(offsets.asJava))
+    F.delay(c.commitSync(offsets.asJava))
 
   override def listTopics: F[Map[String, Seq[PartitionInfo]]] =
-    F.interruptible(
+    F.delay(
       c.listTopics().asScala.toMap.view.mapValues(_.asScala.toSeq).toMap
     )
 
   override def listTopics(
       timeout: FiniteDuration
   ): F[Map[String, Seq[PartitionInfo]]] =
-    F.interruptible(
+    F.delay(
       c.listTopics(JDuration.ofMillis(timeout.toMillis))
         .asScala
         .toMap
@@ -80,54 +93,54 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
     F.delay(c.metrics().asScala.toMap)
 
   override def pause(partitions: Iterable[TopicPartition]): F[Unit] =
-    F.interruptible(c.pause(partitions.asJavaCollection))
+    F.delay(c.pause(partitions.asJavaCollection))
 
   override def paused: F[Set[TopicPartition]] =
     F.delay(c.paused().asScala.toSet)
 
   override def poll(timeout: FiniteDuration): F[ConsumerRecords[K, V]] =
-    F.interruptible(
+    F.delay(
       c.poll(JDuration.ofMillis(timeout.toMillis))
     )
 
   override def position(partition: TopicPartition): F[Long] =
-    F.interruptible(c.position(partition))
+    F.delay(c.position(partition))
 
   override def resume(partitions: Iterable[TopicPartition]): F[Unit] =
-    F.interruptible(c.resume(partitions.asJavaCollection))
+    F.delay(c.resume(partitions.asJavaCollection))
 
   override def seek(partition: TopicPartition, offset: Long): F[Unit] =
-    F.interruptible(c.seek(partition, offset))
+    F.delay(c.seek(partition, offset))
 
   override def seekToBeginning(partitions: Iterable[TopicPartition]): F[Unit] =
-    F.interruptible(c.seekToBeginning(partitions.asJavaCollection))
+    F.delay(c.seekToBeginning(partitions.asJavaCollection))
 
   override def seekToEnd(partitions: Iterable[TopicPartition]): F[Unit] =
-    F.interruptible(c.seekToEnd(partitions.asJavaCollection))
+    F.delay(c.seekToEnd(partitions.asJavaCollection))
 
   override def subscribe(topics: Iterable[String]): F[Unit] =
-    F.interruptible(c.subscribe(topics.asJavaCollection))
+    F.delay(c.subscribe(topics.asJavaCollection))
 
   override def subscribe(
       topics: Iterable[String],
       callback: ConsumerRebalanceListener,
   ): F[Unit] =
-    F.interruptible(c.subscribe(topics.asJavaCollection, callback))
+    F.delay(c.subscribe(topics.asJavaCollection, callback))
 
   override def subscribe(pattern: Pattern): F[Unit] =
-    F.interruptible(c.subscribe(pattern))
+    F.delay(c.subscribe(pattern))
 
   override def subscribe(
       pattern: Pattern,
       callback: ConsumerRebalanceListener,
   ): F[Unit] =
-    F.interruptible(c.subscribe(pattern, callback))
+    F.delay(c.subscribe(pattern, callback))
 
   override def subscription: F[Set[String]] =
     F.delay(c.subscription().asScala.toSet)
 
   override def unsubscribe: F[Unit] =
-    F.interruptible(c.unsubscribe())
+    F.delay(c.unsubscribe())
 
   override def partitionQueries: PartitionQueries[F] =
     PartitionQueries(c)

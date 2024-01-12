@@ -238,6 +238,12 @@ trait ConsumerApi[F[_], K, V] {
   }
 }
 
+/** Since the underlying Java KafkaConsumer is (as documented) *not*
+  * thread-safe, this can be used to shift all operations on to an execution
+  * context that makes this safe (e.g. a single-thread pool). Currently, this is
+  * the safest way to use ConsumerImpl, and is used in all ConsumerApi-creating
+  * operations below, that are used in practice.
+  */
 object ShiftingConsumer {
   def apply[F[_]: Async, K, V](
       c: ConsumerApi[F, K, V],
