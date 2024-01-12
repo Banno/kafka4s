@@ -24,6 +24,7 @@ import com.banno.kafka.avro4s.*
 import com.banno.kafka.consumer.*
 import com.banno.kafka.producer.*
 import com.banno.kafka.schemaregistry.*
+import natchez.Trace.Implicits.noop
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
@@ -82,7 +83,7 @@ final class ExampleApp[F[_]: Async] {
 
       _ <- producerResource.use(producer =>
         producerRecords.traverse_(pr =>
-          producer.sendSync(pr) *> Sync[F]
+          producer.sendAsync(pr) *> Sync[F]
             .delay(
               println(
                 s"Wrote producer record: key ${pr.key} and value ${pr.value}"

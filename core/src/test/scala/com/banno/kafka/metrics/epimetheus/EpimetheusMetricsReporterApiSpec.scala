@@ -21,6 +21,7 @@ import cats.effect.IO
 import com.banno.kafka._
 import com.banno.kafka.producer._
 import com.banno.kafka.consumer._
+import natchez.Trace.Implicits.noop
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
 import io.prometheus.client.CollectorRegistry
@@ -86,7 +87,7 @@ class EpimetheusMetricsReporterApiSpec
                 )
                 .use(c2 =>
                   for {
-                    _ <- p.sendSyncBatch(records)
+                    _ <- p.sendAsyncBatch(records)
 
                     _ <- c1.assign(topic, Map.empty[TopicPartition, Long])
                     _ <- c1.poll(1 second)

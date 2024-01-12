@@ -24,6 +24,7 @@ import com.banno.kafka.producer.*
 import com.sksamuel.avro4s.RecordFormat
 import fs2.*
 import java.util.ConcurrentModificationException
+import natchez.Trace.Implicits.noop
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
 import org.scalacheck.*
@@ -183,7 +184,7 @@ class ConsumerAndProducerApiSpec
           )
           .use(c =>
             for {
-              _ <- p.sendSyncBatch(records)
+              _ <- p.sendAsyncBatch(records)
 
               _ <- c.assign(List(tp0, tp1, tp2))
               _ <- c.seekToBeginning(List(tp0))
@@ -199,7 +200,7 @@ class ConsumerAndProducerApiSpec
                 .toList
 
               // consumer must still be usable after stream halts, positioned immediately after all of the records it's already returned
-              _ <- p.sendSync(new ProducerRecord(topic, null, "new"))
+              _ <- p.sendAsync(new ProducerRecord(topic, null, "new"))
               rs <- c.poll(1 second)
 
               _ <- p.close
@@ -236,7 +237,7 @@ class ConsumerAndProducerApiSpec
       _ <- ProducerApi
         .resource[IO, String, String](BootstrapServers(bootstrapServer))
         .use(
-          _.sendSyncBatch(expected.map(s => new ProducerRecord(topic, s, s)))
+          _.sendAsyncBatch(expected.map(s => new ProducerRecord(topic, s, s)))
         )
       consume: Stream[IO, String] = Stream
         .resource(
