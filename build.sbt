@@ -5,7 +5,7 @@ import org.typelevel.sbt.site.GenericSiteSettings
 
 ThisBuild / scalaVersion := "2.13.10"
 ThisBuild / crossScalaVersions := List(scalaVersion.value)
-ThisBuild / tlBaseVersion := "5.0"
+ThisBuild / tlBaseVersion := "6.0"
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("11"))
 ThisBuild / githubWorkflowTargetBranches := Seq("*", "series/*")
 ThisBuild / githubWorkflowBuildPreamble := Seq(
@@ -15,6 +15,7 @@ ThisBuild / githubWorkflowBuildPreamble := Seq(
     commands = List("docker-compose up -d"),
   )
 )
+ThisBuild / tlSonatypeUseLegacyHost := true
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
@@ -24,31 +25,32 @@ val V = new {
   val betterMonadicFor = "0.3.1"
   val cats = "2.10.0"
   val catsEffect = "3.4.10"
-  val commonsCompress = "1.24.0"
-  val confluent = "7.5.0"
+  val commonsCompress = "1.25.0"
+  val confluent = "7.5.3"
   val curator = "5.2.0"
   val disciplineMunit = "1.0.9"
   val epimetheus = "0.5.0"
-  val fs2 = "3.9.2"
-  val guava = "32.1.2-jre"
+  val fs2 = "3.9.3"
+  val guava = "32.1.3-jre"
   val junit = "4.13"
   val kafka = s"$confluent-ccs"
   val kindProjector = "0.13.2"
   val log4cats = "2.6.0"
-  val logback = "1.4.11"
+  val logback = "1.4.14"
+  val natchez = "0.3.5"
   val scalacheck = "1.17.0"
-  val scalacheckEffect = "0.6.0"
+  val scalacheckEffect = "1.0.4"
   val scalacheckMagnolia = "0.6.0"
   val munit = "0.7.29"
   val munitCE3 = "1.0.7"
   val scalatest = "3.2.17"
   val scalatestPlus = "3.2.3.0"
-  val vulcan = "1.9.0"
+  val snappy = "1.1.10.5"
+  val vulcan = "1.10.1"
 }
 
 lazy val kafka4s = project
   .in(file("."))
-  .disablePlugins(MimaPlugin)
   .enablePlugins(NoPublishPlugin)
   .aggregate(core, avro4s, vulcan, examples, site)
 
@@ -60,7 +62,8 @@ lazy val core = project
     mimaBinaryIssueFilters ++= {
       import com.typesafe.tools.mima.core._
       import com.typesafe.tools.mima.core.ProblemFilters._
-      Seq()
+      Seq(
+      )
     },
   )
   .settings(
@@ -81,6 +84,7 @@ lazy val core = project
       "org.typelevel" %% "scalacheck-effect-munit" % V.scalacheckEffect,
       "org.typelevel" %% "munit-cats-effect-3" % V.munitCE3 % Test,
       "org.typelevel" %% "cats-effect" % V.catsEffect,
+      "org.tpolecat" %% "natchez-core" % V.natchez,
       "org.typelevel" %% "cats-laws" % V.cats % Test,
       "org.scalatest" %% "scalatest" % V.scalatest % Test,
       "org.typelevel" %% "discipline-munit" % V.disciplineMunit % Test,
@@ -177,6 +181,7 @@ lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
     "co.fs2" %% "fs2-core" % V.fs2,
     "org.apache.kafka" % "kafka-clients" % V.kafka,
+    "org.xerial.snappy" % "snappy-java" % V.snappy, // multiple CVE, doesn't work as Runtime
     "io.confluent" % "kafka-avro-serializer" % V.confluent,
     "org.apache.avro" % "avro" % V.avro, // CVE-2023-39410, didn't work as Runtime
     "org.apache.commons" % "commons-compress" % V.commonsCompress, // CVE-2023-42503, didn't work as Runtime

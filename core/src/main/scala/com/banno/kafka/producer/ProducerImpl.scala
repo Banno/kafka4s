@@ -24,25 +24,32 @@ import scala.concurrent.duration._
 import org.apache.kafka.common._
 import org.apache.kafka.clients.consumer._
 import org.apache.kafka.clients.producer._
+import scala.concurrent.Promise
+import scala.util.Try
+import natchez.Span
+import natchez.Trace
 
-case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
-    extends ProducerApi[F, K, V] {
-  def abortTransaction: F[Unit] = F.delay(p.abortTransaction())
-  def beginTransaction: F[Unit] = F.delay(p.beginTransaction())
-  def close: F[Unit] = F.delay(p.close())
+case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit
+    F: Async[F],
+    T: Trace[F],
+) extends ProducerApi[F, K, V] {
+  def abortTransaction: F[Unit] = F.interruptible(p.abortTransaction())
+  def beginTransaction: F[Unit] = F.interruptible(p.beginTransaction())
+  def close: F[Unit] = F.interruptible(p.close())
   def close(timeout: FiniteDuration): F[Unit] =
-    F.delay(p.close(java.time.Duration.ofMillis(timeout.toMillis)))
-  def commitTransaction: F[Unit] = F.delay(p.commitTransaction())
-  def flush: F[Unit] = F.delay(p.flush())
-  def initTransactions: F[Unit] = F.delay(p.initTransactions())
-  def metrics: F[Map[MetricName, Metric]] = F.delay(p.metrics().asScala.toMap)
+    F.interruptible(p.close(java.time.Duration.ofMillis(timeout.toMillis)))
+  def commitTransaction: F[Unit] = F.interruptible(p.commitTransaction())
+  def flush: F[Unit] = F.interruptible(p.flush())
+  def initTransactions: F[Unit] = F.interruptible(p.initTransactions())
+  def metrics: F[Map[MetricName, Metric]] =
+    F.delay(p.metrics().asScala.toMap)
   def partitionsFor(topic: String): F[Seq[PartitionInfo]] =
-    F.delay(p.partitionsFor(topic).asScala.toSeq)
+    F.interruptible(p.partitionsFor(topic).asScala.toSeq)
   def sendOffsetsToTransaction(
       offsets: Map[TopicPartition, OffsetAndMetadata],
       groupMetadata: ConsumerGroupMetadata,
   ): F[Unit] =
-    F.delay(p.sendOffsetsToTransaction(offsets.asJava, groupMetadata))
+    F.interruptible(p.sendOffsetsToTransaction(offsets.asJava, groupMetadata))
 
   private def sendRaw(
       record: ProducerRecord[K, V]
@@ -70,6 +77,21 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
     Some(F.delay(jFuture.cancel(false)).void)
   }
 
+  /** The outer effect sends the record on a blocking context and is cancelable.
+    * The inner effect cancels the underlying send.
+    */
+  private def sendRaw2(
+      record: ProducerRecord[K, V],
+      callback: Try[RecordMetadata] => Unit,
+  ): F[F[Unit]] =
+    // KafkaProducer.send should be interruptible via InterruptedException, so use F.interruptible instead of F.blocking or F.delay
+    F.interruptible(
+      sendRaw(
+        record,
+        { (rm, e) => callback(Option(e).toLeft(rm).toTry) },
+      )
+    ).map(jf => F.delay(jf.cancel(true)).void)
+
   /** The returned F[_] completes as soon as the underlying
     * Producer.send(record) call returns. This is immediately after the producer
     * enqueues the record, not after Kafka accepts the write. If the producer's
@@ -85,32 +107,64 @@ case class ProducerImpl[F[_], K, V](p: Producer[K, V])(implicit F: Async[F])
     * proceeding, you should call sendSync or sendAsync.
     */
   def sendAndForget(record: ProducerRecord[K, V]): F[Unit] =
-    F.delay(sendRaw(record))
+    F.interruptible(sendRaw(record))
       .void // discard the returned JFuture[RecordMetadata]
 
-  /** The returned F[_] completes after Kafka accepts the write, and the
-    * RecordMetadata is available. This operation is completely synchronous and
-    * blocking: it calls get() on the returned Java Future. The returned F[_]
-    * will contain a failure if either the producer.send(record) or the
-    * future.get() call throws an exception. You should use this method if your
-    * program should not proceed until Kafka accepts the write, or you need to
-    * use the RecordMetadata, or you need to explicitly handle any possible
-    * error.
+  /** Like `sendSync`, but blocks a compute thread awaiting the acknowledgement.
+    * Do not use.
     */
+  @deprecated("Use sendAsync, or send in kafka4s-6.x", "5.0.4")
   def sendSync(record: ProducerRecord[K, V]): F[RecordMetadata] =
-    F.delay(sendRaw(record)).map(_.get())
+    F.interruptible(sendRaw(record))
+      .flatMap(jFut => F.interruptible(jFut.get()))
 
-  /** Similar to sendSync, except the returned F[_] is completed asynchronously,
-    * usually on the producer's I/O thread. TODO does this have different
-    * blocking semantics than sendSync?
+  /** The returned F[_] completes after Kafka accepts the write, and the
+    * RecordMetadata is available. The returned F[_] will raise a failure if
+    * either the synchronous buffering or write callback fail.
+    *
+    * You should use this method if your program should not proceed until Kafka
+    * accepts the write, or you need to use the RecordMetadata, or you need to
+    * explicitly handle any possible error.
     */
   def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata] =
     F.async(sendRaw(record, _))
+
+  /** The outer effect completes synchronously when the underlying Producer.send
+    * call returns. This is immediately after the producer enqueues the record,
+    * not after Kafka accepts the write. If the producer's internal queue is
+    * full, it will block until the record can be enqueued (i.e. backpressure).
+    * The outer effect is executed on a blocking context and is cancelable. The
+    * outer effect will only contain an error if the Producer.send call throws
+    * an exception. The inner effect completes asynchronously after Kafka
+    * acknowledges the write, and the RecordMetadata is available. The inner
+    * effect will only contain an error if the write failed. The inner effect is
+    * also cancelable. With this operation, user code can react to both the
+    * producer's initial buffering of the record to be sent, and the final
+    * result of the write (either success or failure).
+    */
+  def send(record: ProducerRecord[K, V]): F[F[RecordMetadata]] =
+    // inspired by https://github.com/fd4s/fs2-kafka/blob/series/3.x/modules/core/src/main/scala/fs2/kafka/KafkaProducer.scala
+    T.span("buffer")(
+      (
+        T.kernel,
+        F.delay(Promise[RecordMetadata]())
+          .flatMap(promise =>
+            sendRaw2(record, promise.complete)
+              .map(cancel =>
+                F.fromFutureCancelable(
+                  F.delay((promise.future, cancel))
+                )
+              )
+          ),
+      ).mapN((kernel, ack) =>
+        T.span("ack", Span.Options.parentKernel(kernel))(ack)
+      )
+    )
 }
 
 object ProducerImpl {
   // returns the type expected when creating a Resource
-  def create[F[_]: Async, K, V](
+  def create[F[_]: Async: Trace, K, V](
       p: Producer[K, V]
   ): ProducerApi[F, K, V] =
     ProducerImpl(p)
