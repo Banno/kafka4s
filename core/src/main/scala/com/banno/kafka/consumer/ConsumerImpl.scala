@@ -24,6 +24,19 @@ import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 import java.time.{Duration => JDuration}
 
+/*
+Note that the underlying Java KafkaConsumer is (as documented) *not* thread-safe.
+Also note that all operations below are wrapped in F.delay. If used directly,
+this impl may lead to synchronous blocking calls running on the cats-effect
+compute pool. This is not ideal, and it may be tempting to convert these calls
+to Sync[F].blocking or Sync[F].interruptible.
+
+On way around this is ShiftingConsumer, which shifts these operations to a single-thread pool,
+making them all sequential. In this case, F.delay is fine.
+
+There are certainly other ways around this. But do be mindful when changing this code.
+ */
+
 case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
     extends ConsumerApi[F, K, V] {
 
