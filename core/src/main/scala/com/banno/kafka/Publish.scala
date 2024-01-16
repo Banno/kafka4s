@@ -44,42 +44,4 @@ object Publish {
         producer: ProducerApi[F, GenericRecord, GenericRecord],
     ): P
   }
-
-  object Builder {
-    implicit def buildNPublishers[
-        F[_]: MonadThrow,
-        K,
-        V,
-        X <: Coproduct,
-        Y <: Coproduct,
-    ](implicit buildTail: Builder[F, X, Y]) =
-      new Builder[F, IncomingRecord[K, V] :+: X, (K, V) :+: Y] {
-        override type P = T[F, (K, V)] :: buildTail.P
-
-        override def build(
-            topics: Topics[IncomingRecord[K, V] :+: X, (K, V) :+: Y],
-            producer: ProducerApi[F, GenericRecord, GenericRecord],
-        ): P = {
-          val (topic, topicsTail) = Topics.uncons(topics)
-          val head = to(topic, producer)
-          val tail = buildTail.build(topicsTail, producer)
-          head :: tail
-        }
-      }
-
-    implicit def build0Publishers[F[_]] =
-      new Builder[F, CNil, CNil] {
-        type P = HNil
-        override def build(
-            topics: Topics[CNil, CNil],
-            producer: ProducerApi[F, GenericRecord, GenericRecord],
-        ): P = HNil
-      }
-  }
-
-  def toMany[F[_], A <: Coproduct, B <: Coproduct](
-      topics: Topics[A, B],
-      producer: ProducerApi[F, GenericRecord, GenericRecord],
-  )(implicit builder: Builder[F, A, B]): builder.P =
-    builder.build(topics, producer)
 }
