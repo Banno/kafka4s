@@ -30,30 +30,16 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
   )(implicit F: Applicative[F]): F[Unit] =
     records.traverse_(producer.sendAndForget)
 
-  @deprecated("Use sendAsyncBatch", "5.0.5")
-  def sendSyncBatch[G[_]: Traverse](
-      records: G[ProducerRecord[K, V]]
-  )(implicit F: Applicative[F]): F[G[RecordMetadata]] =
-    records.traverse(producer.sendSync)
-
   def sendAsyncBatch[G[_]: Traverse](
       records: G[ProducerRecord[K, V]]
   )(implicit F: Applicative[F]): F[G[RecordMetadata]] =
     records.traverse(producer.sendAsync)
-
-  @deprecated("Use pipeAsync", "5.0.5")
-  def pipeSync: Pipe[F, ProducerRecord[K, V], RecordMetadata] =
-    _.evalMap(producer.sendSync)
 
   def pipeAsync: Pipe[F, ProducerRecord[K, V], RecordMetadata] =
     _.evalMap(producer.sendAsync)
 
   def sink: Pipe[F, ProducerRecord[K, V], Unit] =
     _.evalMap(producer.sendAndForget)
-
-  @deprecated("Use sinkAsync", "5.0.5")
-  def sinkSync: Pipe[F, ProducerRecord[K, V], Unit] =
-    pipeSync.apply(_).void
 
   def sinkAsync: Pipe[F, ProducerRecord[K, V], Unit] =
     pipeAsync.apply(_).void

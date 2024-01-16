@@ -356,14 +356,13 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
   /** Returns a stream that processes records using the specified function,
     * committing offsets for successfully processed records, either after
     * processing the specified number of records, or after the specified time
-    * has elapsed since the last offset commit. If the processing function
-    * returns a failure, offsets for records successfully processed before that
-    * failure will be committed, and then the stream will halt with that
-    * failure. This is at-least-once processing: after a restart, the record
-    * that failed will be reprocessed. In some use cases this pattern is more
-    * appropriate than just using auto-offset-commits, since it will not commit
-    * offsets for failed records when the consumer is closed. The consumer must
-    * be configured to disable offset auto-commits.
+    * has elapsed since the last offset commit. On any stream finalization,
+    * whether success, error, or cancelation, offsets will be committed. This is
+    * at-least-once processing: after a restart, the record that failed will be
+    * reprocessed. In some use cases this pattern is more appropriate than just
+    * using auto-offset-commits, since it will not commit offsets for failed
+    * records when the consumer is closed. The consumer must be configured to
+    * disable offset auto-commits, i.e. `enable.auto.commit=false`.
     */
   def processingAndCommitting[A](
       pollTimeout: FiniteDuration,
@@ -372,32 +371,35 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
   )(
       process: ConsumerRecord[K, V] => F[A]
   )(implicit C: Clock[F], S: Concurrent[F]): Stream[F, A] =
-    for {
-      state <- Stream.eval(
+    Stream
+      .eval(
         C.monotonic
           .flatMap(now =>
             Ref.of[F, OffsetCommitState](OffsetCommitState.empty(now))
           )
       )
-      record <- consumer.recordStream(pollTimeout)
-      a <- Stream.eval(
-        process(record)
-          .onError(_ =>
-            // we can still commit offsets that were successfully processed, before this stream halts, consumer is closed, etc
-            // this is still at-least-once processing, but minimizes the amount of reprocessing after restart
-            state.get.flatMap(s => consumer.commitSync(s.nextOffsets))
-          )
-      )
-      s <- Stream.eval(state.updateAndGet(_.update(record)))
-      now <- Stream.eval(C.monotonic)
-      () <- Stream.eval(
-        s.needToCommit(maxRecordCount, now, maxElapsedTime)
-          .traverse_(os =>
-            consumer.commitSync(os) *>
-            state.update(_.reset(now))
-          )
-      )
-    } yield a
+      .flatMap { state =>
+        def commit(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] =
+          consumer.commitSync(offsets)
+        val commitNextOffsets: F[Unit] =
+          state.get.map(_.nextOffsets).flatMap(commit)
+        consumer
+          .recordStream(pollTimeout)
+          .evalMap { record =>
+            for {
+              a <- process(record)
+              s <- state.updateAndGet(_.update(record))
+              now <- C.monotonic
+              () <- s
+                .needToCommit(maxRecordCount, now, maxElapsedTime)
+                .traverse_(os =>
+                  commit(os) *>
+                  state.update(_.reset(now))
+                )
+            } yield a
+          }
+          .onFinalize(commitNextOffsets)
+      }
 
   case class OffsetCommitState(
       offsets: Map[TopicPartition, Long],
