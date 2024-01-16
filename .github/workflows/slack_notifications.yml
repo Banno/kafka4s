@@ -1,0 +1,54 @@
+name: Slack Notifications
+
+on:
+  pull_request:
+    types: [opened, reopened, closed]
+
+jobs:
+  opened:
+    name: Notify on Opened and Reopened PR
+    # only notify when a PR is opened or reopened and it wasn't created by banno-diy-steward
+    if: ${{ (github.event.action == 'opened' || github.event.action == 'reopened') && github.event.pull_request.user.login != 'banno-diy-steward[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send custom JSON data to Slack workflow
+        id: slack
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_KAYAK_WEBSOCKET_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+          PULL_REQUEST_TITLE: ${{ github.event.pull_request.title }}
+          PULL_REQUEST_AUTHOR_NAME: ${{ github.event.pull_request.user.login }}
+          PULL_REQUEST_AUTHOR_ICON_URL: ${{ github.event.pull_request.user.avatar_url }}
+          PULL_REQUEST_URL: ${{ github.event.pull_request.html_url }}
+          PULL_REQUEST_ACTOR: ${{ github.actor }}
+          REPOSITORY_NAME: ${{ github.event.pull_request.base.repo.name }}
+          REPOSITORY_URL: ${{ github.event.pull_request.base.repo.html_url }}
+        # We use the `run` in effect to have a better guarantee that we are
+        # escaping characters that would otherwise break the JSON. When we
+        # use the more declarative `with: payload: |` we cannot adequately
+        # escape double quotes and backslashes. This is primarily an issue
+        # for the PULL_REQUEST_TITLE but could in theory apply to any
+        # value.
+        #
+        # To avoid mis-encoding the JSON we use `jq` to construct the JSON
+        # piecemeal and re-construcut it later. `jq` inately handles string
+        # encoding and is much easier to use than other approaches.
+        run: |
+          # Construct the title _and_ escape funky characters from link title
+          jq -cn --arg type mrkdwn --arg text ":pr2: Opened PR <$PULL_REQUEST_URL|#$PULL_REQUEST_NUMBER - $PULL_REQUEST_TITLE>" '{text: $ARGS.named}' | jq '. += {"type": "section"}' > title-block.json
+          jq -cn --arg type plain_text --arg text "Author: $PULL_REQUEST_AUTHOR_NAME" '$ARGS.named' > author.json
+          jq -cn --arg type image --arg alt_text 'github avatar' --arg image_url "$PULL_REQUEST_AUTHOR_ICON_URL" '$ARGS.named' > avatar.json
+          jq -cn --arg type mrkdwn --arg text ":octocat: Repository: <$REPOSITORY_URL|$REPOSITORY_NAME>" '.elements += [$ARGS.named]' | jq '. + {"type": "context"}' > repo-block.json
+          jq -cn '.elements += [inputs]' author.json avatar.json  | jq '. += {"type": "context"}' > author-block.json
+          jq -cn -s '{blocks: [inputs] | add}' title-block.json author-block.json repo-block.json > slack-payload.json
+          # Make the payload visible in the GitHub Action view, mostly for debugging.
+          # Needs to be formatter as markdown.
+          echo "### Slack notification payload" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+          cat slack-payload.json >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          curl -X POST -H 'Content-type: application/json' --data @slack-payload.json $SLACK_WEBHOOK_URL
+          # Cleanup all the temporary files. Probably not terribly important,
+          # but at least it is an attempt at being a good citizen.
+          rm title-block.json author.json avatar.json repo-block.json author-block.json slack-payload.json
