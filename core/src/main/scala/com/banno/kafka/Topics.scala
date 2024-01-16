@@ -133,17 +133,6 @@ object Topics {
     ): F[Unit] = tail.setUp(bootstrapServers, schemaRegistryUri, configs)
   }
 
-  @deprecated(
-    "Fails with a match error on a singleton topic.  Will be removed in 6.x.",
-    "5.0.6",
-  )
-  def uncons[K, V, S <: Coproduct, T <: Coproduct](
-      topics: Topics[IncomingRecord[K, V] :+: S, (K, V) :+: T]
-  ): (Topic[K, V], Topics[S, T]) =
-    (topics: @unchecked) match {
-      case ConsTopics(topic, tail) => (topic, tail)
-    }
-
   final case class Builder[A <: Coproduct, B <: Coproduct] private[Topics] (
       private val topics: Topics[A, B]
   ) {
