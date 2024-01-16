@@ -45,6 +45,10 @@ object Publish {
     ): P
   }
 
+  @deprecated(
+    "Exists for Publish.toMany, which fails with a match error on a singleton topic.  Will be removed in 6.x.",
+    "5.0.6",
+  )
   object Builder {
     implicit def buildNPublishers[
         F[_]: MonadThrow,
@@ -77,6 +81,10 @@ object Publish {
       }
   }
 
+  @deprecated(
+    "Fails with a match error on a singleton topic.  Will be removed in 6.x.",
+    "5.0.6",
+  )
   def toMany[F[_], A <: Coproduct, B <: Coproduct](
       topics: Topics[A, B],
       producer: ProducerApi[F, GenericRecord, GenericRecord],
