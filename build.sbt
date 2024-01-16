@@ -3,7 +3,7 @@ import laika.helium.config.HeliumIcon
 import laika.helium.config.IconLink
 import org.typelevel.sbt.site.GenericSiteSettings
 
-ThisBuild / scalaVersion := "2.13.10"
+ThisBuild / scalaVersion := "2.13.12"
 ThisBuild / crossScalaVersions := List(scalaVersion.value)
 ThisBuild / tlBaseVersion := "5.0"
 ThisBuild / tlMimaPreviousVersions ~= { versions =>
