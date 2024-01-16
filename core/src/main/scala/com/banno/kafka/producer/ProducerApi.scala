@@ -30,6 +30,7 @@ import org.apache.kafka.common.serialization.Serializer
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
+import natchez.Trace
 
 trait ProducerApi[F[_], K, V] {
   def abortTransaction: F[Unit]
@@ -52,6 +53,8 @@ trait ProducerApi[F[_], K, V] {
   def sendSync(record: ProducerRecord[K, V]): F[RecordMetadata]
 
   def sendAsync(record: ProducerRecord[K, V]): F[RecordMetadata]
+
+  def send(record: ProducerRecord[K, V]): F[F[RecordMetadata]]
 
   // Cats doesn't have `Bicontravariant`
   final def contrabimap[A, B](f: A => K, g: B => V): ProducerApi[F, A, B] = {
@@ -90,6 +93,8 @@ trait ProducerApi[F[_], K, V] {
 
       override def sendAsync(record: ProducerRecord[A, B]): F[RecordMetadata] =
         self.sendAsync(record.bimap(f, g))
+      override def send(record: ProducerRecord[A, B]): F[F[RecordMetadata]] =
+        self.send(record.bimap(f, g))
     }
   }
 
@@ -132,10 +137,12 @@ trait ProducerApi[F[_], K, V] {
 
       override def sendAsync(record: ProducerRecord[A, B]): F[RecordMetadata] =
         record.bitraverse(f, g) >>= self.sendAsync
+      override def send(record: ProducerRecord[A, B]): F[F[RecordMetadata]] =
+        record.bitraverse(f, g) >>= self.send
     }
   }
 
-  final def mapK[G[_]](f: F ~> G): ProducerApi[G, K, V] = {
+  final def mapK[G[_]: Functor](f: F ~> G): ProducerApi[G, K, V] = {
     val self = this
     new ProducerApi[G, K, V] {
       override def abortTransaction: G[Unit] = f(self.abortTransaction)
@@ -165,6 +172,8 @@ trait ProducerApi[F[_], K, V] {
 
       override def sendAsync(record: ProducerRecord[K, V]): G[RecordMetadata] =
         f(self.sendAsync(record))
+      override def send(record: ProducerRecord[K, V]): G[G[RecordMetadata]] =
+        f(self.send(record)).map(f(_))
     }
   }
 }
@@ -201,7 +210,7 @@ object ProducerApi {
       )
     )
 
-  def resource[F[_]: Async, K, V](
+  def resource[F[_]: Async: Trace, K, V](
       keySerializer: Serializer[K],
       valueSerializer: Serializer[V],
       configs: (String, AnyRef)*
@@ -211,7 +220,7 @@ object ProducerApi {
         .map(ProducerImpl.create[F, K, V](_))
     )(_.close)
 
-  def resource[F[_]: Async, K: Serializer, V: Serializer](
+  def resource[F[_]: Async: Trace, K: Serializer, V: Serializer](
       configs: (String, AnyRef)*
   ): Resource[F, ProducerApi[F, K, V]] =
     resource[F, K, V](
@@ -221,7 +230,7 @@ object ProducerApi {
     )
 
   object Avro {
-    def resource[F[_]: Async, K, V](
+    def resource[F[_]: Async: Trace, K, V](
         configs: (String, AnyRef)*
     ): Resource[F, ProducerApi[F, K, V]] =
       Resource.make(
@@ -235,7 +244,7 @@ object ProducerApi {
       )(_.close)
 
     object Generic {
-      def resource[F[_]: Async](
+      def resource[F[_]: Async: Trace](
           configs: (String, AnyRef)*
       ): Resource[F, ProducerApi[F, GenericRecord, GenericRecord]] =
         ProducerApi.Avro.resource[F, GenericRecord, GenericRecord](configs: _*)

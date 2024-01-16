@@ -24,6 +24,7 @@ import com.banno.kafka.producer.*
 import com.sksamuel.avro4s.RecordFormat
 import fs2.*
 import java.util.ConcurrentModificationException
+import natchez.Trace.Implicits.noop
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
 import org.scalacheck.*
