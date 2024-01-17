@@ -213,8 +213,8 @@ object RecordStream {
           override protected def nextOffsets(x: A) = topical.nextOffset(x)
           override def records: Stream[F, A] = stream.records.flatMap(chunked)
           override def processingAndCommitting[B](
-              maxRecordCount: Long = 1000L,
-              maxElapsedTime: FiniteDuration = 60.seconds,
+              maxRecordCount: Long,
+              maxElapsedTime: FiniteDuration,
           )(
               process: A => F[B]
           ): Stream[F, B] =
@@ -544,8 +544,8 @@ object RecordStream {
             .prefetch
             .evalMap(parseBatch(topical))
         override def processingAndCommitting[C](
-            maxRecordCount: Long = 1000L,
-            maxElapsedTime: FiniteDuration = 60.seconds,
+            maxRecordCount: Long,
+            maxElapsedTime: FiniteDuration,
         )(
             process: IncomingRecords[A] => F[C]
         ): Stream[F, C] =
