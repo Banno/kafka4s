@@ -353,10 +353,10 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       .recordStream(pollTimeout)
       .evalMap(r => process(r) <* consumer.commitSync(r.nextOffset))
 
-  /** Returns a stream that processes records using the specified function,
-    * committing offsets for successfully processed records, either after
-    * processing the specified number of records, or after the specified time
-    * has elapsed since the last offset commit. On any stream finalization,
+  /** Returns a stream that processes records one-at-a-time using the specified
+    * function, committing offsets for successfully processed records, either
+    * after processing the specified number of records, or after the specified
+    * time has elapsed since the last offset commit. On any stream finalization,
     * whether success, error, or cancelation, offsets will be committed. This is
     * at-least-once processing: after a restart, the record that failed will be
     * reprocessed. In some use cases this pattern is more appropriate than just
@@ -380,7 +380,27 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       r => Map(new TopicPartition(r.topic, r.partition) -> r.offset),
       _ => 1,
     )
+  // )(implicit T: Temporal[F]): Stream[F, A] =
+  // processingAndCommitting2[ConsumerRecord[K, V], A](
+  //   maxRecordCount.toInt,
+  //   maxElapsedTime,
+  // )(
+  //   consumer.recordStream(pollTimeout),
+  //   process,
+  //   r => Map(new TopicPartition(r.topic, r.partition) -> r.offset),
+  // )
 
+  /** Returns a stream that processes batches of records using the specified
+    * function, committing offsets for successfully processed batches, either
+    * after processing the specified number of records, or after the specified
+    * time has elapsed since the last offset commit. On any stream finalization,
+    * whether success, error, or cancelation, offsets will be committed. This is
+    * at-least-once processing: after a restart, the batch that failed will be
+    * reprocessed. In some use cases this pattern is more appropriate than just
+    * using auto-offset-commits, since it will not commit offsets for failed
+    * records when the consumer is closed. The consumer must be configured to
+    * disable offset auto-commits, i.e. `enable.auto.commit=false`.
+    */
   def processingAndCommittingBatched[A](
       pollTimeout: FiniteDuration,
       maxRecordCount: Long = 1000L,
