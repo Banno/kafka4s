@@ -380,15 +380,6 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       r => Map(new TopicPartition(r.topic, r.partition) -> r.offset),
       _ => 1,
     )
-  // )(implicit T: Temporal[F]): Stream[F, A] =
-  // processingAndCommitting2[ConsumerRecord[K, V], A](
-  //   maxRecordCount.toInt,
-  //   maxElapsedTime,
-  // )(
-  //   consumer.recordStream(pollTimeout),
-  //   process,
-  //   r => Map(new TopicPartition(r.topic, r.partition) -> r.offset),
-  // )
 
   /** Returns a stream that processes batches of records using the specified
     * function, committing offsets for successfully processed batches, either
@@ -455,35 +446,6 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
           }
           .onFinalize(commitNextOffsets)
       }
-
-  /*
-  I think this impl based on Stream.groupWithin works, but the Bs are output in groups, instead of as As are processed
-  Not sure if this matters or not... at the very least, some tests would need to be rewritten
-  If A is a batch of records, groupWithin also groups by number of batches, not total count of records
-  For now, we're going to use our bespoke code, but may revisit groupWithin in the future
-   */
-  // def processingAndCommitting2[A, B](
-  //     maxRecordCount: Int,
-  //     maxElapsedTime: FiniteDuration,
-  // )(
-  //     stream: Stream[F, A],
-  //     process: A => F[B],
-  //     offsets: A => Map[TopicPartition, Long],
-  // )(implicit F: Temporal[F]): Stream[F, B] =
-  //   stream
-  //     .evalMap(a => process(a).map(b => (offsets(a), b)))
-  //     .groupWithin(maxRecordCount, maxElapsedTime)
-  //     .evalTap { c =>
-  //       val offsets = c.foldLeft(Map.empty[TopicPartition, Long])(_ ++ _._1)
-  //       val nextOffsets =
-  //         offsets.view.mapValues(o => new OffsetAndMetadata(o + 1)).toMap
-  //       println(
-  //         s"committing: values=${c.map(_._2).toList} offsets=$offsets, nextOffsets=$nextOffsets"
-  //       )
-  //       consumer.commitSync(nextOffsets)
-  //     }
-  //     .map(_.map(_._2))
-  //     .unchunks
 
   case class OffsetCommitState(
       offsets: Map[TopicPartition, Long],
