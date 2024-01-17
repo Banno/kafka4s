@@ -440,7 +440,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
   I think this impl based on Stream.groupWithin works, but the Bs are output in groups, instead of as As are processed
   Not sure if this matters or not... at the very least, some tests would need to be rewritten
   If A is a batch of records, groupWithin also groups by number of batches, not total count of records
-  */
+   */
   def processingAndCommitting2[A, B](
       maxRecordCount: Int,
       maxElapsedTime: FiniteDuration,
@@ -456,7 +456,9 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
         val offsets = c.foldLeft(Map.empty[TopicPartition, Long])(_ ++ _._1)
         val nextOffsets =
           offsets.view.mapValues(o => new OffsetAndMetadata(o + 1)).toMap
-        println(s"committing: values=${c.map(_._2).toList} offsets=$offsets, nextOffsets=$nextOffsets")
+        println(
+          s"committing: values=${c.map(_._2).toList} offsets=$offsets, nextOffsets=$nextOffsets"
+        )
         consumer.commitSync(nextOffsets)
       }
       .map(_.map(_._2))
