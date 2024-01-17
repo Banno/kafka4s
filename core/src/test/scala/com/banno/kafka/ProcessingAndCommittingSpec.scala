@@ -250,6 +250,45 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
     }
   }
 
+  test(
+    "on failure, batched commits successful offsets, but not the failed batch offsets"
+  ) {
+    producerResource.use { producer =>
+      consumerResource("max.poll.records" -> "2").use { consumer =>
+        for {
+          topic <- createTestTopic[IO]()
+          p = new TopicPartition(topic, 0)
+          ps = Set(p)
+          values = (0 to 9).toList
+          throwOn = 7
+          _ <- producer.sendAsyncBatch(
+            values.map(v => new ProducerRecord(topic, v, v))
+          )
+          () <- consumer.subscribe(topic)
+          c0 <- consumer.partitionQueries.committed(ps)
+          pac = consumer.processingAndCommittingBatched(
+            pollTimeout = 100.millis,
+            maxRecordCount = Long.MaxValue,
+            maxElapsedTime = Long.MaxValue.nanos,
+          ) { rs =>
+            val vs = rs.recordList(topic).map(_.value)
+            if (vs contains throwOn)
+              IO.raiseError(CommitOnFailureException())
+            else
+              vs.pure[IO]
+          }
+          results <- pac.compile.toList.attempt
+          c1 <- consumer.partitionQueries.committed(ps)
+        } yield {
+          assertEquals(c0, empty)
+          assertEquals(results, Left(CommitOnFailureException()))
+          // on failure, the committed offset should be the beginning of the batch that failed, so processing will resume there next time and try again
+          assertEquals(c1, offsets(p, 6L))
+        }
+      }
+    }
+  }
+
   test("commits offsets on successful stream finalization") {
     producerResource.use { producer =>
       consumerResource().use { consumer =>
