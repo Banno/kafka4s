@@ -46,6 +46,16 @@ sealed trait RecordStream[F[_], A] {
     */
   def readProcessCommit[B](process: A => F[B]): Stream[F, B]
 
+  /** Returns a stream that processes records using the specified function,
+    * committing offsets for successfully processed records, either after
+    * processing the specified number of records, or after the specified time
+    * has elapsed since the last offset commit. On any stream finalization,
+    * whether success, error, or cancelation, offsets will be committed. This is
+    * at-least-once processing: after a restart, the record that failed will be
+    * reprocessed. In some use cases this pattern is more appropriate than just
+    * using auto-offset-commits, since it will not commit offsets for failed
+    * records when the consumer is closed.
+    */
   def processingAndCommitting[B](
       maxRecordCount: Long = 1000L,
       maxElapsedTime: FiniteDuration = 60.seconds,
