@@ -353,10 +353,10 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       .recordStream(pollTimeout)
       .evalMap(r => process(r) <* consumer.commitSync(r.nextOffset))
 
-  /** Returns a stream that processes records using the specified function,
-    * committing offsets for successfully processed records, either after
-    * processing the specified number of records, or after the specified time
-    * has elapsed since the last offset commit. On any stream finalization,
+  /** Returns a stream that processes records one-at-a-time using the specified
+    * function, committing offsets for successfully processed records, either
+    * after processing the specified number of records, or after the specified
+    * time has elapsed since the last offset commit. On any stream finalization,
     * whether success, error, or cancelation, offsets will be committed. This is
     * at-least-once processing: after a restart, the record that failed will be
     * reprocessed. In some use cases this pattern is more appropriate than just
@@ -371,6 +371,53 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
   )(
       process: ConsumerRecord[K, V] => F[A]
   )(implicit C: Clock[F], S: Concurrent[F]): Stream[F, A] =
+    processingAndCommitting[ConsumerRecord[K, V], A](
+      maxRecordCount,
+      maxElapsedTime,
+    )(
+      consumer.recordStream(pollTimeout),
+      process,
+      r => Map(new TopicPartition(r.topic, r.partition) -> r.offset),
+      _ => 1,
+    )
+
+  /** Returns a stream that processes batches of records using the specified
+    * function, committing offsets for successfully processed batches, either
+    * after processing the specified number of records, or after the specified
+    * time has elapsed since the last offset commit. On any stream finalization,
+    * whether success, error, or cancelation, offsets will be committed. This is
+    * at-least-once processing: after a restart, the batch that failed will be
+    * reprocessed. In some use cases this pattern is more appropriate than just
+    * using auto-offset-commits, since it will not commit offsets for failed
+    * records when the consumer is closed. The consumer must be configured to
+    * disable offset auto-commits, i.e. `enable.auto.commit=false`.
+    */
+  def processingAndCommittingBatched[A](
+      pollTimeout: FiniteDuration,
+      maxRecordCount: Long = 1000L,
+      maxElapsedTime: FiniteDuration = 60.seconds,
+  )(
+      process: ConsumerRecords[K, V] => F[A]
+  )(implicit C: Clock[F], S: Concurrent[F]): Stream[F, A] =
+    processingAndCommitting[ConsumerRecords[K, V], A](
+      maxRecordCount,
+      maxElapsedTime,
+    )(
+      consumer.recordsStream(pollTimeout),
+      process,
+      _.lastOffsets,
+      _.count().toLong,
+    )
+
+  def processingAndCommitting[A, B](
+      maxRecordCount: Long,
+      maxElapsedTime: FiniteDuration,
+  )(
+      stream: Stream[F, A],
+      process: A => F[B],
+      offsets: A => Map[TopicPartition, Long],
+      count: A => Long,
+  )(implicit C: Clock[F], S: Concurrent[F]): Stream[F, B] =
     Stream
       .eval(
         C.monotonic
@@ -383,12 +430,11 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
           consumer.commitSync(offsets)
         val commitNextOffsets: F[Unit] =
           state.get.map(_.nextOffsets).flatMap(commit)
-        consumer
-          .recordStream(pollTimeout)
-          .evalMap { record =>
+        stream
+          .evalMap { a =>
             for {
-              a <- process(record)
-              s <- state.updateAndGet(_.update(record))
+              b <- process(a)
+              s <- state.updateAndGet(_.update(offsets(a), count(a)))
               now <- C.monotonic
               () <- s
                 .needToCommit(maxRecordCount, now, maxElapsedTime)
@@ -396,7 +442,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
                   commit(os) *>
                   state.update(_.reset(now))
                 )
-            } yield a
+            } yield b
           }
           .onFinalize(commitNextOffsets)
       }
@@ -406,13 +452,10 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       recordCount: Long,
       lastCommitTime: FiniteDuration,
   ) {
-    def update(record: ConsumerRecord[_, _]): OffsetCommitState =
+    def update(os: Map[TopicPartition, Long], count: Long): OffsetCommitState =
       copy(
-        offsets = offsets + (new TopicPartition(
-          record.topic,
-          record.partition,
-        ) -> record.offset),
-        recordCount = recordCount + 1,
+        offsets = offsets ++ os,
+        recordCount = recordCount + count,
       )
 
     def needToCommit(

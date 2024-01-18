@@ -45,6 +45,23 @@ sealed trait RecordStream[F[_], A] {
     * reprocessing after a failure.
     */
   def readProcessCommit[B](process: A => F[B]): Stream[F, B]
+
+  /** Returns a stream that processes records using the specified function,
+    * committing offsets for successfully processed records, either after
+    * processing the specified number of records, or after the specified time
+    * has elapsed since the last offset commit. On any stream finalization,
+    * whether success, error, or cancelation, offsets will be committed. This is
+    * at-least-once processing: after a restart, the record that failed will be
+    * reprocessed. In some use cases this pattern is more appropriate than just
+    * using auto-offset-commits, since it will not commit offsets for failed
+    * records when the consumer is closed.
+    */
+  def processingAndCommitting[B](
+      maxRecordCount: Long = 1000L,
+      maxElapsedTime: FiniteDuration = 60.seconds,
+  )(
+      process: A => F[B]
+  ): Stream[F, B]
 }
 
 sealed trait HistoryAndUnbounded[F[_], P[_[_], _], A] {
@@ -149,7 +166,7 @@ object RecordStream {
   private sealed trait WhetherCommits[P[_[_], _]] {
     def extrude[F[_], A](x: RecordStream[F, A]): P[F, A]
 
-    def chunk[F[_]: Applicative, A](
+    def chunk[F[_]: Clock: Concurrent, A](
         topical: Topical[A, ?],
         stream: P[F, IncomingRecords[A]],
     ): P[F, A]
@@ -176,7 +193,7 @@ object RecordStream {
       override def extrude[F[_], A](x: RecordStream[F, A]): Stream[F, A] =
         x.records
 
-      override def chunk[F[_]: Applicative, A](
+      override def chunk[F[_]: Clock: Concurrent, A](
           topical: Topical[A, ?],
           stream: Stream[F, IncomingRecords[A]],
       ): Stream[F, A] =
@@ -196,7 +213,7 @@ object RecordStream {
       override def extrude[F[_], A](x: RecordStream[F, A]): RecordStream[F, A] =
         x
 
-      override def chunk[F[_]: Applicative, A](
+      override def chunk[F[_]: Clock: Concurrent, A](
           topical: Topical[A, ?],
           stream: RecordStream[F, IncomingRecords[A]],
       ): RecordStream[F, A] =
@@ -205,6 +222,21 @@ object RecordStream {
         ) {
           override protected def nextOffsets(x: A) = topical.nextOffset(x)
           override def records: Stream[F, A] = stream.records.flatMap(chunked)
+          override def processingAndCommitting[B](
+              maxRecordCount: Long,
+              maxElapsedTime: FiniteDuration,
+          )(
+              process: A => F[B]
+          ): Stream[F, B] =
+            consumer.processingAndCommitting[A, B](
+              maxRecordCount,
+              maxElapsedTime,
+            )(
+              records,
+              process,
+              a => nextOffsets(a).view.mapValues(_.offset - 1).toMap,
+              _ => 1,
+            )
         }
 
       override def historyAndUnbounded[F[_]: Async, A](
@@ -521,6 +553,21 @@ object RecordStream {
             .recordsStream(pollTimeout)
             .prefetch
             .evalMap(parseBatch(topical))
+        override def processingAndCommitting[C](
+            maxRecordCount: Long,
+            maxElapsedTime: FiniteDuration,
+        )(
+            process: IncomingRecords[A] => F[C]
+        ): Stream[F, C] =
+          consumer.processingAndCommitting[IncomingRecords[A], C](
+            maxRecordCount,
+            maxElapsedTime,
+          )(
+            records,
+            process,
+            _.nextOffsets.view.mapValues(_.offset - 1).toMap,
+            _.toList.size.toLong,
+          )
       }
 
     private[RecordStream] case class SubscriberImpl[F[_]: Async](

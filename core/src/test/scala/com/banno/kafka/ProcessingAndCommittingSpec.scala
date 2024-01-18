@@ -44,18 +44,19 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
         BootstrapServers(bootstrapServer)
       )
 
-  def consumerResource =
-    ConsumerApi
-      .resource[IO, Int, Int](
-        BootstrapServers(bootstrapServer),
-        GroupId(genGroupId),
-        AutoOffsetReset.earliest,
-        EnableAutoCommit(false),
-      )
+  def consumerResource(configs: (String, AnyRef)*) = {
+    val configs2 = List[(String, AnyRef)](
+      BootstrapServers(bootstrapServer),
+      GroupId(genGroupId),
+      AutoOffsetReset.earliest,
+      EnableAutoCommit(false),
+    ) ++ configs.toList
+    ConsumerApi.resource[IO, Int, Int](configs2: _*)
+  }
 
   test("processingAndCommitting commits after number of records") {
     producerResource.use { producer =>
-      consumerResource.use { consumer =>
+      consumerResource().use { consumer =>
         for {
           topic <- createTestTopic[IO]()
           p = new TopicPartition(topic, 0)
@@ -108,10 +109,55 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
     }
   }
 
+  test("processingAndCommittingBatched commits after number of records") {
+    producerResource.use { producer =>
+      consumerResource("max.poll.records" -> "2").use { consumer =>
+        for {
+          topic <- createTestTopic[IO]()
+          p = new TopicPartition(topic, 0)
+          ps = Set(p)
+          values = (0 to 9).toList
+          _ <- producer.sendAsyncBatch(
+            values.map(v => new ProducerRecord(topic, v, v))
+          )
+          () <- consumer.subscribe(topic)
+          c0 <- consumer.partitionQueries.committed(ps)
+          pac = consumer.processingAndCommittingBatched(
+            pollTimeout = 100.millis,
+            maxRecordCount = 2,
+            maxElapsedTime = Long.MaxValue.nanos,
+          )(_.recordList(topic).map(_.value).pure[IO])
+          committed = Stream.repeatEval(
+            consumer.partitionQueries.committed(ps)
+          )
+          results <- pac
+            .take(values.size.toLong / 2)
+            .interleave(committed)
+            .compile
+            .toList
+        } yield {
+          assertEquals(c0, empty)
+          assertEquals(results.size, values.size)
+          // TODO rewrite this to use values, not so hard-coded
+          assertEquals(results(0), List(0, 1))
+          assertEquals(results(1), offsets(p, 2))
+          assertEquals(results(2), List(2, 3))
+          assertEquals(results(3), offsets(p, 4))
+          assertEquals(results(4), List(4, 5))
+          assertEquals(results(5), offsets(p, 6))
+          assertEquals(results(6), List(6, 7))
+          assertEquals(results(7), offsets(p, 8))
+          assertEquals(results(8), List(8, 9))
+          assertEquals(results(9), offsets(p, 10))
+        }
+      }
+    }
+  }
+
   // this has a real danger of becoming a "flaky test" due to its timing assumptions
   test("processingAndCommitting commits after elapsed time") {
     producerResource.use { producer =>
-      consumerResource.use { consumer =>
+      consumerResource().use { consumer =>
         for {
           topic <- createTestTopic[IO]()
           p = new TopicPartition(topic, 0)
@@ -169,7 +215,7 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
 
   test("on failure, commits successful offsets, but not the failed offset") {
     producerResource.use { producer =>
-      consumerResource.use { consumer =>
+      consumerResource().use { consumer =>
         for {
           topic <- createTestTopic[IO]()
           p = new TopicPartition(topic, 0)
@@ -204,9 +250,48 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
     }
   }
 
+  test(
+    "on failure, batched commits successful offsets, but not the failed batch offsets"
+  ) {
+    producerResource.use { producer =>
+      consumerResource("max.poll.records" -> "2").use { consumer =>
+        for {
+          topic <- createTestTopic[IO]()
+          p = new TopicPartition(topic, 0)
+          ps = Set(p)
+          values = (0 to 9).toList
+          throwOn = 7
+          _ <- producer.sendAsyncBatch(
+            values.map(v => new ProducerRecord(topic, v, v))
+          )
+          () <- consumer.subscribe(topic)
+          c0 <- consumer.partitionQueries.committed(ps)
+          pac = consumer.processingAndCommittingBatched(
+            pollTimeout = 100.millis,
+            maxRecordCount = Long.MaxValue,
+            maxElapsedTime = Long.MaxValue.nanos,
+          ) { rs =>
+            val vs = rs.recordList(topic).map(_.value)
+            if (vs contains throwOn)
+              IO.raiseError(CommitOnFailureException())
+            else
+              vs.pure[IO]
+          }
+          results <- pac.compile.toList.attempt
+          c1 <- consumer.partitionQueries.committed(ps)
+        } yield {
+          assertEquals(c0, empty)
+          assertEquals(results, Left(CommitOnFailureException()))
+          // on failure, the committed offset should be the beginning of the batch that failed, so processing will resume there next time and try again
+          assertEquals(c1, offsets(p, 6L))
+        }
+      }
+    }
+  }
+
   test("commits offsets on successful stream finalization") {
     producerResource.use { producer =>
-      consumerResource.use { consumer =>
+      consumerResource().use { consumer =>
         for {
           topic <- createTestTopic[IO]()
           p = new TopicPartition(topic, 0)
@@ -235,7 +320,7 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
 
   test("commits offsets on stream cancel") {
     producerResource.use { producer =>
-      consumerResource.use { consumer =>
+      consumerResource().use { consumer =>
         for {
           topic <- createTestTopic[IO]()
           p = new TopicPartition(topic, 0)
