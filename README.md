@@ -30,7 +30,7 @@ Stream
   .resource(ProducerApi.resource[F, Int, Int](BootstrapServers(kafkaBootstrapServers)))
   .flatMap { producer =>
     Stream
-      .awakeDelay[F](1 second)
+      .awakeDelay[F](1.second)
       .evalMap { _ =>
         Sync[F].delay(Random.nextInt()).flatMap { i =>
           producer.sendAndForget(new ProducerRecord(topic.name, i, i))
