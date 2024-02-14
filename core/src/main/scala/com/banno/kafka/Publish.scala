@@ -34,7 +34,8 @@ object Publish {
     topical
       .coparse(kv)
       .liftTo[F]
-      .flatMap(producer.sendAsync)
+      .flatMap(producer.send)
+      .flatten
       .void
 
   trait Builder[F[_], A <: Coproduct, B <: Coproduct] {
