@@ -37,6 +37,17 @@ object Publish {
       .flatMap(producer.sendAsync)
       .void
 
+  def many[F[_]: Parallel: MonadThrow, A, B](
+      topical: Topical[A, B],
+      producer: ProducerApi[F, GenericRecord, GenericRecord],
+  ): List[B] => F[Unit] =
+    _.traverse(kv =>
+      topical
+        .coparse(kv)
+        .liftTo[F]
+        .flatMap(producer.send)
+    ).flatMap(_.parSequence_)
+
   trait Builder[F[_], A <: Coproduct, B <: Coproduct] {
     type P <: HList
     def build(
