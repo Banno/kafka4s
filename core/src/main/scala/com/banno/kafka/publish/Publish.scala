@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.banno.kafka
+package com.banno.kafka.publish
 
 import cats.*
 import cats.syntax.all.*
