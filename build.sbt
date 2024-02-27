@@ -5,7 +5,7 @@ import org.typelevel.sbt.site.GenericSiteSettings
 
 ThisBuild / scalaVersion := "2.13.12"
 ThisBuild / crossScalaVersions := List(scalaVersion.value)
-ThisBuild / tlBaseVersion := "5.0"
+ThisBuild / tlBaseVersion := "5.2"
 ThisBuild / tlMimaPreviousVersions ~= { versions =>
   val failedReleases = Set("5.0.1", "5.0.2")
   versions -- failedReleases
@@ -29,7 +29,7 @@ val V = new {
   val betterMonadicFor = "0.3.1"
   val cats = "2.10.0"
   val catsEffect = "3.4.10"
-  val commonsCompress = "1.25.0"
+  val commonsCompress = "1.26.0"
   val confluent = "7.5.3"
   val curator = "5.2.0"
   val disciplineMunit = "1.0.9"
