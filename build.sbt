@@ -5,7 +5,7 @@ import org.typelevel.sbt.site.GenericSiteSettings
 
 ThisBuild / scalaVersion := "2.13.12"
 ThisBuild / crossScalaVersions := List(scalaVersion.value)
-ThisBuild / tlBaseVersion := "5.0"
+ThisBuild / tlBaseVersion := "5.2"
 ThisBuild / tlMimaPreviousVersions ~= { versions =>
   val failedReleases = Set("5.0.1", "5.0.2")
   versions -- failedReleases
