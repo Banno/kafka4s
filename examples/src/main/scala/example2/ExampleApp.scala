@@ -67,7 +67,7 @@ final class ExampleApp[F[_]: Async] {
       SchemaRegistryUrl(schemaRegistryUri),
       ClientId("consumer-example"),
       GroupId("consumer-example-group"),
-      EnableAutoCommit(false),
+      EnableAutoCommit(b = false),
     )
 
   val example: F[Unit] =

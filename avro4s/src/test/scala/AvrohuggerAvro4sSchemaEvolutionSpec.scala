@@ -444,7 +444,7 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
     val rf2 = RecordFormat[AddUnionType2]
     val r1 = AddUnionType1(Left(A("s")))
     val r2 = AddUnionType2(Coproduct[ABC](A("s")))
-    val r3 = AddUnionType2(Coproduct[ABC](C(true)))
+    val r3 = AddUnionType2(Coproduct[ABC](C(c = true)))
 
     val b1 = serializer.serialize(topic, rf1.to(r1))
     assertEquals(
@@ -492,7 +492,7 @@ class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
     val rf2 = RecordFormat[RemoveUnionType2]
     val r1 = RemoveUnionType1(Coproduct[ABC](A("s")))
     val r2 = RemoveUnionType2(Left(A("s")))
-    val r3 = RemoveUnionType1(Coproduct[ABC](C(true)))
+    val r3 = RemoveUnionType1(Coproduct[ABC](C(c = true)))
 
     // even though this change is not backward compatible, in practice a AddUnionType1 can be deserialized to AddUnionType2 as long as it doesn't contain the removed type C
     val b1 = serializer.serialize(topic, rf1.to(r1))

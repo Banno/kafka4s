@@ -18,7 +18,6 @@ package com.banno.kafka
 package avro4s
 
 import cats.effect.*
-import cats.syntax.all.*
 import com.banno.kafka.consumer.*
 import com.banno.kafka.producer.*
 import com.sksamuel.avro4s.RecordFormat
@@ -246,7 +245,7 @@ class ConsumerAndProducerApiSpec
               BootstrapServers(bootstrapServer),
               GroupId(groupId),
               AutoOffsetReset.earliest,
-              EnableAutoCommit(false),
+              EnableAutoCommit(b = false),
             )
         )
         .evalTap(_.subscribe(topic))

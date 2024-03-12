@@ -412,7 +412,7 @@ object RecordStream {
         List(
           kafkaBootstrapServers,
           schemaRegistryUri,
-          EnableAutoCommit(false),
+          EnableAutoCommit(b = false),
           reset,
           IsolationLevel.ReadCommitted,
           ClientId(clientId),

@@ -450,7 +450,7 @@ object ConsumerApi {
           configs: (String, AnyRef)*
       ): Resource[F, ConsumerApi[F, K, V]] =
         ConsumerApi.Avro.resource[F, K, V](
-          (configs.toMap + SpecificAvroReader(true)).toSeq: _*
+          (configs.toMap + SpecificAvroReader(s = true)).toSeq: _*
         )
     }
   }

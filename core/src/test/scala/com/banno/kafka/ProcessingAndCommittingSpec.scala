@@ -49,7 +49,7 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
       BootstrapServers(bootstrapServer),
       GroupId(genGroupId),
       AutoOffsetReset.earliest,
-      EnableAutoCommit(false),
+      EnableAutoCommit(b = false),
     ) ++ configs.toList
     ConsumerApi.resource[IO, Int, Int](configs2: _*)
   }
