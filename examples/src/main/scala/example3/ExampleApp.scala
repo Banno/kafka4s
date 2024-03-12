@@ -64,7 +64,7 @@ final class ExampleApp[F[_]: Async] {
               BootstrapServers(kafkaBootstrapServers),
               GroupId("example3"),
               AutoOffsetReset.earliest,
-              EnableAutoCommit(true),
+              EnableAutoCommit(b = true),
             )
         )
         .evalTap(_.subscribe(topic.name))
