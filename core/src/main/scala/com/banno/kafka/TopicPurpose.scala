@@ -114,6 +114,11 @@ object TopicPurpose {
   val event: TopicPurpose =
     mediumScale(infiniteRetention, TopicContentType.Events)
 
+  /** Low scale with infinite retention.
+    */
+  val smallEvent: TopicPurpose =
+    lowScale(infiniteRetention, TopicContentType.Events)
+
   /** Medium scale with one hour retention and a replication factor of only two.
     */
   val ephemeron: TopicPurpose =
