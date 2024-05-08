@@ -104,7 +104,7 @@ object SeekTo {
   }
 
   sealed trait FinalFallback {
-    private[SeekTo] def seek[F[_]](
+    private[SeekTo] def seek[F[_]: ApplicativeThrow](
         consumer: ConsumerApi[F, _, _],
         partitions: Iterable[TopicPartition],
     ): F[Unit]
@@ -112,22 +112,31 @@ object SeekTo {
 
   object FinalFallback {
     private case object Beginning extends FinalFallback {
-      override def seek[F[_]](
+      override def seek[F[_]: ApplicativeThrow](
           consumer: ConsumerApi[F, _, _],
           partitions: Iterable[TopicPartition],
       ): F[Unit] =
         consumer.seekToBeginning(partitions)
     }
     private case object End extends FinalFallback {
-      override def seek[F[_]](
+      override def seek[F[_]: ApplicativeThrow](
           consumer: ConsumerApi[F, _, _],
           partitions: Iterable[TopicPartition],
       ): F[Unit] =
         consumer.seekToEnd(partitions)
     }
 
+    private case class Fail(throwable: Throwable) extends FinalFallback {
+      override def seek[F[_]: ApplicativeThrow](
+          consumer: ConsumerApi[F, _, _],
+          partitions: Iterable[TopicPartition],
+      ): F[Unit] =
+        throwable.raiseError[F, Unit]
+    }
+
     val beginning: FinalFallback = Beginning
     val end: FinalFallback = End
+    def fail(throwable: Throwable): FinalFallback = Fail(throwable)
   }
 
   private case class Impl(
@@ -146,6 +155,9 @@ object SeekTo {
   def beginning: SeekTo = Impl(List.empty, FinalFallback.beginning)
 
   def end: SeekTo = Impl(List.empty, FinalFallback.end)
+
+  def fail(throwable: Throwable): SeekTo =
+    Impl(List.empty, FinalFallback.fail(throwable))
 
   def timestamps(
       timestamps: Map[TopicPartition, Long],
@@ -168,7 +180,7 @@ object SeekTo {
   ): SeekTo =
     firstAttemptThen(Attempt.timestampBeforeNow(duration), default)
 
-  def seek[F[_]: Monad: Clock](
+  def seek[F[_]: MonadThrow: Clock](
       consumer: ConsumerApi[F, _, _],
       partitions: Iterable[TopicPartition],
       seekTo: SeekTo,

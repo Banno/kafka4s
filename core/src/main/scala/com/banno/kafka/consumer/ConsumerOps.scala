@@ -72,11 +72,11 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       topics: List[String],
       offsets: Map[TopicPartition, Long],
       seekTo: SeekTo = SeekTo.beginning,
-  )(implicit F: Monad[F], C: Clock[F]): F[Unit] =
+  )(implicit F: MonadThrow[F], C: Clock[F]): F[Unit] =
     assignAndSeek(topics, SeekTo.offsets(offsets, seekTo))
 
   def assign(topic: String, offsets: Map[TopicPartition, Long])(implicit
-      F: Monad[F],
+      F: MonadThrow[F],
       C: Clock[F],
   ): F[Unit] =
     assign(List(topic), offsets)
@@ -84,7 +84,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
   def assignAndSeek(
       topics: List[String],
       seekTo: SeekTo,
-  )(implicit F: Monad[F], C: Clock[F]): F[Unit] =
+  )(implicit F: MonadThrow[F], C: Clock[F]): F[Unit] =
     for {
       infos <- consumer.partitionsFor(topics)
       partitions = infos.map(_.toTopicPartition)
