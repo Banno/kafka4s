@@ -21,12 +21,17 @@ import cats.effect.*
 import cats.syntax.all.*
 
 import scala.concurrent.duration.*
-
 import org.apache.kafka.common.*
+
+import scala.util.control.NoStackTrace
 
 sealed trait SeekTo
 
 object SeekTo {
+  object Failure extends NoStackTrace {
+    override val getMessage: String =
+      "Consumer offset seeking failed"
+  }
   sealed trait Attempt {
     private[SeekTo] def toOffsets[F[_]: Monad: Clock](
         queries: PartitionQueries[F],
@@ -156,8 +161,11 @@ object SeekTo {
 
   def end: SeekTo = Impl(List.empty, FinalFallback.end)
 
-  def fail(throwable: Throwable): SeekTo =
+  def failWith(throwable: Throwable): SeekTo =
     Impl(List.empty, FinalFallback.fail(throwable))
+
+  def fail: SeekTo =
+    failWith(Failure)
 
   def timestamps(
       timestamps: Map[TopicPartition, Long],
