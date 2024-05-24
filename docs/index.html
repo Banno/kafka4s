@@ -190,7 +190,7 @@
   </span><span class="type-name">ClientId</span><span>(</span><span class="string-literal">&quot;producer-example&quot;</span><span>)
 )
 </span><span class="comment">// producer: Resource[IO, ProducerApi[IO, org.apache.avro.generic.GenericRecord, org.apache.avro.generic.GenericRecord]] = Allocate(
-//   resource = cats.effect.kernel.Resource$$$Lambda$10571/0x0000000102d5a040@3a513bd4
+//   resource = cats.effect.kernel.Resource$$$Lambda$10540/0x0000000102d04040@69a4d9d9
 // )</span></code></pre>
         <p>And we&#39;ll define some customer records to be written:</p>
         <pre><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">org</span><span>.</span><span class="identifier">apache</span><span>.</span><span class="identifier">kafka</span><span>.</span><span class="identifier">clients</span><span>.</span><span class="identifier">producer</span><span>.</span><span class="type-name">ProducerRecord</span><span>
@@ -221,16 +221,16 @@
         <h4 id="writing-typed-records-with-an-avro4s-producer" class="section"><a class="anchor-link left" href="#writing-typed-records-with-an-avro4s-producer"><i class="icofont-laika link">&#xef71;</i></a>Writing typed records with an Avro4s producer</h4>
         <p>Turning a generic producer into a typed producer is simple. We first ensure that <code>com.sksamuel.avro4s.RecordFormat</code> instances for our data are in scope:</p>
         <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">implicit</span><span> </span><span class="keyword">val</span><span> </span><span class="type-name">CustomerRecordFormat</span><span> = </span><span class="identifier">com</span><span>.</span><span class="identifier">sksamuel</span><span>.</span><span class="identifier">avro4s</span><span>.</span><span class="type-name">RecordFormat</span><span>[</span><span class="type-name">Customer</span><span>]
-</span><span class="comment">// CustomerRecordFormat: com.sksamuel.avro4s.RecordFormat[Customer] = com.sksamuel.avro4s.RecordFormat$$anon$1@62081fa3
+</span><span class="comment">// CustomerRecordFormat: com.sksamuel.avro4s.RecordFormat[Customer] = com.sksamuel.avro4s.RecordFormat$$anon$1@5b8246eb
 </span><span class="keyword">implicit</span><span> </span><span class="keyword">val</span><span> </span><span class="type-name">CustomerIdRecordFormat</span><span> = </span><span class="identifier">com</span><span>.</span><span class="identifier">sksamuel</span><span>.</span><span class="identifier">avro4s</span><span>.</span><span class="type-name">RecordFormat</span><span>[</span><span class="type-name">CustomerId</span><span>]
-</span><span class="comment">// CustomerIdRecordFormat: com.sksamuel.avro4s.RecordFormat[CustomerId] = com.sksamuel.avro4s.RecordFormat$$anon$1@5c964d00</span></code></pre>
+</span><span class="comment">// CustomerIdRecordFormat: com.sksamuel.avro4s.RecordFormat[CustomerId] = com.sksamuel.avro4s.RecordFormat$$anon$1@1dc2b649</span></code></pre>
         <p>And with those implicits in scope, we can create our producer:</p>
         <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">val</span><span> </span><span class="identifier">avro4sProducer</span><span> = </span><span class="identifier">producer</span><span>.</span><span class="identifier">map</span><span>(</span><span class="identifier">_</span><span>.</span><span class="identifier">toAvro4s</span><span>[</span><span class="type-name">CustomerId</span><span>, </span><span class="type-name">Customer</span><span>])
 </span><span class="comment">// avro4sProducer: Resource[IO, ProducerApi[[A]IO[A], CustomerId, Customer]] = Bind(
 //   source = Allocate(
-//     resource = cats.effect.kernel.Resource$$$Lambda$10571/0x0000000102d5a040@3a513bd4
+//     resource = cats.effect.kernel.Resource$$$Lambda$10540/0x0000000102d04040@69a4d9d9
 //   ),
-//   fs = cats.effect.kernel.Resource$$Lambda$10664/0x0000000102e4f840@63b814b5
+//   fs = cats.effect.kernel.Resource$$Lambda$10633/0x0000000102e11040@1dc5b3c0
 // )</span></code></pre>
         <p>We can now write our typed customer records successfully!</p>
         <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">cats</span><span>.</span><span class="identifier">effect</span><span>.</span><span class="identifier">unsafe</span><span>.</span><span class="identifier">implicits</span><span>.</span><span class="identifier">global</span><span>
@@ -259,11 +259,11 @@
 </span><span class="comment">// consumer: Resource[IO, ConsumerApi[IO, CustomerId, Customer]] = Bind(
 //   source = Bind(
 //     source = Allocate(
-//       resource = cats.effect.kernel.Resource$$$Lambda$10571/0x0000000102d5a040@1dfd1e59
+//       resource = cats.effect.kernel.Resource$$$Lambda$10540/0x0000000102d04040@48de82c
 //     ),
-//     fs = com.banno.kafka.consumer.ConsumerApi$Avro$$$Lambda$10667/0x0000000102e4d840@3faaef42
+//     fs = com.banno.kafka.consumer.ConsumerApi$Avro$$$Lambda$10636/0x0000000102e29840@4d715348
 //   ),
-//   fs = cats.effect.kernel.Resource$$Lambda$10664/0x0000000102e4f840@51ba4bfa
+//   fs = cats.effect.kernel.Resource$$Lambda$10633/0x0000000102e11040@4589c451
 // )</span></code></pre>
         <p>With our Kafka consumer in hand, we&#39;ll assign to our consumer our topic partition, with no offsets, so that it starts reading from the first record, and read a stream of records from our Kafka topic:</p>
         <pre class="keep-together pdf epub"><code class="nohighlight"><span class="keyword">import</span><span> </span><span class="identifier">org</span><span>.</span><span class="identifier">apache</span><span>.</span><span class="identifier">kafka</span><span>.</span><span class="identifier">common</span><span>.</span><span class="type-name">TopicPartition</span><span>
