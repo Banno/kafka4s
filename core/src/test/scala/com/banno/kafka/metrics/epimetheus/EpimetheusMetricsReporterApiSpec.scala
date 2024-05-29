@@ -36,7 +36,7 @@ class EpimetheusMetricsReporterApiSpec
   // This test allocates a lot of consumers. It was timing out in the GitHub
   // Actions build with the default amount of 30 seconds. That build seems to
   // have throttled resources compared to our development machines.
-  override val munitTimeout = Duration(1, MINUTES)
+  override val munitIOTimeout = Duration(1, MINUTES)
 
   private def assertTotals(
       registry: CollectorRegistry,
