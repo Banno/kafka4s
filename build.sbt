@@ -42,7 +42,7 @@ val V = new {
   val scalacheckEffect = "1.0.4"
   val scalacheckMagnolia = "0.6.0"
   val munit = "1.0.0"
-  val munitCE3 = "1.0.7"
+  val munitCE3 = "2.0.0"
   val scalatest = "3.2.18"
   val scalatestPlus = "3.2.3.0"
   val snappy = "1.1.10.5"
@@ -82,7 +82,7 @@ lazy val core = project
       "org.scalameta" %% "munit" % V.munit % Test,
       "org.scalameta" %% "munit-scalacheck" % V.munit % Test,
       "org.typelevel" %% "scalacheck-effect-munit" % V.scalacheckEffect,
-      "org.typelevel" %% "munit-cats-effect-3" % V.munitCE3 % Test,
+      "org.typelevel" %% "munit-cats-effect" % V.munitCE3 % Test,
       "org.typelevel" %% "cats-effect" % V.catsEffect,
       "org.tpolecat" %% "natchez-core" % V.natchez,
       "org.typelevel" %% "cats-laws" % V.cats % Test,
