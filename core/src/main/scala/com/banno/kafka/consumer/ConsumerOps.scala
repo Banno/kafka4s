@@ -451,7 +451,9 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
         lock: Semaphore[F],
         ref: Ref[F, OffsetCommitState],
     ): Stream[F, Unit] =
-      Stream.fixedDelay(1.minute).evalMap(_ => commitNextOffsets(lock, ref))
+      Stream
+        .fixedDelay(maxElapsedTime)
+        .evalMap(_ => commitNextOffsets(lock, ref))
 
     makeLock.flatMap(lock =>
       makeState.flatMap(ref =>
