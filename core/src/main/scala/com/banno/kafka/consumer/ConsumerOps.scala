@@ -19,8 +19,8 @@ package consumer
 
 import cats.*
 import cats.effect.*
+import cats.effect.std.Semaphore
 import cats.syntax.all.*
-
 import fs2.*
 
 import scala.jdk.CollectionConverters.*
@@ -370,7 +370,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       maxElapsedTime: FiniteDuration = 60.seconds,
   )(
       process: ConsumerRecord[K, V] => F[A]
-  )(implicit C: Clock[F], S: Concurrent[F]): Stream[F, A] =
+  )(implicit S: Temporal[F]): Stream[F, A] =
     processingAndCommitting[ConsumerRecord[K, V], A](
       maxRecordCount,
       maxElapsedTime,
@@ -398,7 +398,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       maxElapsedTime: FiniteDuration = 60.seconds,
   )(
       process: ConsumerRecords[K, V] => F[A]
-  )(implicit C: Clock[F], S: Concurrent[F]): Stream[F, A] =
+  )(implicit S: Temporal[F]): Stream[F, A] =
     processingAndCommitting[ConsumerRecords[K, V], A](
       maxRecordCount,
       maxElapsedTime,
@@ -417,35 +417,51 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       process: A => F[B],
       offsets: A => Map[TopicPartition, Long],
       count: A => Long,
-  )(implicit C: Clock[F], S: Concurrent[F]): Stream[F, B] =
-    Stream
-      .eval(
-        C.monotonic
-          .flatMap(now =>
-            Ref.of[F, OffsetCommitState](OffsetCommitState.empty(now))
-          )
+  )(implicit C: Temporal[F]): Stream[F, B] = {
+    val makeLock =
+      Stream.eval(Semaphore(1))
+    val makeState =
+      Stream.eval(
+        C.monotonic.flatMap(now => Ref.of(OffsetCommitState.empty(now)))
       )
-      .flatMap { state =>
-        def commit(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] =
-          consumer.commitSync(offsets)
-        val commitNextOffsets: F[Unit] =
-          state.get.map(_.nextOffsets).flatMap(commit)
+    def commitNextOffsets(
+        lock: Semaphore[F],
+        state: Ref[F, OffsetCommitState],
+    ): F[Unit] =
+      lock.permit.use(_ =>
+        state.get.map(_.nextOffsets).flatMap(consumer.commitSync)
+      )
+    def processAndMaybeCommit(
+        lock: Semaphore[F],
+        ref: Ref[F, OffsetCommitState],
+    )(a: A): F[B] =
+      for {
+        b <- process(a)
+        s <- ref.updateAndGet(_.update(offsets(a), count(a)))
+        now <- C.monotonic
+        case () <- s
+          .needToCommit(maxRecordCount, now, maxElapsedTime)
+          .traverse_(_ =>
+            commitNextOffsets(lock, ref) *>
+            ref.update(_.resetCount(now))
+          )
+      } yield b
+
+    def periodicallyCommit(
+        lock: Semaphore[F],
+        ref: Ref[F, OffsetCommitState],
+    ): Stream[F, Unit] =
+      Stream.fixedDelay(1.minute).evalMap(_ => commitNextOffsets(lock, ref))
+
+    makeLock.flatMap(lock =>
+      makeState.flatMap(ref =>
         stream
-          .evalMap { a =>
-            for {
-              b <- process(a)
-              s <- state.updateAndGet(_.update(offsets(a), count(a)))
-              now <- C.monotonic
-              () <- s
-                .needToCommit(maxRecordCount, now, maxElapsedTime)
-                .traverse_(os =>
-                  commit(os) *>
-                  state.update(_.reset(now))
-                )
-            } yield b
-          }
-          .onFinalize(commitNextOffsets)
-      }
+          .evalMap(processAndMaybeCommit(lock, ref))
+          .concurrently(periodicallyCommit(lock, ref))
+          .onFinalize(commitNextOffsets(lock, ref))
+      )
+    )
+  }
 
   case class OffsetCommitState(
       offsets: Map[TopicPartition, Long],
@@ -473,6 +489,12 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
 
     def reset(time: FiniteDuration): OffsetCommitState =
       OffsetCommitState.empty(time)
+
+    def resetCount(time: FiniteDuration): OffsetCommitState =
+      copy(
+        recordCount = 0L,
+        lastCommitTime = time,
+      )
   }
 
   object OffsetCommitState {
