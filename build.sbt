@@ -46,7 +46,7 @@ val V = new {
   val scalatest = "3.2.19"
   val scalatestPlus = "3.2.3.0"
   val snappy = "1.1.10.5"
-  val vulcan = "1.10.1"
+  val vulcan = "1.11.0"
 }
 
 lazy val kafka4s = project
