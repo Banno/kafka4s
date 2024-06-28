@@ -166,7 +166,7 @@ object RecordStream {
   private sealed trait WhetherCommits[P[_[_], _]] {
     def extrude[F[_], A](x: RecordStream[F, A]): P[F, A]
 
-    def chunk[F[_]: Clock: Concurrent, A](
+    def chunk[F[_]: Temporal, A](
         topical: Topical[A, ?],
         stream: P[F, IncomingRecords[A]],
     ): P[F, A]
@@ -193,7 +193,7 @@ object RecordStream {
       override def extrude[F[_], A](x: RecordStream[F, A]): Stream[F, A] =
         x.records
 
-      override def chunk[F[_]: Clock: Concurrent, A](
+      override def chunk[F[_]: Temporal, A](
           topical: Topical[A, ?],
           stream: Stream[F, IncomingRecords[A]],
       ): Stream[F, A] =
@@ -213,7 +213,7 @@ object RecordStream {
       override def extrude[F[_], A](x: RecordStream[F, A]): RecordStream[F, A] =
         x
 
-      override def chunk[F[_]: Clock: Concurrent, A](
+      override def chunk[F[_]: Temporal, A](
           topical: Topical[A, ?],
           stream: RecordStream[F, IncomingRecords[A]],
       ): RecordStream[F, A] =
