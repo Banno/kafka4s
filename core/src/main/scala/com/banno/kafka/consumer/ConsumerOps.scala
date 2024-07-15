@@ -437,13 +437,13 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
     )(a: A): F[B] =
       for {
         b <- process(a)
-        s <- ref.updateAndGet(_.update(offsets(a), count(a)))
+        s <- ref.updateAndGet(_.update(offsets(a), count(a))) //
         now <- C.monotonic
         case () <- s
           .needToCommit(maxRecordCount, now, maxElapsedTime)
           .traverse_(_ =>
             commitNextOffsets(lock, ref) *>
-            ref.update(_.resetCount(now))
+            ref.update(_.resetCount(now)) //
           )
       } yield b
 
