@@ -19,7 +19,8 @@ package consumer
 
 import cats.*
 import cats.effect.*
-import cats.effect.std.Semaphore
+import cats.effect.implicits.*
+import cats.effect.std.Queue
 import cats.syntax.all.*
 import fs2.*
 
@@ -417,98 +418,41 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       process: A => F[B],
       offsets: A => Map[TopicPartition, Long],
       count: A => Long,
-  )(implicit C: Temporal[F]): Stream[F, B] = {
-    val makeLock =
-      Stream.eval(Semaphore(1))
-    val makeState =
-      Stream.eval(
-        C.monotonic.flatMap(now => Ref.of(OffsetCommitState.empty(now)))
-      )
-    def commitNextOffsets(
-        lock: Semaphore[F],
-        state: Ref[F, OffsetCommitState],
-    ): F[Unit] =
-      lock.permit.use(_ =>
-        state.get.map(_.nextOffsets).flatMap(consumer.commitSync)
-      )
-    def processAndMaybeCommit(
-        lock: Semaphore[F],
-        ref: Ref[F, OffsetCommitState],
-    )(a: A): F[B] =
-      for {
-        b <- process(a)
-        s <- ref.updateAndGet(_.update(offsets(a), count(a))) //
-        now <- C.monotonic
-        case () <- s
-          .needToCommit(maxRecordCount, now, maxElapsedTime)
-          .traverse_(_ =>
-            commitNextOffsets(lock, ref) *>
-            ref.update(_.resetCount(now)) //
-          )
-      } yield b
+  )(implicit T: Temporal[F]): Stream[F, B] = {
+    val maxRecordCount0 =
+      if (maxRecordCount > Int.MaxValue) Int.MaxValue
+      else maxRecordCount.toInt
 
-    def periodicallyCommit(
-        lock: Semaphore[F],
-        ref: Ref[F, OffsetCommitState],
-    ): Stream[F, Unit] =
-      Stream
-        .fixedDelay(maxElapsedTime)
-        .evalMap(_ => commitNextOffsets(lock, ref))
+    Stream.eval(Queue.unbounded[F, Option[Map[TopicPartition, Long]]]).flatMap {
+      offsetQueue =>
 
-    makeLock.flatMap(lock =>
-      makeState.flatMap(ref =>
-        stream
-          .evalMap(processAndMaybeCommit(lock, ref))
-          .concurrently(periodicallyCommit(lock, ref))
-          .onFinalize(commitNextOffsets(lock, ref))
-      )
-    )
-  }
+        def processAndEnqueueOffsets(a: A): F[B] = {
+          val num = count(a).toInt
+          val commitInfo = Some(offsets(a))
 
-  case class OffsetCommitState(
-      offsets: Map[TopicPartition, Long],
-      recordCount: Long,
-      lastCommitTime: FiniteDuration,
-  ) {
-    def update(os: Map[TopicPartition, Long], count: Long): OffsetCommitState =
-      copy(
-        offsets = offsets ++ os,
-        recordCount = recordCount + count,
-      )
+          process(a).onError(_ => offsetQueue.offer(None)) <*   // Signal to flush the commit stream
+            offsetQueue.offer(commitInfo).replicateA_(num)      // Stuff the queue to trigger the barrier
+        }
 
-    def needToCommit(
-        maxRecordCount: Long,
-        now: FiniteDuration,
-        maxElapsedTime: FiniteDuration,
-    ): Option[Map[TopicPartition, OffsetAndMetadata]] = {
-      (recordCount >= maxRecordCount || (now - lastCommitTime) >= maxElapsedTime)
-        .guard[Option]
-        .as(nextOffsets)
+        def doCommit(chunk: Chunk[Map[TopicPartition, Long]]): F[Unit] =
+          if(chunk.isEmpty) ().pure[F]
+          else {
+            val offsets = chunk.foldLeft(Map.empty[TopicPartition, Long])(_ ++ _)
+            val nextOffsets = offsets.view.mapValues(o => new OffsetAndMetadata(o + 1)).toMap
+            consumer.commitSync(nextOffsets)
+          }
+
+        val commitStream =
+          Stream.fromQueueNoneTerminated(offsetQueue)
+            .groupWithin(maxRecordCount0, maxElapsedTime)
+            .evalMap(doCommit)
+
+        val processStream =
+          stream
+            .evalMap(processAndEnqueueOffsets)
+            .onFinalize(offsetQueue.offer(None))                // Signal to flush the commit stream
+
+        Stream.eval(commitStream.compile.drain.start) *> processStream
     }
-
-    def nextOffsets: Map[TopicPartition, OffsetAndMetadata] =
-      offsets.view.mapValues(o => new OffsetAndMetadata(o + 1)).toMap
-
-    def reset(time: FiniteDuration): OffsetCommitState =
-      OffsetCommitState.empty(time)
-
-    def resetCount(time: FiniteDuration): OffsetCommitState =
-      copy(
-        recordCount = 0L,
-        lastCommitTime = time,
-      )
   }
-
-  object OffsetCommitState {
-    val empty = OffsetCommitState(
-      offsets = Map.empty,
-      recordCount = 0L,
-      lastCommitTime = 0.millis,
-    )
-    def empty(time: FiniteDuration): OffsetCommitState =
-      empty.copy(
-        lastCommitTime = time
-      )
-  }
-
 }

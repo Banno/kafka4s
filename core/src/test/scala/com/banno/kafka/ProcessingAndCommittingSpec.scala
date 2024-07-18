@@ -54,6 +54,52 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
     ConsumerApi.resource[IO, Int, Int](configs2: _*)
   }
 
+  object Offset {
+    def unapply(r: Any): Option[Int] =
+      r match {
+        case m: Map[_, _] =>
+          m.toList match {
+            case Nil => Some(0)
+            case List((_, o: OffsetAndMetadata)) => Some(o.offset.toInt)
+            case _ => None
+          }
+        case _ => None
+      }
+  }
+
+  def dedupe(os: List[Int]): List[Int] =
+    if(os.isEmpty) Nil
+    else os.head :: ((os zip os.tail) collect { case (x, y) if x != y => y })
+
+  def checkOffsets(sent: Int, results: List[Any], maxRecordCount: Int): Unit = {
+    assert((0 until results.size/2).forall(i => results(i*2) == i))
+
+    val offsets = dedupe(results.collect { case Offset(o) => o }.dropWhile(_ == 0))
+    assertEquals(offsets.last, sent)
+    assert(offsets.zipWithIndex.forall { case (o, i) => o == (i+1)*maxRecordCount })
+  }
+
+  def checkBatchedOffsets(sent: Int, results: List[Any], batchSize: Int, maxRecordCount: Int): Unit = {
+    assert((0 until results.size/2).forall(i => results(i*2) == List.iterate(batchSize*i, batchSize)(_ + 1)))
+
+    val offsets = dedupe(results.collect { case Offset(o) => o }.dropWhile(_ == 0))
+    assertEquals(offsets.last, sent)
+    assert(offsets.zipWithIndex.forall { case (o, i) => o == (i+1)*maxRecordCount })
+  }
+
+  def checkOffsetsFuzzy(sent: Int, results: List[Any], maxRecordCount: Int): Unit = {
+    assert((0 until results.size/2).forall(i => results(i*2) == i))
+
+    val offsets = results.collect { case Offset(o) => o }
+    assertEquals(offsets.last, sent)
+    assert(offsets.zipWithIndex.forall { case (o, i) => (i+1-o) < (maxRecordCount+1) })
+  }
+
+  def committed(consumer: ConsumerApi[IO, Int, Int], ps: Set[TopicPartition], n: Int, finalWait: FiniteDuration = 10.millis): Stream[IO, Map[TopicPartition, OffsetAndMetadata]] =
+    Stream.eval(IO.sleep(10.millis) *> consumer.partitionQueries.committed(ps)).repeatN(n.toLong-1) ++
+    Stream.sleep_[IO](finalWait) ++ // commits are now asynchronous wrt processing so wait to avoid missing the last
+    Stream.eval(consumer.partitionQueries.committed(ps))
+
   test("processingAndCommitting commits after number of records") {
     producerResource.use { producer =>
       consumerResource().use { consumer =>
@@ -72,38 +118,16 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
             maxRecordCount = 2,
             maxElapsedTime = Long.MaxValue.nanos,
           )(_.value.pure[IO])
-          committed = Stream.repeatEval(
-            consumer.partitionQueries.committed(ps)
-          )
           results <- pac
             .take(values.size.toLong)
-            .interleave(committed)
+            .interleave(committed(consumer, ps, values.size))
             .compile
             .toList
         } yield {
           assertEquals(c0, empty)
           assertEquals(results.size, values.size * 2)
-          // TODO rewrite this to use values, not so hard-coded
-          assertEquals(results(0), 0)
-          assertEquals(results(1), empty)
-          assertEquals(results(2), 1)
-          assertEquals(results(3), offsets(p, 2))
-          assertEquals(results(4), 2)
-          assertEquals(results(5), offsets(p, 2))
-          assertEquals(results(6), 3)
-          assertEquals(results(7), offsets(p, 4))
-          assertEquals(results(8), 4)
-          assertEquals(results(9), offsets(p, 4))
-          assertEquals(results(10), 5)
-          assertEquals(results(11), offsets(p, 6))
-          assertEquals(results(12), 6)
-          assertEquals(results(13), offsets(p, 6))
-          assertEquals(results(14), 7)
-          assertEquals(results(15), offsets(p, 8))
-          assertEquals(results(16), 8)
-          assertEquals(results(17), offsets(p, 8))
-          assertEquals(results(18), 9)
-          assertEquals(results(19), offsets(p, 10))
+
+          checkOffsets(10, results, 2)
         }
       }
     }
@@ -127,34 +151,21 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
             maxRecordCount = 2,
             maxElapsedTime = Long.MaxValue.nanos,
           )(_.recordList(topic).map(_.value).pure[IO])
-          committed = Stream.repeatEval(
-            consumer.partitionQueries.committed(ps)
-          )
           results <- pac
             .take(values.size.toLong / 2)
-            .interleave(committed)
+            .interleave(committed(consumer, ps, values.size/2))
             .compile
             .toList
         } yield {
           assertEquals(c0, empty)
           assertEquals(results.size, values.size)
-          // TODO rewrite this to use values, not so hard-coded
-          assertEquals(results(0), List(0, 1))
-          assertEquals(results(1), offsets(p, 2))
-          assertEquals(results(2), List(2, 3))
-          assertEquals(results(3), offsets(p, 4))
-          assertEquals(results(4), List(4, 5))
-          assertEquals(results(5), offsets(p, 6))
-          assertEquals(results(6), List(6, 7))
-          assertEquals(results(7), offsets(p, 8))
-          assertEquals(results(8), List(8, 9))
-          assertEquals(results(9), offsets(p, 10))
+
+          checkBatchedOffsets(10, results, 2, 2)
         }
       }
     }
   }
 
-  // this has a real danger of becoming a "flaky test" due to its timing assumptions
   test("processingAndCommitting commits after elapsed time") {
     producerResource.use { producer =>
       consumerResource().use { consumer =>
@@ -173,38 +184,16 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
             maxRecordCount = Long.MaxValue,
             maxElapsedTime = 200.millis,
           )(r => IO.sleep(101.millis).as(r.value))
-          committed = Stream.repeatEval(
-            consumer.partitionQueries.committed(ps)
-          )
           results <- pac
             .take(values.size.toLong)
-            .interleave(committed)
+            .interleave(committed(consumer, ps, values.size, 300.millis))
             .compile
             .toList
         } yield {
           assertEquals(c0, empty)
           assertEquals(results.size, values.size * 2)
-          // TODO rewrite this to use values, not so hard-coded
-          assertEquals(results(0), 0)
-          assertEquals(results(1), empty)
-          assertEquals(results(2), 1)
-          assertEquals(results(3), offsets(p, 2))
-          assertEquals(results(4), 2)
-          assertEquals(results(5), offsets(p, 2))
-          assertEquals(results(6), 3)
-          assertEquals(results(7), offsets(p, 4))
-          assertEquals(results(8), 4)
-          assertEquals(results(9), offsets(p, 4))
-          assertEquals(results(10), 5)
-          assertEquals(results(11), offsets(p, 6))
-          assertEquals(results(12), 6)
-          assertEquals(results(13), offsets(p, 6))
-          assertEquals(results(14), 7)
-          assertEquals(results(15), offsets(p, 8))
-          assertEquals(results(16), 8)
-          assertEquals(results(17), offsets(p, 8))
-          assertEquals(results(18), 9)
-          assertEquals(results(19), offsets(p, 10))
+
+          checkOffsetsFuzzy(10, results, 2)
         }
       }
     }
@@ -239,6 +228,7 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
               v.pure[IO]
           }
           results <- pac.compile.toList.attempt
+          _  <- IO.sleep(10.millis) // commits are now asynchronous wrt processing so wait to avoid missing the last
           c1 <- consumer.partitionQueries.committed(ps)
         } yield {
           assertEquals(c0, empty)
@@ -278,6 +268,7 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
               vs.pure[IO]
           }
           results <- pac.compile.toList.attempt
+          _  <- IO.sleep(10.millis) // commits are now asynchronous wrt processing so wait to avoid missing the last
           c1 <- consumer.partitionQueries.committed(ps)
         } yield {
           assertEquals(c0, empty)
@@ -308,6 +299,7 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
             maxElapsedTime = Long.MaxValue.nanos,
           )(_.value.pure[IO])
           results <- pac.take(values.size.toLong).compile.toList
+          _  <- IO.sleep(10.millis) // commits are now asynchronous wrt processing so wait to avoid missing the last
           c1 <- consumer.partitionQueries.committed(ps)
         } yield {
           assertEquals(c0, empty)
@@ -347,6 +339,7 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
           fiber <- pac.compile.toList.start
           () <- cancelSignal.get *> fiber.cancel
           outcome <- fiber.join
+          _  <- IO.sleep(10.millis) // commits are now asynchronous wrt processing so wait to avoid missing the last
           c1 <- consumer.partitionQueries.committed(ps)
         } yield {
           assertEquals(c0, empty)
@@ -359,5 +352,4 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
       }
     }
   }
-
 }
