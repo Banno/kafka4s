@@ -425,32 +425,40 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
 
     Stream.eval(Queue.unbounded[F, Option[Map[TopicPartition, Long]]]).flatMap {
       offsetQueue =>
-
         def processAndEnqueueOffsets(a: A): F[B] = {
           val num = count(a).toInt
           val commitInfo = Some(offsets(a))
 
-          process(a).onError(_ => offsetQueue.offer(None)) <*   // Signal to flush the commit stream
-            offsetQueue.offer(commitInfo).replicateA_(num)      // Stuff the queue to trigger the barrier
+          process(a).onError(_ =>
+            offsetQueue.offer(None)
+          ) <* // Signal to flush the commit stream
+          offsetQueue
+            .offer(commitInfo)
+            .replicateA_(num) // Stuff the queue to trigger the barrier
         }
 
         def doCommit(chunk: Chunk[Map[TopicPartition, Long]]): F[Unit] =
-          if(chunk.isEmpty) ().pure[F]
+          if (chunk.isEmpty) ().pure[F]
           else {
-            val offsets = chunk.foldLeft(Map.empty[TopicPartition, Long])(_ ++ _)
-            val nextOffsets = offsets.view.mapValues(o => new OffsetAndMetadata(o + 1)).toMap
+            val offsets =
+              chunk.foldLeft(Map.empty[TopicPartition, Long])(_ ++ _)
+            val nextOffsets =
+              offsets.view.mapValues(o => new OffsetAndMetadata(o + 1)).toMap
             consumer.commitSync(nextOffsets)
           }
 
         val commitStream =
-          Stream.fromQueueNoneTerminated(offsetQueue)
+          Stream
+            .fromQueueNoneTerminated(offsetQueue)
             .groupWithin(maxRecordCount0, maxElapsedTime)
             .evalMap(doCommit)
 
         val processStream =
           stream
             .evalMap(processAndEnqueueOffsets)
-            .onFinalize(offsetQueue.offer(None))                // Signal to flush the commit stream
+            .onFinalize(
+              offsetQueue.offer(None)
+            ) // Signal to flush the commit stream
 
         Stream.eval(commitStream.compile.drain.start) *> processStream
     }

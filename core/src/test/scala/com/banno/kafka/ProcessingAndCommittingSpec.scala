@@ -68,36 +68,68 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
   }
 
   def dedupe(os: List[Int]): List[Int] =
-    if(os.isEmpty) Nil
+    if (os.isEmpty) Nil
     else os.head :: ((os zip os.tail) collect { case (x, y) if x != y => y })
 
   def checkOffsets(sent: Int, results: List[Any], maxRecordCount: Int): Unit = {
-    assert((0 until results.size/2).forall(i => results(i*2) == i))
+    assert((0 until results.size / 2).forall(i => results(i * 2) == i))
 
-    val offsets = dedupe(results.collect { case Offset(o) => o }.dropWhile(_ == 0))
+    val offsets = dedupe(
+      results.collect { case Offset(o) => o }.dropWhile(_ == 0)
+    )
     assertEquals(offsets.last, sent)
-    assert(offsets.zipWithIndex.forall { case (o, i) => o == (i+1)*maxRecordCount })
+    assert(offsets.zipWithIndex.forall { case (o, i) =>
+      o == (i + 1) * maxRecordCount
+    })
   }
 
-  def checkBatchedOffsets(sent: Int, results: List[Any], batchSize: Int, maxRecordCount: Int): Unit = {
-    assert((0 until results.size/2).forall(i => results(i*2) == List.iterate(batchSize*i, batchSize)(_ + 1)))
+  def checkBatchedOffsets(
+      sent: Int,
+      results: List[Any],
+      batchSize: Int,
+      maxRecordCount: Int,
+  ): Unit = {
+    assert(
+      (0 until results.size / 2).forall(i =>
+        results(i * 2) == List.iterate(batchSize * i, batchSize)(_ + 1)
+      )
+    )
 
-    val offsets = dedupe(results.collect { case Offset(o) => o }.dropWhile(_ == 0))
+    val offsets = dedupe(
+      results.collect { case Offset(o) => o }.dropWhile(_ == 0)
+    )
     assertEquals(offsets.last, sent)
-    assert(offsets.zipWithIndex.forall { case (o, i) => o == (i+1)*maxRecordCount })
+    assert(offsets.zipWithIndex.forall { case (o, i) =>
+      o == (i + 1) * maxRecordCount
+    })
   }
 
-  def checkOffsetsFuzzy(sent: Int, results: List[Any], maxRecordCount: Int): Unit = {
-    assert((0 until results.size/2).forall(i => results(i*2) == i))
+  def checkOffsetsFuzzy(
+      sent: Int,
+      results: List[Any],
+      maxRecordCount: Int,
+  ): Unit = {
+    assert((0 until results.size / 2).forall(i => results(i * 2) == i))
 
     val offsets = results.collect { case Offset(o) => o }
     assertEquals(offsets.last, sent)
-    assert(offsets.zipWithIndex.forall { case (o, i) => (i+1-o) < (maxRecordCount+1) })
+    assert(offsets.zipWithIndex.forall { case (o, i) =>
+      (i + 1 - o) < (maxRecordCount + 1)
+    })
   }
 
-  def committed(consumer: ConsumerApi[IO, Int, Int], ps: Set[TopicPartition], n: Int, finalWait: FiniteDuration = 10.millis): Stream[IO, Map[TopicPartition, OffsetAndMetadata]] =
-    Stream.eval(IO.sleep(10.millis) *> consumer.partitionQueries.committed(ps)).repeatN(n.toLong-1) ++
-    Stream.sleep_[IO](finalWait) ++ // commits are now asynchronous wrt processing so wait to avoid missing the last
+  def committed(
+      consumer: ConsumerApi[IO, Int, Int],
+      ps: Set[TopicPartition],
+      n: Int,
+      finalWait: FiniteDuration = 10.millis,
+  ): Stream[IO, Map[TopicPartition, OffsetAndMetadata]] =
+    Stream
+      .eval(IO.sleep(10.millis) *> consumer.partitionQueries.committed(ps))
+      .repeatN(n.toLong - 1) ++
+    Stream.sleep_[IO](
+      finalWait
+    ) ++ // commits are now asynchronous wrt processing so wait to avoid missing the last
     Stream.eval(consumer.partitionQueries.committed(ps))
 
   test("processingAndCommitting commits after number of records") {
@@ -153,7 +185,7 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
           )(_.recordList(topic).map(_.value).pure[IO])
           results <- pac
             .take(values.size.toLong / 2)
-            .interleave(committed(consumer, ps, values.size/2))
+            .interleave(committed(consumer, ps, values.size / 2))
             .compile
             .toList
         } yield {
@@ -228,7 +260,9 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
               v.pure[IO]
           }
           results <- pac.compile.toList.attempt
-          _  <- IO.sleep(10.millis) // commits are now asynchronous wrt processing so wait to avoid missing the last
+          _ <- IO.sleep(
+            10.millis
+          ) // commits are now asynchronous wrt processing so wait to avoid missing the last
           c1 <- consumer.partitionQueries.committed(ps)
         } yield {
           assertEquals(c0, empty)
@@ -268,7 +302,9 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
               vs.pure[IO]
           }
           results <- pac.compile.toList.attempt
-          _  <- IO.sleep(10.millis) // commits are now asynchronous wrt processing so wait to avoid missing the last
+          _ <- IO.sleep(
+            10.millis
+          ) // commits are now asynchronous wrt processing so wait to avoid missing the last
           c1 <- consumer.partitionQueries.committed(ps)
         } yield {
           assertEquals(c0, empty)
@@ -299,7 +335,9 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
             maxElapsedTime = Long.MaxValue.nanos,
           )(_.value.pure[IO])
           results <- pac.take(values.size.toLong).compile.toList
-          _  <- IO.sleep(10.millis) // commits are now asynchronous wrt processing so wait to avoid missing the last
+          _ <- IO.sleep(
+            10.millis
+          ) // commits are now asynchronous wrt processing so wait to avoid missing the last
           c1 <- consumer.partitionQueries.committed(ps)
         } yield {
           assertEquals(c0, empty)
@@ -339,7 +377,9 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
           fiber <- pac.compile.toList.start
           () <- cancelSignal.get *> fiber.cancel
           outcome <- fiber.join
-          _  <- IO.sleep(10.millis) // commits are now asynchronous wrt processing so wait to avoid missing the last
+          _ <- IO.sleep(
+            10.millis
+          ) // commits are now asynchronous wrt processing so wait to avoid missing the last
           c1 <- consumer.partitionQueries.committed(ps)
         } yield {
           assertEquals(c0, empty)
