@@ -29,6 +29,7 @@ import scala.concurrent.duration.*
 import natchez.Trace.Implicits.noop
 
 class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
+  override val munitIOTimeout = 90.seconds
 
   def offsets(
       p: TopicPartition,
@@ -390,6 +391,186 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
           assertEquals(c1, offsets(p, cancelOn.toLong))
         }
       }
+    }
+  }
+
+  test("keepalive stream reads committed offsets on restart") {
+    producerResource.use { producer =>
+      for {
+        groupId <- IO(genGroupId)
+        topic <- createTestTopic[IO]()
+        p = new TopicPartition(topic, 0)
+        ps = Set(p)
+        keepAlive = Some(CommittedOffsetKeepAlive(1.second, ps))
+        records = (0 to 9).toList.map(v => new ProducerRecord(topic, v, v))
+        count = records.size.toLong
+        _ <- producer.sendAsyncBatch(records)
+        cpause <- consumerResource(GroupId(groupId)).use { consumer =>
+          for {
+            _ <- consumer.subscribe(topic)
+            c0 <- consumer.partitionQueries.committed(ps)
+            pac = consumer.processingAndCommitting(
+              pollTimeout = 100.millis,
+              maxRecordCount = 1,
+              maxElapsedTime = Long.MaxValue.nanos,
+              keepAlive,
+            )(_.value.pure[IO])
+            results <- pac.take(count / 2).compile.toList
+            _ <- IO.sleep(
+              1000.millis
+            ) // commits are now asynchronous wrt processing so wait to avoid missing the last
+            c1 <- consumer.partitionQueries.committed(ps)
+          } yield {
+            assert(c0.isEmpty)
+            assertEquals(results, (0 to 4).toList)
+            c1
+          }
+        }
+        crestart <- consumerResource(GroupId(groupId)).use { consumer =>
+          for {
+            _ <- consumer.subscribe(topic)
+            c0 <- consumer.partitionQueries.committed(ps)
+            pac = consumer.processingAndCommitting(
+              pollTimeout = 100.millis,
+              maxRecordCount = 1,
+              maxElapsedTime = Long.MaxValue.nanos,
+              keepAlive,
+            )(_.value.pure[IO])
+            results <- pac.take(count).interruptAfter(100.millis).compile.toList
+            _ <- IO.sleep(
+              1000.millis
+            ) // commits are now asynchronous wrt processing so wait to avoid missing the last
+            c1 <- consumer.partitionQueries.committed(ps)
+          } yield {
+            assertEquals(results, (5 to 9).toList)
+            assertEquals(c0(p).offset, count / 2)
+            assertEquals(c1(p).offset, count)
+            c0
+          }
+        }
+      } yield {
+        assertEquals(cpause(p).offset, count / 2)
+        assertEquals(crestart(p).offset, count / 2)
+      }
+    }
+  }
+
+  test("offsets expire with no keepalive".ignore) {
+    producerResource.use { producer =>
+      for {
+        groupId <- IO(genGroupId)
+        topic <- createTestTopic[IO]()
+        p = new TopicPartition(topic, 0)
+        values = (0 to 9).toList
+        records = values.map(v => new ProducerRecord[Int, Int](topic, v, v))
+        pstream = Stream.emits[IO, ProducerRecord[Int, Int]](
+          records.take(5)
+        ) ++ Stream.sleep_[IO](75.seconds) ++ Stream
+          .emits[IO, ProducerRecord[Int, Int]](records.drop(5))
+        _ <- producer.sinkAsync(pstream).compile.drain.start
+        _ <-
+          consumerResource(GroupId(groupId)).use { consumer =>
+            for {
+              _ <- consumer.assign(List(p))
+              pac = consumer.processingAndCommitting(
+                pollTimeout = 100.millis,
+                maxRecordCount = 1,
+                maxElapsedTime = Long.MaxValue.nanos,
+              )(_.value.pure[IO])
+              results <- pac
+                .evalTap(IO.println)
+                .interruptAfter(
+                  70.seconds
+                ) // continue until the committed offsets expire
+                .take(values.size.toLong)
+                .compile
+                .toList
+              _ <- IO.println("restarting consumer")
+            } yield {
+              assertEquals(results, List(0, 1, 2, 3, 4))
+            }
+          }
+        _ <-
+          consumerResource(GroupId(groupId)).use { consumer =>
+            for {
+              _ <- IO.println("consumer restarted")
+              _ <- consumer.assign(List(p))
+              pac = consumer.processingAndCommitting(
+                pollTimeout = 100.millis,
+                maxRecordCount = 1,
+                maxElapsedTime = Long.MaxValue.nanos,
+              )(_.value.pure[IO])
+              results <- pac
+                .evalTap(IO.println)
+                .take(values.size.toLong)
+                .compile
+                .toList
+            } yield {
+              assertEquals(results, List(0, 1, 2, 3, 4, 5, 6, 7, 8, 9))
+            }
+          }
+      } yield ()
+    }
+  }
+
+  test("offsets preserved with keepalive".ignore) {
+    producerResource.use { producer =>
+      for {
+        groupId <- IO(genGroupId)
+        topic <- createTestTopic[IO]()
+        p = new TopicPartition(topic, 0)
+        ps = Set(p)
+        keepAlive = Some(CommittedOffsetKeepAlive(1.second, ps))
+        values = (0 to 9).toList
+        records = values.map(v => new ProducerRecord[Int, Int](topic, v, v))
+        pstream = Stream.emits[IO, ProducerRecord[Int, Int]](
+          records.take(5)
+        ) ++ Stream.sleep_[IO](75.seconds) ++ Stream
+          .emits[IO, ProducerRecord[Int, Int]](records.drop(5))
+        _ <- producer.sinkAsync(pstream).compile.drain.start
+        _ <-
+          consumerResource(GroupId(groupId)).use { consumer =>
+            for {
+              _ <- consumer.assign(List(p))
+              pac = consumer.processingAndCommitting(
+                pollTimeout = 100.millis,
+                maxRecordCount = 1,
+                maxElapsedTime = Long.MaxValue.nanos,
+                keepAlive,
+              )(_.value.pure[IO])
+              results <- pac
+                .interruptAfter(
+                  70.seconds
+                ) // continue past committed offsets expiry
+                .evalTap(IO.println)
+                .take(values.size.toLong)
+                .compile
+                .toList
+              _ <- IO.println("restarting consumer")
+            } yield {
+              assertEquals(results, List(0, 1, 2, 3, 4))
+            }
+          }
+        _ <-
+          consumerResource(GroupId(groupId)).use { consumer =>
+            for {
+              _ <- IO.println("consumer restarted")
+              _ <- consumer.assign(List(p))
+              pac = consumer.processingAndCommitting(
+                pollTimeout = 100.millis,
+                maxRecordCount = 1,
+                maxElapsedTime = Long.MaxValue.nanos,
+              )(_.value.pure[IO])
+              results <- pac
+                .evalTap(IO.println)
+                .take(values.size.toLong / 2)
+                .compile
+                .toList
+            } yield {
+              assertEquals(results, List(5, 6, 7, 8, 9))
+            }
+          }
+      } yield ()
     }
   }
 }

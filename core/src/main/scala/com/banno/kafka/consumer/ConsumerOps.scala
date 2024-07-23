@@ -20,7 +20,7 @@ package consumer
 import cats.*
 import cats.effect.*
 import cats.effect.implicits.*
-import cats.effect.std.Queue
+import cats.effect.std.{Queue, Semaphore}
 import cats.syntax.all.*
 import fs2.*
 
@@ -369,12 +369,14 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       pollTimeout: FiniteDuration,
       maxRecordCount: Long = 1000L,
       maxElapsedTime: FiniteDuration = 60.seconds,
+      committedOffsetKeepAlive: Option[CommittedOffsetKeepAlive] = None,
   )(
       process: ConsumerRecord[K, V] => F[A]
   )(implicit S: Temporal[F]): Stream[F, A] =
     processingAndCommitting[ConsumerRecord[K, V], A](
       maxRecordCount,
       maxElapsedTime,
+      committedOffsetKeepAlive,
     )(
       consumer.recordStream(pollTimeout),
       process,
@@ -418,49 +420,125 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       process: A => F[B],
       offsets: A => Map[TopicPartition, Long],
       count: A => Long,
+  )(implicit T: Temporal[F]): Stream[F, B] =
+    processingAndCommitting(maxRecordCount, maxElapsedTime, None)(
+      stream,
+      process,
+      offsets,
+      count,
+    )
+
+  def processingAndCommitting[A, B](
+      maxRecordCount: Long,
+      maxElapsedTime: FiniteDuration,
+      committedOffsetKeepAlive: Option[CommittedOffsetKeepAlive],
+  )(
+      stream: Stream[F, A],
+      process: A => F[B],
+      offsets: A => Map[TopicPartition, Long],
+      count: A => Long,
   )(implicit T: Temporal[F]): Stream[F, B] = {
     val maxRecordCount0 =
       if (maxRecordCount > Int.MaxValue) Int.MaxValue
       else maxRecordCount.toInt
 
-    Stream.eval(Queue.unbounded[F, Option[Map[TopicPartition, Long]]]).flatMap {
-      offsetQueue =>
-        def processAndEnqueueOffsets(a: A): F[B] = {
-          val num = count(a).toInt
-          val commitInfo = Some(offsets(a))
+    val optKas: F[Option[(Semaphore[F], Ref[F, Map[TopicPartition, Long]])]] =
+      committedOffsetKeepAlive.traverse {
+        case CommittedOffsetKeepAlive(_, topics) =>
+          for {
+            lock <- Semaphore(1)
+            offsets <- consumer.partitionQueries.committed(topics)
+            ref <- Ref.of(
+              offsets.view.mapValues(_.offset).toMap
+            )
+          } yield (lock, ref)
+      }
 
-          process(a).onError(_ =>
+    val init =
+      (
+        Queue.unbounded[F, Option[Map[TopicPartition, Long]]],
+        optKas,
+      ).tupled
+
+    Stream.eval(init).flatMap { case (offsetQueue, optKas) =>
+      def processAndEnqueueOffsets(a: A): F[B] = {
+        val num = count(a).toInt
+        val offsets0 = offsets(a)
+        val commitInfo = Some(offsets0)
+
+        for {
+          b <- process(a).onError(_ =>
             offsetQueue.offer(None)
-          ) <* // Signal to flush the commit stream
-          offsetQueue
+          ) // Signal to flush the commit stream
+          _ <- offsetQueue
             .offer(commitInfo)
             .replicateA_(num) // Stuff the queue to trigger the barrier
+        } yield b
+      }
+
+      def doCommit(chunk: Chunk[Map[TopicPartition, Long]]): F[Unit] =
+        Temporal[F].uncancelable { _ =>
+          (if (chunk.isEmpty) ().pure[F]
+           else {
+             val offsets =
+               chunk.foldLeft(Map.empty[TopicPartition, Long])(_ ++ _)
+             val nextOffsets =
+               offsets.view.mapValues(o => new OffsetAndMetadata(o + 1)).toMap
+
+             optKas match {
+               case None => consumer.commitSync(nextOffsets)
+               case Some((lock, ref)) =>
+                 lock.permit.use { _ =>
+                   consumer.commitSync(nextOffsets) *>
+                   ref.update(_ ++ offsets)
+                 }
+             }
+           })
         }
 
-        def doCommit(chunk: Chunk[Map[TopicPartition, Long]]): F[Unit] =
-          if (chunk.isEmpty) ().pure[F]
-          else {
-            val offsets =
-              chunk.foldLeft(Map.empty[TopicPartition, Long])(_ ++ _)
-            val nextOffsets =
-              offsets.view.mapValues(o => new OffsetAndMetadata(o + 1)).toMap
-            consumer.commitSync(nextOffsets)
+      def doKeepAlive(
+          lock: Semaphore[F],
+          ref: Ref[F, Map[TopicPartition, Long]],
+      ): F[Unit] =
+        lock.permit.use { _ =>
+          for {
+            offsets <- ref.get
+            nextOffsets = offsets.view
+              .mapValues(o => new OffsetAndMetadata(o + 1))
+              .toMap
+            _ <- consumer.commitSync(nextOffsets)
+          } yield ()
+        }
+
+      val keepAliveStream: Stream[F, Unit] = {
+        (committedOffsetKeepAlive.map(_.interval), optKas).tupled
+          .map { case (interval, (lock, ref)) =>
+            Stream.fixedRate(interval).evalMap(_ => doKeepAlive(lock, ref))
           }
+          .getOrElse(Stream.empty)
+      }
 
-        val commitStream =
-          Stream
-            .fromQueueNoneTerminated(offsetQueue)
-            .groupWithin(maxRecordCount0, maxElapsedTime)
-            .evalMap(doCommit)
+      val commitStream =
+        Stream
+          .fromQueueNoneTerminated(offsetQueue)
+          .groupWithin(maxRecordCount0, maxElapsedTime)
+          .evalMap(doCommit)
 
-        val processStream =
-          stream
-            .evalMap(processAndEnqueueOffsets)
-            .onFinalize(
-              offsetQueue.offer(None)
-            ) // Signal to flush the commit stream
+      val processStream =
+        stream
+          .evalMap(processAndEnqueueOffsets)
+          .onFinalize(
+            offsetQueue.offer(None)
+          ) // Signal to flush the commit stream
 
-        Stream.eval(commitStream.compile.drain.start) *> processStream
+      Stream.eval(commitStream.compile.drain.start) *>
+      processStream
+        .concurrently(keepAliveStream)
     }
   }
 }
+
+case class CommittedOffsetKeepAlive(
+    interval: FiniteDuration,
+    topics: Set[TopicPartition],
+)
