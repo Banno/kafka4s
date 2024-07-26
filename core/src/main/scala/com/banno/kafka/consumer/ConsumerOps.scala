@@ -20,9 +20,10 @@ package consumer
 import cats.*
 import cats.effect.*
 import cats.effect.implicits.*
-import cats.effect.std.{Queue, Semaphore}
+import cats.effect.std.Semaphore
 import cats.syntax.all.*
 import fs2.*
+import fs2.concurrent.Channel
 
 import scala.jdk.CollectionConverters.*
 import scala.concurrent.duration.*
@@ -346,13 +347,32 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
     * failed records when the consumer is closed, and will likely result in less
     * reprocessing after a failure. The consumer must be configured to disable
     * offset auto-commits.
+    *
+    * If keepAliveInterval is provided and finite, and topics have been manually
+    * assigned, then committed offsets will be periodically refreshed to prevent
+    * them from expiring for low traffic topics.
     */
-  def readProcessCommit[A](pollTimeout: FiniteDuration)(
+  def readProcessCommit[A](
+      pollTimeout: FiniteDuration,
+      keepAliveInterval: Duration = Duration.Inf,
+  )(
       process: ConsumerRecord[K, V] => F[A]
-  )(implicit F: ApplicativeError[F, Throwable]): Stream[F, A] =
-    consumer
-      .recordStream(pollTimeout)
-      .evalMap(r => process(r) <* consumer.commitSync(r.nextOffset))
+  )(implicit F: Temporal[F]): Stream[F, A] =
+    readProcessCommitAux[ConsumerRecord[K, V], A](keepAliveInterval)(
+      consumer.recordStream(pollTimeout),
+      process,
+      r => Map(new TopicPartition(r.topic, r.partition) -> r.offset),
+    )
+
+  private[kafka] def readProcessCommitAux[A, B](keepAliveInterval: Duration)(
+      stream: Stream[F, A],
+      process: A => F[B],
+      offsets: A => Map[TopicPartition, Long],
+  )(implicit F: Temporal[F]): Stream[F, B] = {
+    KeepAlive(keepAliveInterval) { keepAlive =>
+      stream.evalMap(a => process(a) <* keepAlive.commit(offsets(a)))
+    }
+  }
 
   /** Returns a stream that processes records one-at-a-time using the specified
     * function, committing offsets for successfully processed records, either
@@ -364,19 +384,23 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
     * using auto-offset-commits, since it will not commit offsets for failed
     * records when the consumer is closed. The consumer must be configured to
     * disable offset auto-commits, i.e. `enable.auto.commit=false`.
+    *
+    * If keepAliveInterval is provided and finite, and topics have been manually
+    * assigned, then committed offsets will be periodically refreshed to prevent
+    * them from expiring for low traffic topics.
     */
   def processingAndCommitting[A](
       pollTimeout: FiniteDuration,
       maxRecordCount: Long = 1000L,
       maxElapsedTime: FiniteDuration = 60.seconds,
-      committedOffsetKeepAlive: Option[CommittedOffsetKeepAlive] = None,
+      keepAliveInterval: Duration = Duration.Inf,
   )(
       process: ConsumerRecord[K, V] => F[A]
-  )(implicit S: Temporal[F]): Stream[F, A] =
-    processingAndCommitting[ConsumerRecord[K, V], A](
+  )(implicit F: Temporal[F]): Stream[F, A] =
+    processingAndCommittingAux[ConsumerRecord[K, V], A](
       maxRecordCount,
       maxElapsedTime,
-      committedOffsetKeepAlive,
+      keepAliveInterval,
     )(
       consumer.recordStream(pollTimeout),
       process,
@@ -394,17 +418,23 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
     * using auto-offset-commits, since it will not commit offsets for failed
     * records when the consumer is closed. The consumer must be configured to
     * disable offset auto-commits, i.e. `enable.auto.commit=false`.
+    *
+    * If keepAliveInterval is provided and finite, and topics have been manually
+    * assigned, then committed offsets will be periodically refreshed to prevent
+    * them from expiring for low traffic topics.
     */
   def processingAndCommittingBatched[A](
       pollTimeout: FiniteDuration,
       maxRecordCount: Long = 1000L,
       maxElapsedTime: FiniteDuration = 60.seconds,
+      keepAliveInterval: Duration = Duration.Inf,
   )(
       process: ConsumerRecords[K, V] => F[A]
-  )(implicit S: Temporal[F]): Stream[F, A] =
-    processingAndCommitting[ConsumerRecords[K, V], A](
+  )(implicit F: Temporal[F]): Stream[F, A] =
+    processingAndCommittingAux[ConsumerRecords[K, V], A](
       maxRecordCount,
       maxElapsedTime,
+      keepAliveInterval,
     )(
       consumer.recordsStream(pollTimeout),
       process,
@@ -412,94 +442,126 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
       _.count().toLong,
     )
 
-  def processingAndCommitting[A, B](
+  private[kafka] def processingAndCommittingAux[A, B](
       maxRecordCount: Long,
       maxElapsedTime: FiniteDuration,
+      keepAliveInterval: Duration,
   )(
       stream: Stream[F, A],
       process: A => F[B],
       offsets: A => Map[TopicPartition, Long],
       count: A => Long,
-  )(implicit T: Temporal[F]): Stream[F, B] =
-    processingAndCommitting(maxRecordCount, maxElapsedTime, None)(
-      stream,
-      process,
-      offsets,
-      count,
-    )
-
-  def processingAndCommitting[A, B](
-      maxRecordCount: Long,
-      maxElapsedTime: FiniteDuration,
-      committedOffsetKeepAlive: Option[CommittedOffsetKeepAlive],
-  )(
-      stream: Stream[F, A],
-      process: A => F[B],
-      offsets: A => Map[TopicPartition, Long],
-      count: A => Long,
-  )(implicit T: Temporal[F]): Stream[F, B] = {
+  )(implicit F: Temporal[F]): Stream[F, B] = {
     val maxRecordCount0 =
       if (maxRecordCount > Int.MaxValue) Int.MaxValue
       else maxRecordCount.toInt
 
-    val optKas: F[Option[(Semaphore[F], Ref[F, Map[TopicPartition, Long]])]] =
-      committedOffsetKeepAlive.traverse {
-        case CommittedOffsetKeepAlive(_, topics) =>
-          for {
-            lock <- Semaphore(1)
-            offsets <- consumer.partitionQueries.committed(topics)
-            ref <- Ref.of(
-              offsets.view.mapValues(_.offset).toMap
-            )
-          } yield (lock, ref)
-      }
+    Stream.eval(Channel.unbounded[F, Map[TopicPartition, Long]]).flatMap {
+      case offsetChannel =>
+        KeepAlive(keepAliveInterval) { keepAlive =>
+          def processAndEnqueueOffsets(a: A): F[B] = {
+            val num = count(a).toInt
+            val offsets0 = offsets(a)
 
-    val init =
-      (
-        Queue.unbounded[F, Option[Map[TopicPartition, Long]]],
-        optKas,
-      ).tupled
+            for {
+              b <- process(a).onError(_ =>
+                offsetChannel.close.void
+              ) // Signal to flush the commit stream
+              _ <- offsetChannel
+                .send(offsets0)
+                .replicateA_(num) // Stuff the queue to trigger the barrier
+            } yield b
+          }
 
-    Stream.eval(init).flatMap { case (offsetQueue, optKas) =>
-      def processAndEnqueueOffsets(a: A): F[B] = {
-        val num = count(a).toInt
-        val offsets0 = offsets(a)
-        val commitInfo = Some(offsets0)
+          def doCommit(chunk: Chunk[Map[TopicPartition, Long]]): F[Unit] =
+            F.uncancelable { _ =>
+              (if (chunk.isEmpty) ().pure[F]
+               else {
+                 val offsets =
+                   chunk.foldLeft(Map.empty[TopicPartition, Long])(_ ++ _)
+                 keepAlive.commit(offsets)
+               })
+            }
 
-        for {
-          b <- process(a).onError(_ =>
-            offsetQueue.offer(None)
-          ) // Signal to flush the commit stream
-          _ <- offsetQueue
-            .offer(commitInfo)
-            .replicateA_(num) // Stuff the queue to trigger the barrier
-        } yield b
-      }
+          val commitStream =
+            offsetChannel.stream
+              .groupWithin(maxRecordCount0, maxElapsedTime)
+              .evalMap(doCommit)
 
-      def doCommit(chunk: Chunk[Map[TopicPartition, Long]]): F[Unit] =
-        Temporal[F].uncancelable { _ =>
-          (if (chunk.isEmpty) ().pure[F]
-           else {
-             val offsets =
-               chunk.foldLeft(Map.empty[TopicPartition, Long])(_ ++ _)
-             val nextOffsets =
-               offsets.view.mapValues(o => new OffsetAndMetadata(o + 1)).toMap
+          val processStream =
+            stream
+              .evalMap(processAndEnqueueOffsets)
+              .onFinalize(
+                offsetChannel.close.void
+              ) // Signal to flush the commit stream
 
-             optKas match {
-               case None => consumer.commitSync(nextOffsets)
-               case Some((lock, ref)) =>
-                 lock.permit.use { _ =>
-                   consumer.commitSync(nextOffsets) *>
-                   ref.update(_ ++ offsets)
-                 }
-             }
-           })
+          Stream
+            .bracket(commitStream.compile.drain.start)(_.join.void)
+            .flatMap(_ => processStream)
         }
+    }
+  }
 
-      def doKeepAlive(
-          lock: Semaphore[F],
-          ref: Ref[F, Map[TopicPartition, Long]],
-      ): F[Unit] =
+  private sealed trait KeepAlive {
+    def commit(offsets: Map[TopicPartition, Long]): F[Unit]
+    def stream[A](gs: KeepAlive => Stream[F, A]): Stream[F, A]
+  }
+
+  private object KeepAlive {
+    def apply[A](interval: Duration)(
+        stream: KeepAlive => Stream[F, A]
+    )(implicit F: Temporal[F]): Stream[F, A] =
+      interval match {
+        case interval0: FiniteDuration =>
+          val init: F[KeepAlive] =
+            for {
+              assignments <- consumer.assignment
+              offsets <- consumer.partitionQueries.committed(
+                assignments
+              )
+              keepAlive <-
+                if (assignments.isEmpty) NoKeepAlive.pure[F]
+                else
+                  for {
+                    lock <- Semaphore(1)
+                    ref <- Ref.of(
+                      offsets.view.mapValues(_.offset).toMap
+                    )
+                  } yield HasKeepAlive(interval0, lock, ref)
+            } yield keepAlive
+
+          Stream.eval(init).flatMap(_.stream(stream))
+        case _ => stream(NoKeepAlive)
+      }
+
+    case object NoKeepAlive extends KeepAlive {
+      def commit(offsets: Map[TopicPartition, Long]): F[Unit] = {
+        val nextOffsets =
+          offsets.view.mapValues(o => new OffsetAndMetadata(o + 1)).toMap
+
+        consumer.commitSync(nextOffsets)
+      }
+
+      def stream[A](gs: KeepAlive => Stream[F, A]): Stream[F, A] = gs(this)
+    }
+
+    case class HasKeepAlive(
+        interval: FiniteDuration,
+        lock: Semaphore[F],
+        ref: Ref[F, Map[TopicPartition, Long]],
+    )(implicit F: Temporal[F])
+        extends KeepAlive {
+      def commit(offsets: Map[TopicPartition, Long]): F[Unit] = {
+        val nextOffsets =
+          offsets.view.mapValues(o => new OffsetAndMetadata(o + 1)).toMap
+
+        lock.permit.use { _ =>
+          consumer.commitSync(nextOffsets) *>
+          ref.update(_ ++ offsets)
+        }
+      }
+
+      val doKeepAlive: F[Unit] =
         lock.permit.use { _ =>
           for {
             offsets <- ref.get
@@ -510,35 +572,10 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
           } yield ()
         }
 
-      val keepAliveStream: Stream[F, Unit] = {
-        (committedOffsetKeepAlive.map(_.interval), optKas).tupled
-          .map { case (interval, (lock, ref)) =>
-            Stream.fixedRate(interval).evalMap(_ => doKeepAlive(lock, ref))
-          }
-          .getOrElse(Stream.empty)
-      }
-
-      val commitStream =
-        Stream
-          .fromQueueNoneTerminated(offsetQueue)
-          .groupWithin(maxRecordCount0, maxElapsedTime)
-          .evalMap(doCommit)
-
-      val processStream =
-        stream
-          .evalMap(processAndEnqueueOffsets)
-          .onFinalize(
-            offsetQueue.offer(None)
-          ) // Signal to flush the commit stream
-
-      Stream.eval(commitStream.compile.drain.start) *>
-      processStream
-        .concurrently(keepAliveStream)
+      def stream[A](gs: KeepAlive => Stream[F, A]): Stream[F, A] =
+        gs(this).concurrently(
+          Stream.fixedRate(interval).evalMap(_ => doKeepAlive)
+        )
     }
   }
 }
-
-case class CommittedOffsetKeepAlive(
-    interval: FiniteDuration,
-    topics: Set[TopicPartition],
-)

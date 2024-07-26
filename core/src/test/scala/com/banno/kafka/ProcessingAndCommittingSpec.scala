@@ -31,6 +31,10 @@ import natchez.Trace.Implicits.noop
 class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
   override val munitIOTimeout = 90.seconds
 
+  // skip slow tests with,
+  //   core/testOnly com.banno.kafka.ProcessingAndCommittingSpec -- --exclude-tags=slow
+  val slow = new munit.Tag("slow")
+
   def offsets(
       p: TopicPartition,
       o: Long,
@@ -261,9 +265,6 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
               v.pure[IO]
           }
           results <- pac.compile.toList.attempt
-          _ <- IO.sleep(
-            10.millis
-          ) // commits are now asynchronous wrt processing so wait to avoid missing the last
           c1 <- consumer.partitionQueries.committed(ps)
         } yield {
           assertEquals(c0, empty)
@@ -303,9 +304,6 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
               vs.pure[IO]
           }
           results <- pac.compile.toList.attempt
-          _ <- IO.sleep(
-            10.millis
-          ) // commits are now asynchronous wrt processing so wait to avoid missing the last
           c1 <- consumer.partitionQueries.committed(ps)
         } yield {
           assertEquals(c0, empty)
@@ -336,9 +334,6 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
             maxElapsedTime = Long.MaxValue.nanos,
           )(_.value.pure[IO])
           results <- pac.take(values.size.toLong).compile.toList
-          _ <- IO.sleep(
-            10.millis
-          ) // commits are now asynchronous wrt processing so wait to avoid missing the last
           c1 <- consumer.partitionQueries.committed(ps)
         } yield {
           assertEquals(c0, empty)
@@ -378,9 +373,6 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
           fiber <- pac.compile.toList.start
           () <- cancelSignal.get *> fiber.cancel
           outcome <- fiber.join
-          _ <- IO.sleep(
-            10.millis
-          ) // commits are now asynchronous wrt processing so wait to avoid missing the last
           c1 <- consumer.partitionQueries.committed(ps)
         } yield {
           assertEquals(c0, empty)
@@ -401,7 +393,7 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
         topic <- createTestTopic[IO]()
         p = new TopicPartition(topic, 0)
         ps = Set(p)
-        keepAlive = Some(CommittedOffsetKeepAlive(1.second, ps))
+        keepAlive = 1.second
         records = (0 to 9).toList.map(v => new ProducerRecord(topic, v, v))
         count = records.size.toLong
         _ <- producer.sendAsyncBatch(records)
@@ -416,9 +408,6 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
               keepAlive,
             )(_.value.pure[IO])
             results <- pac.take(count / 2).compile.toList
-            _ <- IO.sleep(
-              1000.millis
-            ) // commits are now asynchronous wrt processing so wait to avoid missing the last
             c1 <- consumer.partitionQueries.committed(ps)
           } yield {
             assert(c0.isEmpty)
@@ -437,9 +426,6 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
               keepAlive,
             )(_.value.pure[IO])
             results <- pac.take(count).interruptAfter(100.millis).compile.toList
-            _ <- IO.sleep(
-              1000.millis
-            ) // commits are now asynchronous wrt processing so wait to avoid missing the last
             c1 <- consumer.partitionQueries.committed(ps)
           } yield {
             assertEquals(results, (5 to 9).toList)
@@ -455,9 +441,12 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
     }
   }
 
-  test("offsets expire with no keepalive".ignore) {
+  // skip slow tests with,
+  //   core/testOnly com.banno.kafka.ProcessingAndCommittingSpec -- --exclude-tags=slow
+  test("offsets expire with no keepalive (slow)".tag(slow)) {
     producerResource.use { producer =>
       for {
+        _ <- IO.println("slow test >= 75 seconds")
         groupId <- IO(genGroupId)
         topic <- createTestTopic[IO]()
         p = new TopicPartition(topic, 0)
@@ -513,14 +502,16 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
     }
   }
 
-  test("offsets preserved with keepalive".ignore) {
+  // skip slow tests with,
+  //   core/testOnly com.banno.kafka.ProcessingAndCommittingSpec -- --exclude-tags=slow
+  test("offsets preserved with keepalive (slow)".tag(slow)) {
     producerResource.use { producer =>
       for {
+        _ <- IO.println("slow test >= 75 seconds")
         groupId <- IO(genGroupId)
         topic <- createTestTopic[IO]()
         p = new TopicPartition(topic, 0)
-        ps = Set(p)
-        keepAlive = Some(CommittedOffsetKeepAlive(1.second, ps))
+        keepAlive = 1.second
         values = (0 to 9).toList
         records = values.map(v => new ProducerRecord[Int, Int](topic, v, v))
         pstream = Stream.emits[IO, ProducerRecord[Int, Int]](

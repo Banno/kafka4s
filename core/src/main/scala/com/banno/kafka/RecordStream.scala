@@ -149,13 +149,15 @@ object RecordStream {
   type Incoming[F[_], K, V] = RecordStream[F, IncomingRecord[K, V]]
   type Batched[F[_], A] = RecordStream[F, IncomingRecords[A]]
 
-  private abstract class Impl[F[_]: Applicative, A](
+  private abstract class Impl[F[_]: Temporal, A](
       val consumer: ConsumerApi[F, GenericRecord, GenericRecord]
   ) extends RecordStream[F, A] {
     def readProcessCommit[B](process: A => F[B]): Stream[F, B] =
-      records.evalMap { x =>
-        process(x) <* consumer.commitSync(nextOffsets(x))
-      }
+      consumer.readProcessCommitAux[A, B](keepAliveInterval)(
+        records,
+        process,
+        a => nextOffsets(a).view.mapValues(_.offset - 1).toMap,
+      )
 
     protected def nextOffsets(x: A): Map[TopicPartition, OffsetAndMetadata]
   }
@@ -228,9 +230,10 @@ object RecordStream {
           )(
               process: A => F[B]
           ): Stream[F, B] =
-            consumer.processingAndCommitting[A, B](
+            consumer.processingAndCommittingAux[A, B](
               maxRecordCount,
               maxElapsedTime,
+              keepAliveInterval,
             )(
               records,
               process,
@@ -532,6 +535,7 @@ object RecordStream {
       }
 
   private val pollTimeout: FiniteDuration = 1.second
+  private val keepAliveInterval: FiniteDuration = 1.hour
 
   object Batched {
     type Incoming[F[_], K, V] = Batched[F, IncomingRecord[K, V]]
@@ -559,9 +563,10 @@ object RecordStream {
         )(
             process: IncomingRecords[A] => F[C]
         ): Stream[F, C] =
-          consumer.processingAndCommitting[IncomingRecords[A], C](
+          consumer.processingAndCommittingAux[IncomingRecords[A], C](
             maxRecordCount,
             maxElapsedTime,
+            keepAliveInterval,
           )(
             records,
             process,
