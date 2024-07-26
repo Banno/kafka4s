@@ -444,9 +444,11 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
   // skip slow tests with,
   //   core/testOnly com.banno.kafka.ProcessingAndCommittingSpec -- --exclude-tags=slow
   test("offsets expire with no keepalive (slow)".tag(slow)) {
+    val expiryTime = 70
+    val producerPause = expiryTime + 5
     producerResource.use { producer =>
       for {
-        _ <- IO.println("slow test >= 75 seconds")
+        _ <- IO.println(s"slow test >= $producerPause seconds")
         groupId <- IO(genGroupId)
         topic <- createTestTopic[IO]()
         p = new TopicPartition(topic, 0)
@@ -454,7 +456,7 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
         records = values.map(v => new ProducerRecord[Int, Int](topic, v, v))
         pstream = Stream.emits[IO, ProducerRecord[Int, Int]](
           records.take(5)
-        ) ++ Stream.sleep_[IO](75.seconds) ++ Stream
+        ) ++ Stream.sleep_[IO](producerPause.seconds) ++ Stream
           .emits[IO, ProducerRecord[Int, Int]](records.drop(5))
         _ <- producer.sinkAsync(pstream).compile.drain.start
         _ <-
@@ -469,7 +471,7 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
               results <- pac
                 .evalTap(IO.println)
                 .interruptAfter(
-                  70.seconds
+                  expiryTime.seconds
                 ) // continue until the committed offsets expire
                 .take(values.size.toLong)
                 .compile
@@ -505,9 +507,11 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
   // skip slow tests with,
   //   core/testOnly com.banno.kafka.ProcessingAndCommittingSpec -- --exclude-tags=slow
   test("offsets preserved with keepalive (slow)".tag(slow)) {
+    val expiryTime = 70
+    val producerPause = expiryTime + 5
     producerResource.use { producer =>
       for {
-        _ <- IO.println("slow test >= 75 seconds")
+        _ <- IO.println(s"slow test >= $producerPause seconds")
         groupId <- IO(genGroupId)
         topic <- createTestTopic[IO]()
         p = new TopicPartition(topic, 0)
@@ -516,7 +520,7 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
         records = values.map(v => new ProducerRecord[Int, Int](topic, v, v))
         pstream = Stream.emits[IO, ProducerRecord[Int, Int]](
           records.take(5)
-        ) ++ Stream.sleep_[IO](75.seconds) ++ Stream
+        ) ++ Stream.sleep_[IO](producerPause.seconds) ++ Stream
           .emits[IO, ProducerRecord[Int, Int]](records.drop(5))
         _ <- producer.sinkAsync(pstream).compile.drain.start
         _ <-
@@ -531,7 +535,7 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
               )(_.value.pure[IO])
               results <- pac
                 .interruptAfter(
-                  70.seconds
+                  expiryTime.seconds
                 ) // continue past committed offsets expiry
                 .evalTap(IO.println)
                 .take(values.size.toLong)

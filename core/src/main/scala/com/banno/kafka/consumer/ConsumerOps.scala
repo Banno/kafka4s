@@ -19,8 +19,8 @@ package consumer
 
 import cats.*
 import cats.effect.*
-import cats.effect.implicits.*
 import cats.effect.std.Semaphore
+import cats.effect.syntax.all.*
 import cats.syntax.all.*
 import fs2.*
 import fs2.concurrent.Channel
