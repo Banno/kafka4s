@@ -88,9 +88,6 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
     } yield rms
   }
 
-  def pipeSync: Pipe[F, ProducerRecord[K, V], RecordMetadata] =
-    _.evalMap(producer.sendSync)
-
   def pipeAsync: Pipe[F, ProducerRecord[K, V], RecordMetadata] =
     _.evalMap(producer.sendAsync)
 
