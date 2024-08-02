@@ -57,7 +57,7 @@ jobs:
 
       - name: Start docker-compose
         id: start-docker-compose
-        run: docker-compose up -d
+        run: docker compose up -d
 
       - name: Check that workflows are up to date
         run: sbt githubWorkflowCheck

@@ -12,7 +12,7 @@ ThisBuild / githubWorkflowBuildPreamble := Seq(
   WorkflowStep.Run(
     id = Some("start-docker-compose"),
     name = Some("Start docker-compose"),
-    commands = List("docker-compose up -d"),
+    commands = List("docker compose up -d"),
   )
 )
 ThisBuild / tlSonatypeUseLegacyHost := true
