@@ -18,6 +18,8 @@ package com.banno.kafka
 
 import cats.syntax.all.*
 import cats.effect.IO
+import cats.effect.kernel.Ref
+import fs2.Stream
 import munit.CatsEffectSuite
 import org.apache.kafka.clients.producer.*
 import com.banno.kafka.producer.*
@@ -77,6 +79,215 @@ class ProducerSendSpec extends CatsEffectSuite with KafkaSpec {
                 .compile
                 .toList
             } yield {
+              assertEquals(rms.size, values.size)
+              for ((rm, i) <- rms.zipWithIndex) {
+                assertEquals(rm.topic, topic)
+                assertEquals(rm.offset, i.toLong)
+              }
+              assertEquals(values, records.map(_.value))
+            }
+          }
+      }
+  }
+
+  test("send batch") {
+    ProducerApi
+      .resource[IO, Int, Int](
+        BootstrapServers(bootstrapServer)
+      )
+      .use { producer =>
+        ConsumerApi
+          .resource[IO, Int, Int](
+            BootstrapServers(bootstrapServer),
+            GroupId(genGroupId),
+            AutoOffsetReset.earliest,
+          )
+          .use { consumer =>
+            for {
+              topic <- createTestTopic[IO]()
+              values = (0 to 9).toList
+              records = values.map(v => new ProducerRecord(topic, v, v))
+              rms <- producer.sendBatch(records)
+              () <- consumer.subscribe(topic)
+              records <- consumer
+                .recordStream(100.millis)
+                .take(values.size.toLong)
+                .compile
+                .toList
+            } yield {
+              assertEquals(rms.size, values.size)
+              for ((rm, i) <- rms.zipWithIndex) {
+                assertEquals(rm.topic, topic)
+                assertEquals(rm.offset, i.toLong)
+              }
+              assertEquals(values, records.map(_.value))
+            }
+          }
+      }
+  }
+
+  test("send batch with callback") {
+    ProducerApi
+      .resource[IO, Int, Int](
+        BootstrapServers(bootstrapServer)
+      )
+      .use { producer =>
+        ConsumerApi
+          .resource[IO, Int, Int](
+            BootstrapServers(bootstrapServer),
+            GroupId(genGroupId),
+            AutoOffsetReset.earliest,
+          )
+          .use { consumer =>
+            for {
+              topic <- createTestTopic[IO]()
+              values = (0 to 9).toList
+              records = values.map(v => new ProducerRecord(topic, v, v))
+              ref <- Ref[IO].of(0)
+              rms <- producer.sendBatchWithCallbacks(
+                records,
+                r => ref.update(_ + r.value),
+              )
+              () <- consumer.subscribe(topic)
+              records <- consumer
+                .recordStream(100.millis)
+                .take(values.size.toLong)
+                .compile
+                .toList
+              sum <- ref.get
+            } yield {
+              assertEquals(rms.size, values.size)
+              for ((rm, i) <- rms.zipWithIndex) {
+                assertEquals(rm.topic, topic)
+                assertEquals(rm.offset, i.toLong)
+                assertEquals(sum, values.sum)
+              }
+              assertEquals(values, records.map(_.value))
+            }
+          }
+      }
+  }
+
+  test("pipe send batch") {
+    ProducerApi
+      .resource[IO, Int, Int](
+        BootstrapServers(bootstrapServer)
+      )
+      .use { producer =>
+        ConsumerApi
+          .resource[IO, Int, Int](
+            BootstrapServers(bootstrapServer),
+            GroupId(genGroupId),
+            AutoOffsetReset.earliest,
+          )
+          .use { consumer =>
+            for {
+              topic <- createTestTopic[IO]()
+              values = (0 to 9).toList
+              records = values.map(v => new ProducerRecord(topic, v, v))
+              pstream = Stream(records.take(5), records.drop(5)).covary[IO]
+              rms <- pstream
+                .through(producer.pipeSendBatch)
+                .compile
+                .toList
+                .map(_.flatten)
+              () <- consumer.subscribe(topic)
+              records <- consumer
+                .recordStream(100.millis)
+                .take(values.size.toLong)
+                .compile
+                .toList
+            } yield {
+              assertEquals(rms.size, values.size)
+              for ((rm, i) <- rms.zipWithIndex) {
+                assertEquals(rm.topic, topic)
+                assertEquals(rm.offset, i.toLong)
+              }
+              assertEquals(values, records.map(_.value))
+            }
+          }
+      }
+  }
+
+  test("pipe send batch implicitly chunked") {
+    ProducerApi
+      .resource[IO, Int, Int](
+        BootstrapServers(bootstrapServer)
+      )
+      .use { producer =>
+        ConsumerApi
+          .resource[IO, Int, Int](
+            BootstrapServers(bootstrapServer),
+            GroupId(genGroupId),
+            AutoOffsetReset.earliest,
+          )
+          .use { consumer =>
+            for {
+              topic <- createTestTopic[IO]()
+              values = (0 to 9).toList
+              records = values.map(v => new ProducerRecord(topic, v, v))
+              pstream = Stream
+                .emits(records.take(5))
+                .covary[IO] ++ Stream.emits(records.drop(5)).covary[IO]
+              crms <- pstream
+                .through(producer.pipeSendBatchChunks)
+                .compile
+                .foldChunks(List.empty[List[RecordMetadata]]) {
+                  case (acc, chunk) => chunk.toList :: acc
+                }
+              rms = crms.reverse.flatten
+              () <- consumer.subscribe(topic)
+              records <- consumer
+                .recordStream(100.millis)
+                .take(values.size.toLong)
+                .compile
+                .toList
+            } yield {
+              assertEquals(crms.size, 2)
+              assertEquals(rms.size, values.size)
+              for ((rm, i) <- rms.zipWithIndex) {
+                assertEquals(rm.topic, topic)
+                assertEquals(rm.offset, i.toLong)
+              }
+              assertEquals(values, records.map(_.value))
+            }
+          }
+      }
+  }
+
+  test("pipe send batch explicitly chunked") {
+    ProducerApi
+      .resource[IO, Int, Int](
+        BootstrapServers(bootstrapServer)
+      )
+      .use { producer =>
+        ConsumerApi
+          .resource[IO, Int, Int](
+            BootstrapServers(bootstrapServer),
+            GroupId(genGroupId),
+            AutoOffsetReset.earliest,
+          )
+          .use { consumer =>
+            for {
+              topic <- createTestTopic[IO]()
+              values = (0 to 9).toList
+              records = values.map(v => new ProducerRecord(topic, v, v))
+              pstream = Stream.emits(records).covary[IO]
+              crms <- pstream
+                .through(producer.pipeSendBatchChunkN(2))
+                .compile
+                .foldChunks(List.empty[List[RecordMetadata]]) {
+                  case (acc, chunk) => chunk.toList :: acc
+                }
+              rms = crms.reverse.flatten
+              () <- consumer.subscribe(topic)
+              records <- consumer
+                .recordStream(100.millis)
+                .take(values.size.toLong)
+                .compile
+                .toList
+            } yield {
+              assertEquals(crms.size, 5)
               assertEquals(rms.size, values.size)
               for ((rm, i) <- rms.zipWithIndex) {
                 assertEquals(rm.topic, topic)

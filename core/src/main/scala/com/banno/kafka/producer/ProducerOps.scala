@@ -36,13 +36,17 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
   )(implicit F: Applicative[F]): F[G[RecordMetadata]] =
     records.traverse(producer.sendAsync)
 
-  /** Sends all of the records to the producer (synchronously), so the producer
-    * may batch them. After all records are sent, asynchronously waits for all
-    * acks. Returns the write metadatas, in order. This is the only batch write
-    * operation that allows the producer to perform its own batching, while
-    * semantically blocking until all writes have succeeded. It maximizes
-    * concurrency and producer batching, and also simplicity of usage. Fails if
-    * any individual send or ack fails.
+  /** Sends all of the possibly empty collection of records to the producer
+    * (synchronously), so the producer may batch them. After all records are
+    * sent, asynchronously waits for all acks.
+    *
+    * Returns the write metadatas, in order. Fails if any individual send or ack
+    * fails.
+    *
+    * This, and related batch write operations, allow the producer to perform
+    * its own batching, while semantically blocking until all writes have
+    * succeeded. It maximizes concurrency and producer batching, and also
+    * simplicity of usage.
     */
   def sendBatch[G[_]: Traverse](
       records: G[ProducerRecord[K, V]]
@@ -54,6 +58,18 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
     } yield rms
   }
 
+  /** Sends all of the non-empty collection of records to the producer
+    * (synchronously), so the producer may batch them. After all records are
+    * sent, asynchronously waits for all acks.
+    *
+    * Returns the write metadatas, in order. Fails if any individual send or ack
+    * fails.
+    *
+    * This, and related batch write operations, allow the producer to perform
+    * its own batching, while semantically blocking until all writes have
+    * succeeded. It maximizes concurrency and producer batching, and also
+    * simplicity of usage.
+    */
   def sendBatchNonEmpty[G[_]: NonEmptyTraverse](
       records: G[ProducerRecord[K, V]]
   )(implicit F: FlatMap[F]): F[G[RecordMetadata]] = {
@@ -64,6 +80,20 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
     } yield rms
   }
 
+  /** Sends all of the possibly empty collection of records to the producer
+    * (synchronously), so the producer may batch them. After all records are
+    * sent, asynchronously waits for all acks.
+    *
+    * Calls the `onSend` callback for each record, after it is sent.
+    *
+    * Returns the write metadatas, in order. Fails if any individual send or ack
+    * fails.
+    *
+    * This, and related batch write operations, allow the producer to perform
+    * its own batching, while semantically blocking until all writes have
+    * succeeded. It maximizes concurrency and producer batching, and also
+    * simplicity of usage.
+    */
   def sendBatchWithCallbacks[G[_]: Traverse](
       records: G[ProducerRecord[K, V]],
       onSend: ProducerRecord[K, V] => F[Unit],
@@ -76,7 +106,21 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
     } yield rms
   }
 
-  def sendBatchWithCallbacks[G[_]: NonEmptyTraverse](
+  /** Sends all of the non-empty collection of records to the producer
+    * (synchronously), so the producer may batch them. After all records are
+    * sent, asynchronously waits for all acks.
+    *
+    * Calls the `onSend` callback for each record, after it is sent.
+    *
+    * Returns the write metadatas, in order. Fails if any individual send or ack
+    * fails.
+    *
+    * This, and related batch write operations, allow the producer to perform
+    * its own batching, while semantically blocking until all writes have
+    * succeeded. It maximizes concurrency and producer batching, and also
+    * simplicity of usage.
+    */
+  def sendBatchNonEmptyWithCallbacks[G[_]: NonEmptyTraverse](
       records: G[ProducerRecord[K, V]],
       onSend: ProducerRecord[K, V] => F[Unit],
   )(implicit F: FlatMap[F]): F[G[RecordMetadata]] = {
@@ -88,27 +132,36 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
     } yield rms
   }
 
+  /** Returns a Pipe which transforms a stream of records into a stream of
+    * record metadatas, by sending each record to the producer and waiting for
+    * the ack.
+    */
   def pipeAsync: Pipe[F, ProducerRecord[K, V], RecordMetadata] =
     _.evalMap(producer.sendAsync)
 
+  /** Returns a Pipe which transforms a stream of possibly empty collections of
+    * records into a stream of record metadatas, by sending each collection to
+    * the producer as a batch and waiting for the ack.
+    */
   def pipeSendBatch[G[_]: Traverse](implicit
       F: Monad[F]
   ): Pipe[F, G[ProducerRecord[K, V]], G[RecordMetadata]] =
     _.evalMap(sendBatch[G])
 
+  /** Returns a Pipe which transforms a stream of non-empty collections of
+    * records into a stream of record metadatas, by sending each collection to
+    * the producer as a batch and waiting for the ack.
+    */
   def pipeSendBatchNonEmpty[G[_]: NonEmptyTraverse](implicit
       F: FlatMap[F]
   ): Pipe[F, G[ProducerRecord[K, V]], G[RecordMetadata]] =
     _.evalMap(sendBatchNonEmpty[G])
 
-  /** Uses the stream's chunks as batches of records to send to the producer. */
+  /** Returns a Pipe which transforms a stream of records into a stream of
+    * record metadatas, by using the stream's chunks as batches of records to
+    * send to the producer.
+    */
   def pipeSendBatchChunks(implicit
-      F: Monad[F]
-  ): Pipe[F, ProducerRecord[K, V], RecordMetadata] =
-    s =>
-      pipeSendBatch[Chunk](Traverse[Chunk], F)(s.chunks).flatMap(Stream.chunk)
-
-  def pipeSendBatchChunksNonEmpty(implicit
       F: FlatMap[F]
   ): Pipe[F, ProducerRecord[K, V], RecordMetadata] =
     s =>
@@ -116,8 +169,9 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
         s.chunks.map(_.toNel).unNone
       ).flatMap(nel => Stream.emits(nel.toList))
 
-  /** Calls chunkN on the input stream, to create chunks of size `n`, and sends
-    * those chunks as batches to the producer.
+  /** Returns a Pipe which transforms a stream of records into a stream of
+    * record metadatas, by calling chunkN on the stream, to create chunks of
+    * size `n`, and sending those chunks as batches to the producer.
     */
   def pipeSendBatchChunkN(n: Int, allowFewer: Boolean = true)(implicit
       F: Monad[F]
@@ -126,27 +180,48 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
       pipeSendBatch[Chunk](Traverse[Chunk], F)(s.chunkN(n, allowFewer))
         .flatMap(Stream.chunk)
 
+  /** Returns a Pipe which transforms a stream of records by sending each record
+    * to the producer and waiting for the ack.
+    */
   def sink: Pipe[F, ProducerRecord[K, V], Unit] =
     _.evalMap(producer.sendAndForget)
 
+  /** Returns a Pipe which transforms a stream of records by sending each record
+    * to the producer and waiting for the ack.
+    */
   def sinkAsync: Pipe[F, ProducerRecord[K, V], Unit] =
     pipeAsync.apply(_).void
 
+  /** Returns a Pipe which transforms a stream of possibly empty collections of
+    * records by sending each collection to the producer as a batch and waiting
+    * for the ack.
+    */
   def sinkSendBatch[G[_]: Traverse](implicit
       F: Monad[F]
   ): Pipe[F, G[ProducerRecord[K, V]], Unit] =
     pipeSendBatch.apply(_).void
 
-  def sinkSendBatch[G[_]: NonEmptyTraverse](implicit
+  /** Returns a Pipe which transforms a stream of non-empty collections of
+    * records by sending each collection to the producer as a batch and waiting
+    * for the ack.
+    */
+  def sinkSendBatchNonEmpty[G[_]: NonEmptyTraverse](implicit
       F: FlatMap[F]
   ): Pipe[F, G[ProducerRecord[K, V]], Unit] =
     pipeSendBatchNonEmpty.apply(_).void
 
+  /** Returns a Pipe which transforms a stream of records by using the stream's
+    * chunks as batches of records to send to the producer.
+    */
   def sinkSendBatchChunks(implicit
-      F: Monad[F]
+      F: FlatMap[F]
   ): Pipe[F, ProducerRecord[K, V], Unit] =
     pipeSendBatchChunks.apply(_).void
 
+  /** Returns a Pipe which transforms a stream of records by calling chunkN on
+    * the stream, to create chunks of size `n`, and sending those chunks as
+    * batches to the producer.
+    */
   def sinkSendBatchChunkN(n: Int, allowFewer: Boolean = true)(implicit
       F: Monad[F]
   ): Pipe[F, ProducerRecord[K, V], Unit] =
