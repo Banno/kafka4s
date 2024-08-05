@@ -20,7 +20,7 @@ ThisBuild / tlSonatypeUseLegacyHost := true
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
 val V = new {
-  val avro = "1.11.3"
+  val avro = "1.12.0"
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
   val cats = "2.12.0"
