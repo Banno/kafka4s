@@ -569,7 +569,7 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
     }
   }
 
-  test("keepalive stream commits correct offset after no new records".only) {
+  test("keepalive stream commits correct offset after no new records") {
     consumerResource().use { consumer =>
       for {
         topic <- createTestTopic[IO]()

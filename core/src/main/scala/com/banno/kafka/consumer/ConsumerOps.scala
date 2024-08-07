@@ -525,7 +525,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
                   for {
                     lock <- Semaphore(1)
                     ref <- Ref.of(
-                      offsets.view.mapValues(_.offset).toMap
+                      offsets.view.mapValues(_.offset - 1).toMap
                     )
                   } yield HasKeepAlive(interval0, lock, ref)
             } yield keepAlive
