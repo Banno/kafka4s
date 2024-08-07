@@ -578,19 +578,24 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
         _ <- consumer.assign(ps)
         c0 <- consumer.partitionQueries.committed(ps)
         () <- consumer.commitSync(Map(p -> new OffsetAndMetadata(0)))
-        pac = consumer.processingAndCommitting(
-          pollTimeout = 100.millis,
-          maxRecordCount = Long.MaxValue,
-          maxElapsedTime = Long.MaxValue.nanos,
-          keepAliveInterval = 1.second,
-        )(_.value.pure[IO]).interruptAfter(3.seconds)
+        c0b <- consumer.partitionQueries.committed(ps)
+        pac = consumer
+          .processingAndCommitting(
+            pollTimeout = 100.millis,
+            maxRecordCount = Long.MaxValue,
+            maxElapsedTime = Long.MaxValue.nanos,
+            keepAliveInterval = 1.second,
+          )(_.value.pure[IO])
+          .interruptAfter(3.seconds)
         results <- pac.compile.toList
         c1 <- consumer.partitionQueries.committed(ps)
       } yield {
         assert(c0.isEmpty)
+        assertEquals(c0b(p).offset, 0L)
         assert(results.isEmpty)
         assertEquals(c1(p).offset, 0L)
       }
-  }}
+    }
+  }
 
 }
