@@ -399,7 +399,7 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
         _ <- producer.sendAsyncBatch(records)
         cpause <- consumerResource(GroupId(groupId)).use { consumer =>
           for {
-            _ <- consumer.subscribe(topic)
+            _ <- consumer.assign(ps)
             c0 <- consumer.partitionQueries.committed(ps)
             pac = consumer.processingAndCommitting(
               pollTimeout = 100.millis,
@@ -417,7 +417,7 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
         }
         crestart <- consumerResource(GroupId(groupId)).use { consumer =>
           for {
-            _ <- consumer.subscribe(topic)
+            _ <- consumer.assign(ps)
             c0 <- consumer.partitionQueries.committed(ps)
             pac = consumer.processingAndCommitting(
               pollTimeout = 100.millis,
@@ -569,7 +569,9 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
     }
   }
 
-  test("keepalive stream commits correct offset after no new records") {
+  test(
+    "keepalive stream commits correct offset after no new records (empty topic)"
+  ) {
     consumerResource().use { consumer =>
       for {
         topic <- createTestTopic[IO]()
@@ -594,6 +596,63 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
         assertEquals(c0b(p).offset, 0L)
         assert(results.isEmpty)
         assertEquals(c1(p).offset, 0L)
+      }
+    }
+  }
+
+  test(
+    "keepalive stream commits correct offset after no new records (non-empty topic)"
+  ) {
+    producerResource.use { producer =>
+      for {
+        groupId <- IO(genGroupId)
+        topic <- createTestTopic[IO]()
+        p = new TopicPartition(topic, 0)
+        ps = Set(p)
+        keepAlive = 1.second
+        records = (0 to 9).toList.map(v => new ProducerRecord(topic, v, v))
+        count = records.size.toLong
+        _ <- producer.sendAsyncBatch(records)
+        cpause <- consumerResource(GroupId(groupId)).use { consumer =>
+          for {
+            _ <- consumer.assign(ps)
+            c0 <- consumer.partitionQueries.committed(ps)
+            pac = consumer.processingAndCommitting(
+              pollTimeout = 100.millis,
+              maxRecordCount = 1,
+              maxElapsedTime = Long.MaxValue.nanos,
+              keepAlive,
+            )(_.value.pure[IO])
+            results <- pac.take(count).compile.toList
+            c1 <- consumer.partitionQueries.committed(ps)
+          } yield {
+            assert(c0.isEmpty)
+            assertEquals(results, (0 to 9).toList)
+            c1
+          }
+        }
+        crestart <- consumerResource(GroupId(groupId)).use { consumer =>
+          for {
+            _ <- consumer.assign(ps)
+            c0 <- consumer.partitionQueries.committed(ps)
+            pac = consumer.processingAndCommitting(
+              pollTimeout = 100.millis,
+              maxRecordCount = 1,
+              maxElapsedTime = Long.MaxValue.nanos,
+              keepAlive,
+            )(_.value.pure[IO])
+            results <- pac.take(count).interruptAfter(3.seconds).compile.toList
+            c1 <- consumer.partitionQueries.committed(ps)
+          } yield {
+            assert(results.isEmpty)
+            assertEquals(c0(p).offset, count)
+            assertEquals(c1(p).offset, count)
+            c0
+          }
+        }
+      } yield {
+        assertEquals(cpause(p).offset, count)
+        assertEquals(crestart(p).offset, count)
       }
     }
   }
