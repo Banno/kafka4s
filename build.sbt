@@ -46,7 +46,7 @@ val V = new {
   val munitCE3 = "2.0.0"
   val scalatest = "3.2.19"
   val scalatestPlus = "3.2.3.0"
-  val snappy = "1.1.10.6"
+  val snappy = "1.1.10.7"
   val vulcan = "1.11.0"
 }
 
