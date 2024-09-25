@@ -15,7 +15,8 @@ ThisBuild / githubWorkflowBuildPreamble := Seq(
     commands = List("docker compose up -d"),
   )
 )
-ThisBuild / tlSonatypeUseLegacyHost := true
+
+ThisBuild / sonatypeCredentialHost := xerial.sbt.Sonatype.sonatypeLegacy
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
