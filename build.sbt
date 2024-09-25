@@ -15,7 +15,8 @@ ThisBuild / githubWorkflowBuildPreamble := Seq(
     commands = List("docker compose up -d"),
   )
 )
-ThisBuild / tlSonatypeUseLegacyHost := true
+
+ThisBuild / sonatypeCredentialHost := xerial.sbt.Sonatype.sonatypeLegacy
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
@@ -26,7 +27,7 @@ val V = new {
   val cats = "2.12.0"
   val catsEffect = "3.4.10"
   val commonsCompress = "1.27.1"
-  val confluent = "7.6.3"
+  val confluent = "7.7.1"
   val curator = "5.2.0"
   val disciplineMunit = "2.0.0"
   val epimetheus = "0.5.0"

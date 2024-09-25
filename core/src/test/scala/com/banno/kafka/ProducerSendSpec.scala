@@ -24,14 +24,18 @@ import munit.CatsEffectSuite
 import org.apache.kafka.clients.producer.*
 import com.banno.kafka.producer.*
 import com.banno.kafka.consumer.*
+
 import java.util.concurrent.{
-  Future => JFuture,
-  TimeUnit,
-  Executors,
   CompletableFuture,
+  Executors,
+  TimeUnit,
+  Future as JFuture,
 }
 import scala.concurrent.duration.*
 import natchez.Trace.Implicits.noop
+import org.apache.kafka.common.Uuid
+
+import java.time
 
 class ProducerSendSpec extends CatsEffectSuite with KafkaSpec {
 
@@ -363,6 +367,8 @@ case class ThrowOnSendProducer[K, V]() extends Producer[K, V] {
       ],
       x$2: String,
   ): Unit = ???
+
+  override def clientInstanceId(timeout: time.Duration): Uuid = ???
 }
 
 case class CallbackFailureTestException()
@@ -415,4 +421,6 @@ case class FailedCallbackProducer[K, V]() extends Producer[K, V] {
       ],
       x$2: String,
   ): Unit = ???
+
+  override def clientInstanceId(timeout: time.Duration): Uuid = ???
 }
