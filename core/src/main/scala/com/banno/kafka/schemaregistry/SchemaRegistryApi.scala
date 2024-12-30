@@ -224,6 +224,17 @@ object SchemaRegistryApi {
       fromString(s).getOrElse(
         throw ParseFailure(s"Unable to parse CompatibilityLevel: $s")
       )
+
+    val values: List[CompatibilityLevel] =
+      List(
+        Backward,
+        BackwardTransitive,
+        Forward,
+        ForwardTransitive,
+        Full,
+        FullTransitive,
+        None,
+      )
   }
 
   def register[F[_]: Sync, K, V](
