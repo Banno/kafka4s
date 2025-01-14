@@ -215,7 +215,7 @@ inThisBuild(
         (username, name) <- contributors
       } yield {
         Developer(username, name, "", url(s"http://github.com/$username"))
-      },
+      }
     }.toList,
     scalacOptions ++= Seq(
       "-Xsource:3",
