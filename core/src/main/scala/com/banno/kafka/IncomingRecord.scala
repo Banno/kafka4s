@@ -195,6 +195,6 @@ object IncomingRecords {
     cr.asScala.toList
       .traverse(f)
       .map(
-        Impl(_, cr.nextOffsets)
+        Impl(_, cr.nextOffsetsAsScala)
       )
 }
