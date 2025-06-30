@@ -56,7 +56,7 @@ package object test {
             )
             .toMap
             .asJava,
-            Map.empty.asJava,
+          Map.empty.asJava,
         )
       }
   }
