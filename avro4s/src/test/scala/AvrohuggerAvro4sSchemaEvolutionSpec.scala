@@ -21,6 +21,7 @@ package avro4s
 import com.sksamuel.avro4s.{DefaultFieldMapper, RecordFormat, SchemaFor}
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
 import io.confluent.kafka.serializers.*
+import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig
 import munit.*
 import org.apache.avro.*
 import org.apache.avro.generic.GenericRecord
@@ -106,7 +107,7 @@ object Compatibility {
 class AvrohuggerAvro4sSchemaEvolutionSpec extends FunSuite {
   val client = new MockSchemaRegistryClient()
   val configs = Map(
-    AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG -> "http://inmemorytest"
+    AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG -> "http://inmemorytest"
   ).asJava
   val serializer = new KafkaAvroSerializer(client)
   serializer.configure(configs, false)
