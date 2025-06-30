@@ -55,7 +55,8 @@ package object test {
               new TopicPartition(cr.topic, cr.partition) -> List(cr).asJava
             )
             .toMap
-            .asJava
+            .asJava,
+            Map.empty.asJava,
         )
       }
   }
