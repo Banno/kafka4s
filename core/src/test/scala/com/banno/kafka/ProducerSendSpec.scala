@@ -369,6 +369,12 @@ case class ThrowOnSendProducer[K, V]() extends Producer[K, V] {
   ): Unit = ???
 
   override def clientInstanceId(timeout: time.Duration): Uuid = ???
+  def registerMetricForSubscription(
+      x$1: org.apache.kafka.common.metrics.KafkaMetric
+  ): Unit = ???
+  def unregisterMetricFromSubscription(
+      x$1: org.apache.kafka.common.metrics.KafkaMetric
+  ): Unit = ???
 }
 
 case class CallbackFailureTestException()
@@ -423,4 +429,10 @@ case class FailedCallbackProducer[K, V]() extends Producer[K, V] {
   ): Unit = ???
 
   override def clientInstanceId(timeout: time.Duration): Uuid = ???
+  def registerMetricForSubscription(
+      x$1: org.apache.kafka.common.metrics.KafkaMetric
+  ): Unit = ???
+  def unregisterMetricFromSubscription(
+      x$1: org.apache.kafka.common.metrics.KafkaMetric
+  ): Unit = ???
 }
