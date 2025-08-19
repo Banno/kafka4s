@@ -26,10 +26,10 @@ val V = new {
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
   val cats = "2.13.0"
-  val catsEffect = "3.6.1"
-  val commonsCompress = "1.27.1"
+  val catsEffect = "3.6.3"
+  val commonsCompress = "1.28.0"
   val confluent = "8.0.0"
-  val curator = "5.8.0"
+  val curator = "5.9.0"
   val disciplineMunit = "2.0.0"
   val epimetheus = "0.5.0"
   val fs2 = "3.12.0"
@@ -48,7 +48,7 @@ val V = new {
   val munitCE3 = "2.1.0"
   val scalatest = "3.2.19"
   val scalatestPlus = "3.2.4.0"
-  val snappy = "1.1.10.7"
+  val snappy = "1.1.10.8"
   val vulcan = "1.12.0"
 }
 
