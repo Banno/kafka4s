@@ -66,7 +66,7 @@ package object kafka {
     /** lastOffsets + 1, can be used to commit the offsets that the consumer
       * should read next, after these records.
       */
-    def nextOffsets: Map[TopicPartition, OffsetAndMetadata] =
+    def nextOffsetsAsScala: Map[TopicPartition, OffsetAndMetadata] =
       lastOffsets.view.mapValues(o => new OffsetAndMetadata(o + 1)).toMap
   }
 
@@ -246,7 +246,7 @@ package object kafka {
             .traverse(_.bitraverse(f, g))
             .map(tp -> _.asJava)
         )
-        .map(x => new ConsumerRecords[C, D](x.toMap.asJava))
+        .map(x => new ConsumerRecords[C, D](x.toMap.asJava, fab.nextOffsets()))
   }
 
   implicit class BifunctorToOptionExtension[F[_, _], A, B](

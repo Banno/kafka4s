@@ -337,11 +337,11 @@ object EpimetheusMetricsReporterApi {
             gauge("bufferpool_wait_ratio")
           case MetricId(
                 "producer-metrics",
-                "bufferpool-wait-time-total",
+                "bufferpool-wait-time-ns-total",
                 List("client-id"),
               ) =>
             gauge(
-              "bufferpool_wait_time_total"
+              "bufferpool_wait_time_ns_total"
             ) // TODO should this be a counter?
           case MetricId(
                 "producer-metrics",
@@ -425,11 +425,11 @@ object EpimetheusMetricsReporterApi {
             gauge("io_time_ns_avg")
           case MetricId(
                 "producer-metrics",
-                "iotime-total",
+                "io-time-ns-total",
                 List("client-id"),
               ) =>
             counter(
-              "iotime_total"
+              "io_time_ns_total"
             ) // TODO is this really a counter, and not a gauge?
           case MetricId(
                 "producer-metrics",
@@ -445,10 +445,10 @@ object EpimetheusMetricsReporterApi {
             gauge("io_wait_time_ns_avg")
           case MetricId(
                 "producer-metrics",
-                "io-waittime-total",
+                "io-wait-time-ns-total",
                 List("client-id"),
               ) =>
-            counter("io_waittime_total") // TODO really a counter?
+            counter("io_wait_time_ns_total") // TODO really a counter?
           case MetricId(
                 "producer-metrics",
                 "metadata-age",
@@ -923,10 +923,10 @@ object EpimetheusMetricsReporterApi {
             gauge("io_wait_time_ns_avg")
           case MetricId(
                 "consumer-metrics",
-                "io-waittime-total",
+                "io-wait-time-ns-total",
                 List("client-id"),
               ) =>
-            counter("io_waittime_total") // TODO really a counter?
+            counter("io_wait_time_ns_total") // TODO really a counter?
           case MetricId(
                 "consumer-metrics",
                 "io-wait-ratio",
@@ -941,11 +941,11 @@ object EpimetheusMetricsReporterApi {
             gauge("io_time_ns_avg")
           case MetricId(
                 "consumer-metrics",
-                "iotime-total",
+                "io-time-ns-total",
                 List("client-id"),
               ) =>
             counter(
-              "iotime_total"
+              "io_time_ns_total"
             ) // TODO is this really a counter, and not a gauge?
           case MetricId("consumer-metrics", "io-ratio", List("client-id")) =>
             gauge("io_ratio")

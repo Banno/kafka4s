@@ -203,7 +203,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
   )(implicit F: ApplicativeError[F, Throwable]): F[ConsumerRecords[K, V]] =
     consumer.poll(timeout).recoverWith { case _: WakeupException =>
       consumer.close *>
-      F.pure(new ConsumerRecords(Map.empty.asJava))
+      F.pure(new ConsumerRecords(Map.empty.asJava, Map.empty.asJava))
     }
 
   def pollAndRecoverWakeupWithNone(

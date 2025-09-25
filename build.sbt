@@ -6,7 +6,7 @@ import xerial.sbt.Sonatype.sonatypeCentralHost
 
 ThisBuild / scalaVersion := "2.13.16"
 ThisBuild / crossScalaVersions := List(scalaVersion.value)
-ThisBuild / tlBaseVersion := "6.3"
+ThisBuild / tlBaseVersion := "7.0"
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("11"))
 ThisBuild / githubWorkflowTargetBranches := Seq("*", "series/*")
 ThisBuild / githubWorkflowBuildPreamble := Seq(
@@ -29,7 +29,7 @@ val V = new {
   val catsEffect = "3.6.3"
   val commonsCompress = "1.28.0"
   val commonsLang = "3.18.0"
-  val confluent = "7.9.2"
+  val confluent = "8.0.0"
   val curator = "5.9.0"
   val disciplineMunit = "2.0.0"
   val epimetheus = "0.5.0"
