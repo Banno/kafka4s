@@ -6,7 +6,7 @@ import xerial.sbt.Sonatype.sonatypeCentralHost
 
 ThisBuild / scalaVersion := "2.13.16"
 ThisBuild / crossScalaVersions := List(scalaVersion.value)
-ThisBuild / tlBaseVersion := "6.3"
+ThisBuild / tlBaseVersion := "7.0"
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("11"))
 ThisBuild / githubWorkflowTargetBranches := Seq("*", "series/*")
 ThisBuild / githubWorkflowBuildPreamble := Seq(
