@@ -2,7 +2,6 @@ import laika.helium.Helium
 import laika.helium.config.HeliumIcon
 import laika.helium.config.IconLink
 import org.typelevel.sbt.site.GenericSiteSettings
-import xerial.sbt.Sonatype.sonatypeCentralHost
 
 ThisBuild / scalaVersion := "2.13.16"
 ThisBuild / crossScalaVersions := List(scalaVersion.value)
@@ -16,8 +15,6 @@ ThisBuild / githubWorkflowBuildPreamble := Seq(
     commands = List("docker compose up -d"),
   )
 )
-
-ThisBuild / sonatypeCredentialHost := sonatypeCentralHost
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
