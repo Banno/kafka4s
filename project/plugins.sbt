@@ -7,3 +7,4 @@ addSbtPlugin("org.scalameta" % "sbt-mdoc" % "2.7.2")
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.5")
 addSbtPlugin("org.typelevel" % "sbt-typelevel" % typelevelV)
 addSbtPlugin("org.typelevel" % "sbt-typelevel-site" % typelevelV)
+addDependencyTreePlugin

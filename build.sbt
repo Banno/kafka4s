@@ -18,6 +18,10 @@ ThisBuild / githubWorkflowBuildPreamble := Seq(
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
+lazy val Vulnerables = new {
+  val fs2 = "3.12.2" // GHSA-rrw2-px9j-qffj
+}
+
 val V = new {
   val avro = "1.12.0"
   val avro4s = "3.1.0"
@@ -86,6 +90,7 @@ lazy val core = project
       "org.typelevel" %% "munit-cats-effect" % V.munitCE3 % Test,
       "org.typelevel" %% "cats-effect" % V.catsEffect,
       "org.tpolecat" %% "natchez-core" % V.natchez,
+      "co.fs2" %% "fs2-io" % Vulnerables.fs2, // needed until natchez-core upgrades to fs2-io 3.12.2
       "org.typelevel" %% "cats-laws" % V.cats % Test,
       "org.scalatest" %% "scalatest" % V.scalatest % Test,
       "org.typelevel" %% "discipline-munit" % V.disciplineMunit % Test,
