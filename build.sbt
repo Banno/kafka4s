@@ -3,7 +3,7 @@ import laika.helium.config.HeliumIcon
 import laika.helium.config.IconLink
 import org.typelevel.sbt.site.GenericSiteSettings
 
-ThisBuild / scalaVersion := "2.13.16"
+ThisBuild / scalaVersion := "2.13.17"
 ThisBuild / crossScalaVersions := List(scalaVersion.value)
 ThisBuild / tlBaseVersion := "7.0"
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("11"))
@@ -29,7 +29,7 @@ val V = new {
   val cats = "2.13.0"
   val catsEffect = "3.6.3"
   val commonsCompress = "1.28.0"
-  val confluent = "8.0.1"
+  val confluent = "8.0.2"
   val commonsLang = "3.19.0"
   val curator = "5.9.0"
   val disciplineMunit = "2.0.0"
@@ -40,12 +40,12 @@ val V = new {
   val kafka = s"$confluent-ccs"
   val kindProjector = "0.13.4"
   val log4cats = "2.7.1"
-  val logback = "1.5.19"
+  val logback = "1.5.20"
   val natchez = "0.3.8"
   val scalacheck = "1.19.0"
   val scalacheckEffect = "1.0.4"
   val scalacheckMagnolia = "0.6.0"
-  val munit = "1.2.0"
+  val munit = "1.2.1"
   val munitScalacheck = "1.2.0"
   val munitCE3 = "2.1.0"
   val scalatest = "3.2.19"
@@ -224,6 +224,7 @@ inThisBuild(
     }.toList,
     scalacOptions ++= Seq(
       "-Xsource:3",
+      "-Xsource-features:eta-expand-always",
       "-Vimplicits",
       "-Vtype-diffs",
       "-language:postfixOps",
