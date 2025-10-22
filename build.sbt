@@ -3,7 +3,7 @@ import laika.helium.config.HeliumIcon
 import laika.helium.config.IconLink
 import org.typelevel.sbt.site.GenericSiteSettings
 
-ThisBuild / scalaVersion := "2.13.16"
+ThisBuild / scalaVersion := "2.13.17"
 ThisBuild / crossScalaVersions := List(scalaVersion.value)
 ThisBuild / tlBaseVersion := "7.0"
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("11"))
@@ -224,6 +224,7 @@ inThisBuild(
     }.toList,
     scalacOptions ++= Seq(
       "-Xsource:3",
+      "-Xsource-features:eta-expand-always",
       "-Vimplicits",
       "-Vtype-diffs",
       "-language:postfixOps",
