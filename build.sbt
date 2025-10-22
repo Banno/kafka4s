@@ -224,6 +224,7 @@ inThisBuild(
     }.toList,
     scalacOptions ++= Seq(
       "-Xsource:3",
+      "-Xsource-features:eta-expand-always",
       "-Vimplicits",
       "-Vtype-diffs",
       "-language:postfixOps",
