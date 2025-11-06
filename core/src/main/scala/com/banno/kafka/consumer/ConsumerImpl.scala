@@ -50,7 +50,7 @@ case class ConsumerImpl[F[_], K, V](c: Consumer[K, V])(implicit F: Sync[F])
     F.delay(c.close())
 
   override def close(timeout: FiniteDuration): F[Unit] =
-    F.delay(c.close(JDuration.ofMillis(timeout.toMillis)))
+    F.delay(c.close(CloseOptions.timeout(JDuration.ofMillis(timeout.toMillis))))
 
   override def commitAsync: F[Unit] =
     F.delay(c.commitAsync())
