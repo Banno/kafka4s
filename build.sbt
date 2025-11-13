@@ -5,7 +5,7 @@ import org.typelevel.sbt.site.GenericSiteSettings
 
 ThisBuild / scalaVersion := "2.13.17"
 ThisBuild / crossScalaVersions := List(scalaVersion.value)
-ThisBuild / tlBaseVersion := "7.0"
+ThisBuild / tlBaseVersion := "8.0"
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("11"))
 ThisBuild / githubWorkflowTargetBranches := Seq("*", "series/*")
 ThisBuild / githubWorkflowBuildPreamble := Seq(
