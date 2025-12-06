@@ -21,6 +21,7 @@ Global / onChangedBuildSource := ReloadOnSourceChanges
 lazy val Vulnerables = new {
   val fs2 = "3.12.2" // GHSA-rrw2-px9j-qffj
   val lz4 = "1.10.1" // GHSA-vqf4-7m7x-wgfc, GHSA-cmp6-m4wj-q63q
+
 }
 
 val V = new {
