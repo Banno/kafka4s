@@ -20,8 +20,6 @@ Global / onChangedBuildSource := ReloadOnSourceChanges
 
 lazy val Vulnerables = new {
   val fs2 = "3.12.2" // GHSA-rrw2-px9j-qffj
-  val org_lz4_lz4Java = "1.8.1" // GHSA-vqf4-7m7x-wgfc
-  val at_yawk_lz4Java = "1.10.1" // GHSA-cmp6-m4wj-q63q
 
 }
 
@@ -94,8 +92,6 @@ lazy val core = project
       "org.typelevel" %% "cats-effect" % V.catsEffect,
       "org.tpolecat" %% "natchez-core" % V.natchez,
       "co.fs2" %% "fs2-io" % Vulnerables.fs2, // needed until natchez-core upgrades to fs2-io 3.12.2
-      "org.lz4" % "lz4-java" % Vulnerables.org_lz4_lz4Java,
-      "at.yawk.lz4" % "lz4-java" % Vulnerables.at_yawk_lz4Java,
       "org.typelevel" %% "cats-laws" % V.cats % Test,
       "org.scalatest" %% "scalatest" % V.scalatest % Test,
       "org.typelevel" %% "discipline-munit" % V.disciplineMunit % Test,
