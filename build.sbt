@@ -20,7 +20,8 @@ Global / onChangedBuildSource := ReloadOnSourceChanges
 
 lazy val Vulnerables = new {
   val fs2 = "3.12.2" // GHSA-rrw2-px9j-qffj
-
+  val org_lz4_lz4Java = "1.8.1" // GHSA-vqf4-7m7x-wgfc
+  val at_yawk_lz4Java = "1.10.1" // GHSA-cmp6-m4wj-q63q
 }
 
 val V = new {
@@ -187,9 +188,16 @@ lazy val commonSettings = Seq(
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % V.betterMonadicFor),
   libraryDependencies ++= Seq(
     "co.fs2" %% "fs2-core" % V.fs2,
-    "org.apache.kafka" % "kafka-clients" % V.kafka,
+    "org.apache.kafka" % "kafka-clients" % V.kafka exclude (
+      "org.lz4",
+      "lz4-java",
+    ), // GHSA-vqf4-7m7x-wgfc
+    "at.yawk.lz4" % "lz4-java" % Vulnerables.at_yawk_lz4Java, // GHSA-cmp6-m4wj-q63q
     "org.xerial.snappy" % "snappy-java" % V.snappy, // multiple CVE, doesn't work as Runtime
-    "io.confluent" % "kafka-avro-serializer" % V.confluent,
+    "io.confluent" % "kafka-avro-serializer" % V.confluent exclude (
+      "org.lz4",
+      "lz4-java",
+    ), // GHSA-vqf4-7m7x-wgfc,
     "org.apache.avro" % "avro" % V.avro, // CVE-2023-39410, didn't work as Runtime
     "org.apache.commons" % "commons-compress" % V.commonsCompress, // CVE-2023-42503, didn't work as Runtime
     "org.apache.commons" % "commons-lang3" % V.commonsLang, // CVE-2025-48924 / GHSA-j288-q9x7-2f5v
