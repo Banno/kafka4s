@@ -1,4 +1,4 @@
-val typelevelV = "0.8.4"
+val typelevelV = "0.8.5"
 
 addSbtPlugin("com.julianpeeters" % "sbt-avrohugger" % "2.16.1")
 addSbtPlugin("io.github.davidgregory084" % "sbt-tpolecat" % "0.3.1")
