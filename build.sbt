@@ -22,6 +22,7 @@ lazy val Vulnerables = new {
   val fs2 = "3.12.2" // GHSA-rrw2-px9j-qffj
   val org_lz4_lz4Java = "1.8.1" // GHSA-vqf4-7m7x-wgfc
   val at_yawk_lz4Java = "1.10.4" // GHSA-cmp6-m4wj-q63q
+  val jackson = "2.21.1" //GHSA-72hv-8253-57qq
 }
 
 val V = new {
@@ -93,6 +94,7 @@ lazy val core = project
       "org.typelevel" %% "cats-effect" % V.catsEffect,
       "org.tpolecat" %% "natchez-core" % V.natchez,
       "co.fs2" %% "fs2-io" % Vulnerables.fs2, // needed until natchez-core upgrades to fs2-io 3.12.2
+      "com.fasterxml.jackson.core" % "jackson-databind" % Vulnerables.jackson,
       "org.typelevel" %% "cats-laws" % V.cats % Test,
       "org.scalatest" %% "scalatest" % V.scalatest % Test,
       "org.typelevel" %% "discipline-munit" % V.disciplineMunit % Test,
