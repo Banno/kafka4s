@@ -4,6 +4,8 @@ on:
   pull_request:
     types: [opened, reopened, closed]
 
+permissions: {}
+
 jobs:
   opened:
     name: Notify on Opened and Reopened PR
