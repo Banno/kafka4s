@@ -8,6 +8,7 @@ ThisBuild / crossScalaVersions := List(scalaVersion.value)
 ThisBuild / tlBaseVersion := "8.0"
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("11"))
 ThisBuild / githubWorkflowTargetBranches := Seq("*", "series/*")
+ThisBuild / githubWorkflowIncludeClean := false // We are disabling clean, because we set the artifact retention days instead.
 ThisBuild / githubWorkflowBuildPreamble := Seq(
   WorkflowStep.Run(
     id = Some("start-docker-compose"),
