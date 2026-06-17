@@ -2,6 +2,7 @@ import laika.helium.Helium
 import laika.helium.config.HeliumIcon
 import laika.helium.config.IconLink
 import org.typelevel.sbt.site.GenericSiteSettings
+import org.typelevel.sbt.gha.{Permissions, PermissionValue}
 
 ThisBuild / scalaVersion := "2.13.18"
 ThisBuild / crossScalaVersions := List(scalaVersion.value)
@@ -253,3 +254,35 @@ inThisBuild(
 addCommandAlias("fmt", "scalafmtSbt;scalafmtAll;")
 addCommandAlias("fmtck", "scalafmtSbtCheck;scalafmtCheckAll;")
 addCommandAlias("build", "Test / compile")
+
+// Limit the GITHUB_TOKEN to least privilege. Most jobs only need to read the
+// repo; the two that write back get a per-job override below.
+val readContents = Permissions.Specify(
+  actions = PermissionValue.None,
+  checks = PermissionValue.None,
+  contents = PermissionValue.Read,
+  deployments = PermissionValue.None,
+  idToken = PermissionValue.None,
+  issues = PermissionValue.None,
+  packages = PermissionValue.None,
+  pages = PermissionValue.None,
+  pullRequests = PermissionValue.None,
+  repositoryProjects = PermissionValue.None,
+  securityEvents = PermissionValue.None,
+  statuses = PermissionValue.None,
+)
+
+val writeContents =
+  readContents.withContents(PermissionValue.Write)
+
+ThisBuild / githubWorkflowPermissions := Some(readContents)
+
+// dependency-submission submits to the GitHub dependency graph and site
+// publishes to gh-pages; both require contents: write.
+ThisBuild / githubWorkflowAddedJobs ~= { jobs =>
+  jobs.map { job =>
+    if (job.id == "dependency-submission" || job.id == "site")
+      job.withPermissions(Some(writeContents))
+    else job
+  }
+}
