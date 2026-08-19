@@ -25,6 +25,8 @@ lazy val Vulnerables = new {
   val org_lz4_lz4Java = "1.8.1" // GHSA-vqf4-7m7x-wgfc
   val at_yawk_lz4Java = "1.11.2" // GHSA-cmp6-m4wj-q63q
   val jackson = "2.22.1" // GHSA-72hv-8253-57qq
+  val httpCore5 = "5.4.3" // GHSA-hf6x-8p5f-cgmf
+  val httpClient5 = "5.6.3" // GHSA-hjcp-jmpx-g3qm
 }
 
 val V = new {
@@ -197,6 +199,8 @@ lazy val commonSettings = Seq(
       "lz4-java",
     ), // GHSA-vqf4-7m7x-wgfc
     "at.yawk.lz4" % "lz4-java" % Vulnerables.at_yawk_lz4Java, // GHSA-cmp6-m4wj-q63q
+    "org.apache.httpcomponents.core5" % "httpcore5-h2" % Vulnerables.httpCore5, // GHSA-hf6x-8p5f-cgmf
+    "org.apache.httpcomponents.client5" % "httpclient5" % Vulnerables.httpClient5, // GHSA-hjcp-jmpx-g3qm
     "org.xerial.snappy" % "snappy-java" % V.snappy, // multiple CVE, doesn't work as Runtime
     "io.confluent" % "kafka-avro-serializer" % V.confluent exclude (
       "org.lz4",
