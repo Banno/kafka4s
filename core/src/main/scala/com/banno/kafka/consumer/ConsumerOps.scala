@@ -385,6 +385,10 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
     * records when the consumer is closed. The consumer must be configured to
     * disable offset auto-commits, i.e. `enable.auto.commit=false`.
     *
+    * If committing offsets fails, processing stops and the returned stream
+    * fails with that error, rather than continuing to process records which
+    * could never be committed.
+    *
     * If keepAliveInterval is provided and finite, and topics have been manually
     * assigned, then committed offsets will be periodically refreshed to prevent
     * them from expiring for low traffic topics.
@@ -418,6 +422,10 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
     * using auto-offset-commits, since it will not commit offsets for failed
     * records when the consumer is closed. The consumer must be configured to
     * disable offset auto-commits, i.e. `enable.auto.commit=false`.
+    *
+    * If committing offsets fails, processing stops and the returned stream
+    * fails with that error, rather than continuing to process batches which
+    * could never be committed.
     *
     * If keepAliveInterval is provided and finite, and topics have been manually
     * assigned, then committed offsets will be periodically refreshed to prevent
@@ -495,9 +503,29 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
                 offsetChannel.close.void
               ) // Signal to flush the commit stream
 
-          Stream
-            .bracket(commitStream.compile.drain.start)(_.join.void)
-            .flatMap(_ => processStream)
+          // A commit failure stops event processing and
+          // is reported to the caller, rather than being silently discarded.
+          Stream.eval(Deferred[F, Either[Throwable, Unit]]).flatMap {
+            commitResult =>
+              Stream
+                .bracket(
+                  commitStream.compile.drain.attempt
+                    .flatTap(commitResult.complete)
+                    .start
+                )(_.join.flatMap {
+                  // Re-raise a commit failure.
+                  case Outcome.Succeeded(result) => result.flatMap(F.fromEither)
+                  case Outcome.Errored(e) => F.raiseError[Unit](e)
+                  case Outcome.Canceled() => F.unit
+                })
+                .flatMap(_ =>
+                  // Stop processing once commits start failing, instead of
+                  // continuing to process records which won't be committed.
+                  processStream.interruptWhen(
+                    commitResult.get.as(Either.unit[Throwable])
+                  )
+                )
+          }
         }
     }
   }
