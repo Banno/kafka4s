@@ -125,6 +125,8 @@ lazy val avro4s = project
   .settings(
     scalacOptions += "-Wnonunit-statement",
     testFrameworks += new TestFramework("munit.Framework"),
+    Test / fork := true,
+    Test / javaOptions += "-Dorg.apache.avro.SERIALIZABLE_PACKAGES=com.banno",
   )
   .dependsOn(core % "compile->compile;test->test")
 
