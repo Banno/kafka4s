@@ -30,7 +30,7 @@ lazy val Vulnerables = new {
 }
 
 val V = new {
-  val avro = "1.12.1"
+  val avro = "1.12.2"
   val avro4s = "3.1.0"
   val betterMonadicFor = "0.3.1"
   val cats = "2.13.0"
@@ -125,6 +125,8 @@ lazy val avro4s = project
   .settings(
     scalacOptions += "-Wnonunit-statement",
     testFrameworks += new TestFramework("munit.Framework"),
+    Test / fork := true,
+    Test / javaOptions += "-Dorg.apache.avro.SERIALIZABLE_PACKAGES=com.banno",
   )
   .dependsOn(core % "compile->compile;test->test")
 
