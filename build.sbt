@@ -26,7 +26,7 @@ lazy val Vulnerables = new {
   val at_yawk_lz4Java = "1.11.2" // GHSA-cmp6-m4wj-q63q
   val jackson = "2.22.2" // GHSA-72hv-8253-57qq
   val httpCore5 = "5.4.3" // GHSA-hf6x-8p5f-cgmf
-  val httpClient5 = "5.6.3" // GHSA-hjcp-jmpx-g3qm
+  val httpClient5 = "5.6.4" // GHSA-hjcp-jmpx-g3qm
 }
 
 val V = new {
