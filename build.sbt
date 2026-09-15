@@ -21,7 +21,7 @@ ThisBuild / githubWorkflowBuildPreamble := Seq(
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
 lazy val Vulnerables = new {
-  val fs2 = "3.13.0" // GHSA-rrw2-px9j-qffj
+  val fs2 = "3.14.0" // GHSA-rrw2-px9j-qffj
   val org_lz4_lz4Java = "1.8.1" // GHSA-vqf4-7m7x-wgfc
   val at_yawk_lz4Java = "1.11.2" // GHSA-cmp6-m4wj-q63q
   val jackson = "2.22.2" // GHSA-72hv-8253-57qq
@@ -41,7 +41,7 @@ val V = new {
   val curator = "5.9.0"
   val disciplineMunit = "2.0.0"
   val epimetheus = "0.5.0"
-  val fs2 = "3.13.0"
+  val fs2 = "3.14.0"
   val guava = "32.1.3-jre"
   val junit = "4.13"
   val kafka = s"$confluent-ccs"
