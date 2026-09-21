@@ -60,7 +60,9 @@ package object kafka {
     // TODO this REALLY needs to be tested... assumes records for partition are in-order, calling .last hopefully never fails, etc
     def lastOffsets: Map[TopicPartition, Long] =
       crs.partitions.asScala.toSeq
-        .map(tp => (tp -> crs.records(tp).asScala.last.offset))
+        .flatMap(tp =>
+          crs.records(tp).asScala.lastOption.map(record => tp -> record.offset)
+        )
         .toMap
 
     /** lastOffsets + 1, can be used to commit the offsets that the consumer
