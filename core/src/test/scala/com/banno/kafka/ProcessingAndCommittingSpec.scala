@@ -157,7 +157,7 @@ class ProcessingAndCommittingSpec extends CatsEffectSuite with KafkaSpec {
           )(_.value.pure[IO])
           results <- pac
             .take(values.size.toLong)
-            .interleave[IO, Any](committed(consumer, ps, values.size))
+            .interleave[IO, Any](committed(consumer, ps, values.size, 200.millis))
             .compile
             .toList
         } yield {
