@@ -66,8 +66,7 @@ object Topic {
     override def getMessage(): String = {
       val loc = s"${cr.topic()}/${cr.partition()}/${cr.offset()}"
       val time = Instant.ofEpochMilli(cr.timestamp())
-      val raw = keyOrValue.select(cr)
-      s"Unable to parse record $keyOrValue from $loc @[$time]:\n$raw"
+      s"Unable to parse record $keyOrValue from $loc @[$time]"
     }
   }
 
