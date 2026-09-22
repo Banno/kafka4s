@@ -589,6 +589,14 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
         }
       }
 
+      private val noopCommitCallback =
+        new OffsetCommitCallback {
+          override def onComplete(
+              offsets: java.util.Map[TopicPartition, OffsetAndMetadata],
+              exception: Exception
+          ): Unit = ()
+        }
+
       val doKeepAlive: F[Unit] =
         lock.permit.use { _ =>
           for {
@@ -596,7 +604,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
             nextOffsets = offsets.view
               .mapValues(o => new OffsetAndMetadata(o + 1))
               .toMap
-            _ <- consumer.commitSync(nextOffsets)
+            _ <- consumer.commitAsync(nextOffsets, noopCommitCallback)
           } yield ()
         }
 
