@@ -31,6 +31,7 @@ import org.apache.kafka.common.*
 import org.apache.kafka.common.errors.WakeupException
 import org.apache.kafka.clients.consumer.*
 import fs2.concurrent.{Signal, SignallingRef}
+import org.slf4j.LoggerFactory
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 case class PartitionQueriesOps[F[_]](consumer: PartitionQueries[F]) {
@@ -589,6 +590,25 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
         }
       }
 
+      private val logger =
+        LoggerFactory.getLogger(getClass)
+
+      private val keepAliveCommitCallback =
+        new OffsetCommitCallback {
+          override def onComplete(
+              offsets: java.util.Map[TopicPartition, OffsetAndMetadata],
+              exception: Exception,
+          ): Unit = {
+            if (exception != null) {
+              logger.warn(
+                "Keep-alive offset commit failed (will retry in {}): {}",
+                interval,
+                exception.getMessage,
+              )
+            }
+          }
+        }
+
       val doKeepAlive: F[Unit] =
         lock.permit.use { _ =>
           for {
@@ -596,7 +616,7 @@ case class ConsumerOps[F[_], K, V](consumer: ConsumerApi[F, K, V]) {
             nextOffsets = offsets.view
               .mapValues(o => new OffsetAndMetadata(o + 1))
               .toMap
-            _ <- consumer.commitSync(nextOffsets)
+            _ <- consumer.commitAsync(nextOffsets, keepAliveCommitCallback)
           } yield ()
         }
 
