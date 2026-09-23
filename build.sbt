@@ -23,7 +23,7 @@ Global / onChangedBuildSource := ReloadOnSourceChanges
 lazy val Vulnerables = new {
   val fs2 = "3.14.0" // GHSA-rrw2-px9j-qffj
   val org_lz4_lz4Java = "1.8.1" // GHSA-vqf4-7m7x-wgfc
-  val at_yawk_lz4Java = "1.11.2" // GHSA-cmp6-m4wj-q63q
+  val at_yawk_lz4Java = "1.11.3" // GHSA-cmp6-m4wj-q63q
   val jackson = "2.22.2" // GHSA-72hv-8253-57qq
   val httpCore5 = "5.4.3" // GHSA-hf6x-8p5f-cgmf
   val httpClient5 = "5.6.4" // GHSA-hjcp-jmpx-g3qm
@@ -58,7 +58,7 @@ val V = new {
   val scalatest = "3.2.20"
   val scalatestPlus = "3.2.5.0"
   val snappy = "1.1.10.8"
-  val vulcan = "1.13.0"
+  val vulcan = "1.14.0"
 }
 
 lazy val kafka4s = project
@@ -119,7 +119,7 @@ lazy val avro4s = project
       "com.sksamuel.avro4s" %% "avro4s-core" % V.avro4s,
       "com.github.chocpanda" %% "scalacheck-magnolia" % V.scalacheckMagnolia % Test,
       "org.scalatest" %% "scalatest" % V.scalatest % Test,
-      "org.scalatestplus" %% "scalacheck-1-18" % "3.2.19.0" % Test,
+      "org.scalatestplus" %% "scalacheck-1-19" % "3.2.20.0" % Test,
     ),
   )
   .settings(
