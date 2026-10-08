@@ -6,7 +6,7 @@ import org.typelevel.sbt.gha.{Permissions, PermissionValue}
 
 ThisBuild / scalaVersion := "2.13.18"
 ThisBuild / crossScalaVersions := List(scalaVersion.value)
-ThisBuild / tlBaseVersion := "8.0"
+ThisBuild / tlBaseVersion := "8.1"
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("11"))
 ThisBuild / githubWorkflowTargetBranches := Seq("*", "series/*")
 ThisBuild / githubWorkflowIncludeClean := false // We are disabling clean, because we set the artifact retention days instead.
