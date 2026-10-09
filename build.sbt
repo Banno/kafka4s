@@ -4,7 +4,7 @@ import laika.helium.config.IconLink
 import org.typelevel.sbt.site.GenericSiteSettings
 import org.typelevel.sbt.gha.{Permissions, PermissionValue}
 
-ThisBuild / scalaVersion := "2.13.18"
+ThisBuild / scalaVersion := "3.9.0"
 ThisBuild / crossScalaVersions := List(scalaVersion.value)
 ThisBuild / tlBaseVersion := "8.1"
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("11"))
