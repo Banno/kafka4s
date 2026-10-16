@@ -24,7 +24,7 @@ import com.banno.kafka.consumer._
 import natchez.Trace.Implicits.noop
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
-import io.prometheus.client.CollectorRegistry
+import io.prometheus.metrics.model.registry.PrometheusRegistry
 import munit._
 
 import scala.jdk.CollectionConverters._
@@ -39,7 +39,7 @@ class EpimetheusMetricsReporterApiSpec
   override val munitIOTimeout = Duration(1, MINUTES)
 
   private def assertTotals(
-      registry: CollectorRegistry,
+      registry: PrometheusRegistry,
       metric: String,
       expected: Option[List[Double]],
   ): Unit =
@@ -102,7 +102,7 @@ class EpimetheusMetricsReporterApiSpec
                         EpimetheusMetricsReporterApi.defaultUpdatePeriod + (1 second)
                       )
 
-                    registry = CollectorRegistry.defaultRegistry
+                    registry = PrometheusRegistry.defaultRegistry
                     () = assertEquals(
                       registry.metricFamilySamples.asScala
                         .count(_.name.startsWith("kafka_producer")),
@@ -134,7 +134,7 @@ class EpimetheusMetricsReporterApiSpec
             )
         )
       finalMetricCount =
-        CollectorRegistry.defaultRegistry.metricFamilySamples.asScala
+        PrometheusRegistry.defaultRegistry.metricFamilySamples.asScala
           .count(_.name.startsWith("kafka_producer"))
       () = assertEquals(finalMetricCount, 0)
     } yield ()

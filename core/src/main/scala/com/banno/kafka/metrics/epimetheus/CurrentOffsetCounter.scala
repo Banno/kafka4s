@@ -20,20 +20,19 @@ package metrics.epimetheus
 import cats.effect._
 import cats.syntax.all._
 import io.chrisdavenport.epimetheus._
-import scala.math.max
 import shapeless.Sized
 
 object CurrentOffsetCounter {
   def apply[F[_]: Sync](
-      cr: CollectorRegistry[F],
+      cr: PrometheusRegistry[F],
       prefix: Name,
       clientId: String,
   ): F[IncomingRecordMetadata => F[Unit]] =
-    Counter
+    Gauge
       .labelled(
         cr,
         prefix |+| Name("_current_offset"),
-        "Counter for last consumed (not necessarily committed) offset of topic partition.",
+        "Gauge for last consumed (not necessarily committed) offset of topic partition.",
         Sized(
           Label("client_id"),
           Label("topic"),
@@ -46,11 +45,7 @@ object CurrentOffsetCounter {
             record.topicPartition.partition.toString(),
           ),
       )
-      .map { counter => (record: IncomingRecordMetadata) =>
-        for {
-          value <- counter.label(record).get
-          delta = max(0, record.offset.toDouble - value)
-          () <- counter.label(record).incBy(delta)
-        } yield ()
+      .map { gauge => (record: IncomingRecordMetadata) =>
+        gauge.label(record).set(record.offset.toDouble)
       }
 }
