@@ -16,19 +16,20 @@
 
 package com.banno.kafka.metrics.epimetheus
 
-import cats.syntax.all._
+import cats.syntax.all.*
 import cats.effect.IO
-import com.banno.kafka._
-import com.banno.kafka.producer._
-import com.banno.kafka.consumer._
+import com.banno.kafka.*
+import com.banno.kafka.producer.*
+import com.banno.kafka.consumer.*
 import natchez.Trace.Implicits.noop
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import io.prometheus.metrics.model.snapshots.MetricSnapshots
-import munit._
+import munit.*
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
+import scala.jdk.OptionConverters.RichOptional
 
 class EpimetheusMetricsReporterApiSpec
     extends CatsEffectSuite
@@ -45,13 +46,11 @@ class EpimetheusMetricsReporterApiSpec
   ): Unit = {
     import scala.jdk.CollectionConverters._
     assertEquals(
-      Option(
-        snapshots
-          .stream()
-          .filter(_.getMetadata.getName == metric)
-          .findFirst()
-          .orElse(null)
-      )
+      snapshots
+        .stream()
+        .filter(_.getMetadata.getName == metric)
+        .findFirst()
+        .toScala
         .map { snapshot =>
           snapshot.getDataPoints.asScala.toList.map { dp =>
             dp match {
