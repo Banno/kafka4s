@@ -45,7 +45,13 @@ class EpimetheusMetricsReporterApiSpec
   ): Unit = {
     import scala.jdk.CollectionConverters._
     assertEquals(
-      Option(snapshots.stream().filter(_.getMetadata.getName == metric).findFirst().orElse(null))
+      Option(
+        snapshots
+          .stream()
+          .filter(_.getMetadata.getName == metric)
+          .findFirst()
+          .orElse(null)
+      )
         .map { snapshot =>
           snapshot.getDataPoints.asScala.toList.map { dp =>
             dp match {
@@ -112,8 +118,13 @@ class EpimetheusMetricsReporterApiSpec
                       import scala.jdk.CollectionConverters._
                       import java.util.stream.Collectors
                       assertEquals(
-                        snapshots.stream().collect(Collectors.toList()).asScala
-                          .count(_.getMetadata.getName.startsWith("kafka_producer")),
+                        snapshots
+                          .stream()
+                          .collect(Collectors.toList())
+                          .asScala
+                          .count(
+                            _.getMetadata.getName.startsWith("kafka_producer")
+                          ),
                         56,
                       )
                     }
@@ -127,8 +138,13 @@ class EpimetheusMetricsReporterApiSpec
                       import scala.jdk.CollectionConverters._
                       import java.util.stream.Collectors
                       assertEquals(
-                        snapshots.stream().collect(Collectors.toList()).asScala
-                          .count(_.getMetadata.getName.startsWith("kafka_consumer")),
+                        snapshots
+                          .stream()
+                          .collect(Collectors.toList())
+                          .asScala
+                          .count(
+                            _.getMetadata.getName.startsWith("kafka_consumer")
+                          ),
                         50,
                       )
                     }
@@ -150,7 +166,10 @@ class EpimetheusMetricsReporterApiSpec
       finalMetricCount = {
         import scala.jdk.CollectionConverters._
         import java.util.stream.Collectors
-        finalSnapshots.stream().collect(Collectors.toList()).asScala
+        finalSnapshots
+          .stream()
+          .collect(Collectors.toList())
+          .asScala
           .count(_.getMetadata.getName.startsWith("kafka_producer"))
       }
       () = assertEquals(finalMetricCount, 0)

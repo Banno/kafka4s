@@ -24,7 +24,10 @@ import com.banno.kafka.metrics.MetricsReporterApi
 import fs2.Stream
 import fs2.concurrent.SignallingRef
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import io.prometheus.metrics.model.registry.{PrometheusRegistry => UnsafePrometheusRegistry, Collector}
+import io.prometheus.metrics.model.registry.{
+  PrometheusRegistry => UnsafePrometheusRegistry,
+  Collector,
+}
 import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import io.chrisdavenport.epimetheus.PrometheusRegistry
 import org.apache.kafka.common.MetricName
@@ -158,7 +161,9 @@ object EpimetheusMetricsReporterApi {
         NonEmptyList.one(metric),
         gauge,
         m =>
-          m.value.flatMap(v => Sync[F].delay(gauge.labelValues(m.labels: _*).set(v))),
+          m.value.flatMap(v =>
+            Sync[F].delay(gauge.labelValues(m.labels: _*).set(v))
+          ),
       )
 
     def counter[F[_]: Sync](
