@@ -24,7 +24,8 @@ import com.banno.kafka.metrics.MetricsReporterApi
 import fs2.Stream
 import fs2.concurrent.SignallingRef
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import io.prometheus.client._
+import io.prometheus.metrics.model.registry.{PrometheusRegistry => CollectorRegistry, Collector}
+import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import org.apache.kafka.common.MetricName
 import org.apache.kafka.common.metrics.KafkaMetric
 
@@ -73,7 +74,7 @@ object PrometheusMetricsReporterApi {
     def createGauge(registry: CollectorRegistry): F[Gauge] =
       F.delay(
         Gauge
-          .build()
+          .builder()
           .name(name)
           .help(help)
           .labelNames(labelNames: _*)
@@ -82,7 +83,7 @@ object PrometheusMetricsReporterApi {
     def createCounter(registry: CollectorRegistry): F[Counter] =
       F.delay(
         Counter
-          .build()
+          .builder()
           .name(name)
           .help(help)
           .labelNames(labelNames: _*)
@@ -144,7 +145,7 @@ object PrometheusMetricsReporterApi {
         NonEmptyList.one(metric),
         gauge,
         m =>
-          m.value.flatMap(v => Sync[F].delay(gauge.labels(m.labels: _*).set(v))),
+          m.value.flatMap(v => Sync[F].delay(gauge.labelValues(m.labels: _*).set(v))),
       )
 
     def counter[F[_]: Sync](
@@ -160,8 +161,8 @@ object PrometheusMetricsReporterApi {
               // NOTE Should always be positive, but protect against negative
               // TODO might want to log on negative?
               counter
-                .labels(m.labels: _*)
-                .inc(max(0, v - counter.labels(m.labels: _*).get))
+                .labelValues(m.labels: _*)
+                .inc(max(0, v - counter.labelValues(m.labels: _*).get))
             )
           ),
       )

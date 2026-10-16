@@ -25,9 +25,9 @@ import natchez.Trace.Implicits.noop
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
 import io.prometheus.metrics.model.registry.PrometheusRegistry
+import io.prometheus.metrics.model.snapshots.MetricSnapshots
 import munit._
 
-import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
 
 class EpimetheusMetricsReporterApiSpec
@@ -39,21 +39,25 @@ class EpimetheusMetricsReporterApiSpec
   override val munitIOTimeout = Duration(1, MINUTES)
 
   private def assertTotals(
-      registry: PrometheusRegistry,
+      snapshots: MetricSnapshots,
       metric: String,
       expected: Option[List[Double]],
-  ): Unit =
+  ): Unit = {
+    import scala.jdk.CollectionConverters._
     assertEquals(
-      registry.metricFamilySamples.asScala
-        .find(_.name == metric)
-        .map(
-          _.samples.asScala
-            .filter(_.name == s"${metric}_total")
-            .map(_.value)
-            .toList
-        ),
+      Option(snapshots.stream().filter(_.getMetadata.getName == metric).findFirst().orElse(null))
+        .map { snapshot =>
+          snapshot.getDataPoints.asScala.toList.map { dp =>
+            dp match {
+              case counter: io.prometheus.metrics.model.snapshots.CounterSnapshot.CounterDataPointSnapshot =>
+                counter.getValue
+              case _ => 0.0
+            }
+          }
+        },
       expected,
     )
+  }
 
   // When Kafka clients change their metrics, this test will help identify the
   // changes we need to make
@@ -103,29 +107,38 @@ class EpimetheusMetricsReporterApiSpec
                       )
 
                     registry = PrometheusRegistry.defaultRegistry
-                    () = assertEquals(
-                      registry.metricFamilySamples.asScala
-                        .count(_.name.startsWith("kafka_producer")),
-                      56,
-                    )
+                    snapshots = registry.scrape()
+                    () = {
+                      import scala.jdk.CollectionConverters._
+                      import java.util.stream.Collectors
+                      assertEquals(
+                        snapshots.stream().collect(Collectors.toList()).asScala
+                          .count(_.getMetadata.getName.startsWith("kafka_producer")),
+                        56,
+                      )
+                    }
                     () = assertTotals(
-                      registry,
+                      snapshots,
                       "kafka_producer_record_send",
                       List(2.0).some,
                     )
 
-                    () = assertEquals(
-                      registry.metricFamilySamples.asScala
-                        .count(_.name.startsWith("kafka_consumer")),
-                      50,
-                    )
+                    () = {
+                      import scala.jdk.CollectionConverters._
+                      import java.util.stream.Collectors
+                      assertEquals(
+                        snapshots.stream().collect(Collectors.toList()).asScala
+                          .count(_.getMetadata.getName.startsWith("kafka_consumer")),
+                        50,
+                      )
+                    }
                     () = assertTotals(
-                      registry,
+                      snapshots,
                       "kafka_consumer_records_consumed",
                       List(2.0, 2.0).some,
                     )
                     () = assertTotals(
-                      registry,
+                      snapshots,
                       "kafka_consumer_topic_records_consumed",
                       List(2.0, 2.0).some,
                     )
@@ -133,9 +146,13 @@ class EpimetheusMetricsReporterApiSpec
                 )
             )
         )
-      finalMetricCount =
-        PrometheusRegistry.defaultRegistry.metricFamilySamples.asScala
-          .count(_.name.startsWith("kafka_producer"))
+      finalSnapshots = PrometheusRegistry.defaultRegistry.scrape()
+      finalMetricCount = {
+        import scala.jdk.CollectionConverters._
+        import java.util.stream.Collectors
+        finalSnapshots.stream().collect(Collectors.toList()).asScala
+          .count(_.getMetadata.getName.startsWith("kafka_producer"))
+      }
       () = assertEquals(finalMetricCount, 0)
     } yield ()
   }

@@ -19,8 +19,8 @@ package com.banno.kafka.metrics.prometheus
 import cats.effect.Sync
 import cats.syntax.all._
 import org.apache.kafka.clients.consumer.ConsumerRecord
-import io.prometheus.client._
-import scala.math.max
+import io.prometheus.metrics.model.registry.{PrometheusRegistry => CollectorRegistry}
+import io.prometheus.metrics.core.metrics.Gauge
 
 object CurrentOffsetCounter {
 
@@ -28,25 +28,19 @@ object CurrentOffsetCounter {
       implicit F: Sync[F]
   ): F[ConsumerRecord[?, ?] => F[Unit]] =
     F.delay {
-      Counter
-        .build()
+      Gauge
+        .builder()
         .name(prefix + "_current_offset")
         .help(
-          "Counter for last consumed (not necessarily committed) offset of topic partition."
+          "Gauge for last consumed (not necessarily committed) offset of topic partition."
         )
         .labelNames("client_id", "topic", "partition")
         .register(cr)
-    }.map { counter => (record: ConsumerRecord[?, ?]) =>
-      for {
-        value <- F.delay(
-          counter.labels(clientId, record.topic, record.partition.toString).get
-        )
-        delta = max(0, record.offset.toDouble - value)
-        _ <- F.delay(
-          counter
-            .labels(clientId, record.topic, record.partition.toString)
-            .inc(delta)
-        )
-      } yield ()
+    }.map { gauge => (record: ConsumerRecord[?, ?]) =>
+      F.delay(
+        gauge
+          .labelValues(clientId, record.topic, record.partition.toString)
+          .set(record.offset.toDouble)
+      )
     }
 }
