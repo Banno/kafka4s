@@ -14,23 +14,27 @@
  * limitations under the License.
  */
 
-package com.banno.kafka.metrics.epimetheus
+package com.banno.kafka.metrics.prometheus
 
-import cats.syntax.all._
+import cats.syntax.all.*
 import cats.effect.IO
-import com.banno.kafka._
-import com.banno.kafka.producer._
-import com.banno.kafka.consumer._
+import com.banno.kafka.*
+import com.banno.kafka.producer.*
+import com.banno.kafka.consumer.*
 import natchez.Trace.Implicits.noop
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
-import io.prometheus.client.CollectorRegistry
-import munit._
+import io.prometheus.metrics.model.registry.PrometheusRegistry as JPrometheusRegistry
+import munit.*
 
-import scala.jdk.CollectionConverters._
-import scala.concurrent.duration._
+import scala.jdk.CollectionConverters.*
+import io.prometheus.metrics.model.snapshots.CounterSnapshot.CounterDataPointSnapshot
+import io.prometheus.metrics.model.snapshots.GaugeSnapshot.GaugeDataPointSnapshot
+import io.prometheus.metrics.model.snapshots.MetricSnapshots
 
-class EpimetheusMetricsReporterApiSpec
+import scala.concurrent.duration.*
+
+class PrometheusMetricsReporterApiSpec
     extends CatsEffectSuite
     with DockerizedKafka {
   // This test allocates a lot of consumers. It was timing out in the GitHub
@@ -39,18 +43,19 @@ class EpimetheusMetricsReporterApiSpec
   override val munitIOTimeout = Duration(1, MINUTES)
 
   private def assertTotals(
-      registry: CollectorRegistry,
+      sample: MetricSnapshots,
       metric: String,
       expected: Option[List[Double]],
   ): Unit =
     assertEquals(
-      registry.metricFamilySamples.asScala
-        .find(_.name == metric)
+      sample.iterator().asScala.toList
+        .find(_.getMetadata.getName == metric)
         .map(
-          _.samples.asScala
-            .filter(_.name == s"${metric}_total")
-            .map(_.value)
-            .toList
+          _.getDataPoints.asScala.toList.map {
+              case counter: CounterDataPointSnapshot => counter.getValue
+              case gauge: GaugeDataPointSnapshot => gauge.getValue
+              case e => throw new Exception(s"Got snapshot ${e}")
+            }
         ),
       expected,
     )
@@ -58,7 +63,7 @@ class EpimetheusMetricsReporterApiSpec
   // When Kafka clients change their metrics, this test will help identify the
   // changes we need to make
   test(
-    "Epimetheus reporter should register Epimetheus collectors for all known Kafka metrics and unregister on close"
+    "Prometheus reporter should register collectors for all known Kafka metrics and unregister on close"
   ) {
     for {
       topic <- createTopic[IO](2)
@@ -69,21 +74,21 @@ class EpimetheusMetricsReporterApiSpec
       () <- ProducerApi
         .resource[IO, String, String](
           BootstrapServers(bootstrapServer),
-          MetricReporters[ProducerEpimetheusReporter],
+          MetricReporters[ProducerPrometheusReporter],
         )
         .use(p =>
           ConsumerApi
             .resource[IO, String, String](
               BootstrapServers(bootstrapServer),
               ClientId("c1"),
-              MetricReporters[ConsumerEpimetheusReporter],
+              MetricReporters[ConsumerPrometheusReporter],
             )
             .use(c1 =>
               ConsumerApi
                 .resource[IO, String, String](
                   BootstrapServers(bootstrapServer),
                   ClientId("c2"),
-                  MetricReporters[ConsumerEpimetheusReporter],
+                  MetricReporters[ConsumerPrometheusReporter],
                 )
                 .use(c2 =>
                   for {
@@ -99,33 +104,32 @@ class EpimetheusMetricsReporterApiSpec
 
                     _ <- IO
                       .sleep(
-                        EpimetheusMetricsReporterApi.defaultUpdatePeriod + (1 second)
+                        PrometheusMetricsReporterApi.defaultUpdatePeriod + (1 second)
                       )
 
-                    registry = CollectorRegistry.defaultRegistry
+                    metrics = JPrometheusRegistry.defaultRegistry.scrape()
+
                     () = assertEquals(
-                      registry.metricFamilySamples.asScala
-                        .count(_.name.startsWith("kafka_producer")),
-                      56,
+                      metrics.asScala.toList.count(_.getMetadata.getName.startsWith("kafka_producer")),
+                      53,
                     )
                     () = assertTotals(
-                      registry,
+                      metrics,
                       "kafka_producer_record_send",
                       List(2.0).some,
                     )
 
                     () = assertEquals(
-                      registry.metricFamilySamples.asScala
-                        .count(_.name.startsWith("kafka_consumer")),
-                      50,
+                      metrics.asScala.toList.count(_.getMetadata.getName.startsWith("kafka_consumer")),
+                      48,
                     )
                     () = assertTotals(
-                      registry,
+                      metrics,
                       "kafka_consumer_records_consumed",
                       List(2.0, 2.0).some,
                     )
                     () = assertTotals(
-                      registry,
+                      metrics,
                       "kafka_consumer_topic_records_consumed",
                       List(2.0, 2.0).some,
                     )
@@ -134,8 +138,7 @@ class EpimetheusMetricsReporterApiSpec
             )
         )
       finalMetricCount =
-        CollectorRegistry.defaultRegistry.metricFamilySamples.asScala
-          .count(_.name.startsWith("kafka_producer"))
+        JPrometheusRegistry.defaultRegistry.scrape().asScala.toList.count(_.getMetadata.getName.startsWith("kafka_producer"))
       () = assertEquals(finalMetricCount, 0)
     } yield ()
   }

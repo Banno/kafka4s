@@ -17,19 +17,22 @@
 package com.banno.kafka.metrics.prometheus
 
 import cats.effect.Sync
-import cats.syntax.all._
+import cats.syntax.all.*
+import io.prometheus.metrics.core.metrics.Counter
 import org.apache.kafka.clients.consumer.ConsumerRecord
-import io.prometheus.client._
+import io.prometheus.metrics.model.registry.PrometheusRegistry as JPrometheusRegistry
+
+
 import scala.math.max
 
 object CurrentOffsetCounter {
 
-  def apply[F[_]](cr: CollectorRegistry, prefix: String, clientId: String)(
+  def apply[F[_]](cr: JPrometheusRegistry, prefix: String, clientId: String)(
       implicit F: Sync[F]
   ): F[ConsumerRecord[?, ?] => F[Unit]] =
     F.delay {
       Counter
-        .build()
+        .builder()
         .name(prefix + "_current_offset")
         .help(
           "Counter for last consumed (not necessarily committed) offset of topic partition."
@@ -39,12 +42,14 @@ object CurrentOffsetCounter {
     }.map { counter => (record: ConsumerRecord[?, ?]) =>
       for {
         value <- F.delay(
-          counter.labels(clientId, record.topic, record.partition.toString).get
+          counter
+            .labelValues(clientId, record.topic, record.partition.toString)
+            .get
         )
         delta = max(0, record.offset.toDouble - value)
         _ <- F.delay(
           counter
-            .labels(clientId, record.topic, record.partition.toString)
+            .labelValues(clientId, record.topic, record.partition.toString)
             .inc(delta)
         )
       } yield ()
