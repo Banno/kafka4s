@@ -30,7 +30,7 @@ import munit.*
 import scala.jdk.CollectionConverters.*
 import io.prometheus.metrics.model.snapshots.CounterSnapshot.CounterDataPointSnapshot
 import io.prometheus.metrics.model.snapshots.GaugeSnapshot.GaugeDataPointSnapshot
-import io.prometheus.metrics.model.snapshots.MetricSnapshots
+import io.prometheus.metrics.model.snapshots.MetricSnapshots as JMetricsSnapshots
 
 import scala.concurrent.duration.*
 
@@ -43,12 +43,12 @@ class PrometheusMetricsReporterApiSpec
   override val munitIOTimeout = Duration(1, MINUTES)
 
   private def assertTotals(
-      sample: MetricSnapshots,
+      metrics: JMetricsSnapshots,
       metric: String,
       expected: Option[List[Double]],
   ): Unit =
     assertEquals(
-      sample
+      metrics
         .iterator()
         .asScala
         .toList
