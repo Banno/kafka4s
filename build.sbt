@@ -40,7 +40,6 @@ val V = new {
   val commonsLang = "3.21.0"
   val curator = "5.9.0"
   val disciplineMunit = "2.0.0"
-  //val epimetheus = "0.7.1"//"0.5.0"
   val prometheus = "1.10.0"
   val fs2 = "3.14.0"
   val guava = "32.1.3-jre"
@@ -212,7 +211,6 @@ lazy val commonSettings = Seq(
     "org.apache.avro" % "avro" % V.avro, // CVE-2023-39410, didn't work as Runtime
     "org.apache.commons" % "commons-compress" % V.commonsCompress, // CVE-2023-42503, didn't work as Runtime
     "org.apache.commons" % "commons-lang3" % V.commonsLang, // CVE-2025-48924 / GHSA-j288-q9x7-2f5v
-    // "io.chrisdavenport" %% "epimetheus" % V.epimetheus,
     "com.chuusai" %% "shapeless" % "2.3.9",
     "io.prometheus" % "prometheus-metrics-core" % V.prometheus,
     "io.prometheus" % "prometheus-metrics-instrumentation-jvm" % V.prometheus,

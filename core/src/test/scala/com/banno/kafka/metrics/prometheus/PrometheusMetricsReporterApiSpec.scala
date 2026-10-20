@@ -48,14 +48,17 @@ class PrometheusMetricsReporterApiSpec
       expected: Option[List[Double]],
   ): Unit =
     assertEquals(
-      sample.iterator().asScala.toList
+      sample
+        .iterator()
+        .asScala
+        .toList
         .find(_.getMetadata.getName == metric)
         .map(
           _.getDataPoints.asScala.toList.map {
-              case counter: CounterDataPointSnapshot => counter.getValue
-              case gauge: GaugeDataPointSnapshot => gauge.getValue
-              case e => throw new Exception(s"Got snapshot ${e}")
-            }
+            case counter: CounterDataPointSnapshot => counter.getValue
+            case gauge: GaugeDataPointSnapshot => gauge.getValue
+            case e => throw new Exception(s"Got snapshot ${e}")
+          }
         ),
       expected,
     )
@@ -110,7 +113,9 @@ class PrometheusMetricsReporterApiSpec
                     metrics = JPrometheusRegistry.defaultRegistry.scrape()
 
                     () = assertEquals(
-                      metrics.asScala.toList.count(_.getMetadata.getName.startsWith("kafka_producer")),
+                      metrics.asScala.toList.count(
+                        _.getMetadata.getName.startsWith("kafka_producer")
+                      ),
                       53,
                     )
                     () = assertTotals(
@@ -120,7 +125,9 @@ class PrometheusMetricsReporterApiSpec
                     )
 
                     () = assertEquals(
-                      metrics.asScala.toList.count(_.getMetadata.getName.startsWith("kafka_consumer")),
+                      metrics.asScala.toList.count(
+                        _.getMetadata.getName.startsWith("kafka_consumer")
+                      ),
                       48,
                     )
                     () = assertTotals(
@@ -138,7 +145,11 @@ class PrometheusMetricsReporterApiSpec
             )
         )
       finalMetricCount =
-        JPrometheusRegistry.defaultRegistry.scrape().asScala.toList.count(_.getMetadata.getName.startsWith("kafka_producer"))
+        JPrometheusRegistry.defaultRegistry
+          .scrape()
+          .asScala
+          .toList
+          .count(_.getMetadata.getName.startsWith("kafka_producer"))
       () = assertEquals(finalMetricCount, 0)
     } yield ()
   }

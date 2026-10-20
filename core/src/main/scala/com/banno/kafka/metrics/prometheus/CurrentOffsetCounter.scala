@@ -22,7 +22,6 @@ import io.prometheus.metrics.core.metrics.Counter
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import io.prometheus.metrics.model.registry.PrometheusRegistry as JPrometheusRegistry
 
-
 import scala.math.max
 
 object CurrentOffsetCounter {
