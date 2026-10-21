@@ -16,20 +16,24 @@
 
 package com.banno.kafka.metrics.prometheus
 
-import cats._
-import cats.data._
-import cats.effect._
-import cats.syntax.all._
+import cats.*
+import cats.data.*
+import cats.effect.*
+import cats.syntax.all.*
 import com.banno.kafka.metrics.MetricsReporterApi
 import fs2.Stream
 import fs2.concurrent.SignallingRef
+import io.prometheus.metrics.model.registry.{
+  PrometheusRegistry => JPrometheusRegistry,
+  Collector => JCollector,
+}
+import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import io.prometheus.client._
 import org.apache.kafka.common.MetricName
 import org.apache.kafka.common.metrics.KafkaMetric
 
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.math.max
 
 object PrometheusMetricsReporterApi {
@@ -70,19 +74,19 @@ object PrometheusMetricsReporterApi {
     def matches(other: KafkaMetric): Boolean =
       metric.metricName() === other.metricName()
 
-    def createGauge(registry: CollectorRegistry): F[Gauge] =
+    def createGauge(registry: JPrometheusRegistry): F[Gauge] =
       F.delay(
         Gauge
-          .build()
+          .builder()
           .name(name)
           .help(help)
           .labelNames(labelNames: _*)
           .register(registry)
       )
-    def createCounter(registry: CollectorRegistry): F[Counter] =
+    def createCounter(registry: JPrometheusRegistry): F[Counter] =
       F.delay(
         Counter
-          .build()
+          .builder()
           .name(name)
           .help(help)
           .labelNames(labelNames: _*)
@@ -108,14 +112,14 @@ object PrometheusMetricsReporterApi {
   sealed trait MetricAdapter[F[_]] {
     def update: F[Unit]
     def add(m: MetricSource[F]): MetricAdapter[F]
-    def collector: Collector
+    def collector: JCollector
     def remove(metric: KafkaMetric): `Removed?`[F]
   }
 
   object MetricAdapter {
     private case class Impl[F[_]: Applicative](
         metrics: NonEmptyList[MetricSource[F]],
-        collector: Collector,
+        collector: JCollector,
         update1: MetricSource[F] => F[Unit],
     ) extends MetricAdapter[F] {
       override def add(m: MetricSource[F]): MetricAdapter[F] =
@@ -144,7 +148,9 @@ object PrometheusMetricsReporterApi {
         NonEmptyList.one(metric),
         gauge,
         m =>
-          m.value.flatMap(v => Sync[F].delay(gauge.labels(m.labels: _*).set(v))),
+          m.value.flatMap(v =>
+            Sync[F].delay(gauge.labelValues(m.labels: _*).set(v))
+          ),
       )
 
     def counter[F[_]: Sync](
@@ -160,8 +166,8 @@ object PrometheusMetricsReporterApi {
               // NOTE Should always be positive, but protect against negative
               // TODO might want to log on negative?
               counter
-                .labels(m.labels: _*)
-                .inc(max(0, v - counter.labels(m.labels: _*).get))
+                .labelValues(m.labels: _*)
+                .inc(max(0, v - counter.labelValues(m.labels: _*).get))
             )
           ),
       )
@@ -172,7 +178,7 @@ object PrometheusMetricsReporterApi {
       protected val adapters: Ref[F, Map[String, MetricAdapter[F]]],
       protected val updating: SignallingRef[F, Boolean],
       protected val updatePeriod: FiniteDuration,
-      private val collectorRegistry: CollectorRegistry,
+      private val prometheusRegistry: JPrometheusRegistry,
   ) extends MetricsReporterApi[F] {
 
     override def remove(metric: KafkaMetric): F[Unit] =
@@ -187,10 +193,10 @@ object PrometheusMetricsReporterApi {
                   (adapterMap.updated(kv._1, updated), none)
               }
             )
-            .getOrElse((adapterMap, none[Collector]))
+            .getOrElse((adapterMap, none[JCollector]))
         }
         .flatMap(
-          _.traverse_(c => Sync[F].delay(collectorRegistry.unregister(c)))
+          _.traverse_(c => Sync[F].delay(prometheusRegistry.unregister(c)))
         )
 
     def updateMetricsPeriodically: Stream[F, Unit] =
@@ -226,7 +232,7 @@ object PrometheusMetricsReporterApi {
           (Map.empty, adapterMap.values.map(_.collector).toList)
         }
         .flatMap(
-          _.traverse_(c => Sync[F].delay(collectorRegistry.unregister(c)))
+          _.traverse_(c => Sync[F].delay(prometheusRegistry.unregister(c)))
         ) *>
       updating.set(false)
 
@@ -270,7 +276,7 @@ object PrometheusMetricsReporterApi {
   def producer[F[_]](
       adapters: Ref[F, Map[String, MetricAdapter[F]]],
       updating: SignallingRef[F, Boolean],
-      registry: CollectorRegistry,
+      registry: JPrometheusRegistry,
       updatePeriod: FiniteDuration,
   )(implicit F: Async[F]): MetricsReporterApi[F] =
     new PrometheusMetricsReporterApi[F](
@@ -649,7 +655,7 @@ object PrometheusMetricsReporterApi {
   def consumer[F[_]](
       adapters: Ref[F, Map[String, MetricAdapter[F]]],
       updating: SignallingRef[F, Boolean],
-      registry: CollectorRegistry,
+      registry: JPrometheusRegistry,
       updatePeriod: FiniteDuration,
   )(implicit F: Async[F]): MetricsReporterApi[F] =
     new PrometheusMetricsReporterApi[F](
@@ -1071,7 +1077,7 @@ object PrometheusMetricsReporterApi {
   val defaultUpdatePeriod = 10 seconds
 
   def producer[F[_]: Async](
-      registry: CollectorRegistry = CollectorRegistry.defaultRegistry,
+      registry: JPrometheusRegistry = JPrometheusRegistry.defaultRegistry,
       updatePeriod: FiniteDuration = defaultUpdatePeriod,
   ): F[MetricsReporterApi[F]] =
     for {
@@ -1080,7 +1086,7 @@ object PrometheusMetricsReporterApi {
     } yield producer[F](adapters, updating, registry, updatePeriod)
 
   def consumer[F[_]: Async](
-      registry: CollectorRegistry = CollectorRegistry.defaultRegistry,
+      registry: JPrometheusRegistry = JPrometheusRegistry.defaultRegistry,
       updatePeriod: FiniteDuration = defaultUpdatePeriod,
   ): F[MetricsReporterApi[F]] =
     for {

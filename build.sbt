@@ -6,7 +6,7 @@ import org.typelevel.sbt.gha.{Permissions, PermissionValue}
 
 ThisBuild / scalaVersion := "2.13.18"
 ThisBuild / crossScalaVersions := List(scalaVersion.value)
-ThisBuild / tlBaseVersion := "8.1"
+ThisBuild / tlBaseVersion := "9.0"
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("11"))
 ThisBuild / githubWorkflowTargetBranches := Seq("*", "series/*")
 ThisBuild / githubWorkflowIncludeClean := false // We are disabling clean, because we set the artifact retention days instead.
@@ -40,7 +40,7 @@ val V = new {
   val commonsLang = "3.21.0"
   val curator = "5.9.0"
   val disciplineMunit = "2.0.0"
-  val epimetheus = "0.5.0"
+  val prometheus = "1.10.0"
   val fs2 = "3.14.0"
   val guava = "32.1.3-jre"
   val junit = "4.13"
@@ -211,7 +211,10 @@ lazy val commonSettings = Seq(
     "org.apache.avro" % "avro" % V.avro, // CVE-2023-39410, didn't work as Runtime
     "org.apache.commons" % "commons-compress" % V.commonsCompress, // CVE-2023-42503, didn't work as Runtime
     "org.apache.commons" % "commons-lang3" % V.commonsLang, // CVE-2025-48924 / GHSA-j288-q9x7-2f5v
-    "io.chrisdavenport" %% "epimetheus" % V.epimetheus,
+    "com.chuusai" %% "shapeless" % "2.3.9",
+    "io.prometheus" % "prometheus-metrics-core" % V.prometheus,
+    "io.prometheus" % "prometheus-metrics-instrumentation-jvm" % V.prometheus,
+    "io.prometheus" % "prometheus-metrics-exposition-formats" % V.prometheus,
     "org.typelevel" %% "log4cats-slf4j" % V.log4cats,
     // Upgrade vulnerable guava-30.1.1-jre from confluent-7.4.1.  This
     // should be a Runtime dependency, but it isn't shadowing right
