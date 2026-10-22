@@ -347,7 +347,7 @@ class ConsumerAndProducerApiSpec
         _ <- Stream.eval(p.initTransactions)
         _ <- Stream.eval(
           p.transaction(values.map(producerRecord(topic)))
-          )
+        )
         _ <- Stream.eval(c.subscribe(topic))
         v <- c
           .recordStream(100.millis)
