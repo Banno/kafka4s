@@ -264,10 +264,6 @@ class ConsumerAndProducerApiSpec
     ) // verifies that no successfully processed record was ever reprocessed
   }
 
-  property("Producer transaction works") {
-    pending
-  }
-
   property("Avro serdes") {
     val groupId = genGroupId
     println(s"5 groupId=$groupId")
@@ -328,4 +324,37 @@ class ConsumerAndProducerApiSpec
     }
   }
 
+  property("Producer transaction works") {
+    forAll { values: Vector[(PersonId, Person2)] =>
+      val topic = createTopic()
+      val actual = (for {
+        p <- Stream.resource(
+          Avro4sProducer.resource[IO, PersonId, Person2](
+            BootstrapServers(bootstrapServer),
+            SchemaRegistryUrl(schemaRegistryUrl),
+            TransactionalId(randomId),
+          )
+        )
+        c <- Stream.resource(
+          Avro4sConsumer.resource[IO, PersonId, Person2](
+            BootstrapServers(bootstrapServer),
+            GroupId(genGroupId),
+            AutoOffsetReset.earliest,
+            SchemaRegistryUrl(schemaRegistryUrl),
+            IsolationLevel.ReadCommitted,
+          )
+        )
+        _ <- Stream.eval(p.initTransactions)
+        _ <- Stream.eval(
+          p.transaction(values.map(producerRecord(topic)))
+        )
+        _ <- Stream.eval(c.subscribe(topic))
+        v <- c
+          .recordStream(100.millis)
+          .map(cr => (cr.key, cr.value))
+          .take(values.size.toLong)
+      } yield v).compile.toVector.unsafeRunSync()
+      actual should ===(values)
+    }
+  }
 }
