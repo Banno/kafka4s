@@ -18,6 +18,7 @@ package com.banno.kafka.producer
 
 import cats.*
 import cats.data.NonEmptyList
+import cats.effect.MonadCancelThrow
 import cats.syntax.all.*
 import fs2.*
 import org.apache.kafka.common.*
@@ -229,24 +230,39 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
 
   def transaction[G[_]: Foldable](
       records: G[ProducerRecord[K, V]]
-  )(implicit F: MonadError[F, Throwable]): F[Unit] =
-    (for {
-      _ <- producer.beginTransaction
-      // should be no need to wait for RecordMetadatas or errors, since commitTransaction flushes and throws
-      _ <- producer.sendAndForgetBatch(records)
-      _ <- producer.commitTransaction
-    } yield ()).handleErrorWith(KafkaTransactionError(_, producer))
+  )(implicit F: MonadCancelThrow[F]): F[Unit] =
+    // should be no need to wait for RecordMetadatas or errors, since commitTransaction flushes and throws
+    transactionally(producer.sendAndForgetBatch(records))
 
   def transaction[G[_]: Foldable](
       records: G[ProducerRecord[K, V]],
       offsets: Map[TopicPartition, OffsetAndMetadata],
       groupMetadata: ConsumerGroupMetadata,
-  )(implicit F: MonadError[F, Throwable]): F[Unit] =
-    (for {
-      _ <- producer.beginTransaction
-      // should be no need to wait for RecordMetadatas or errors, since commitTransaction flushes and throws
-      _ <- sendAndForgetBatch(records)
-      _ <- producer.sendOffsetsToTransaction(offsets, groupMetadata)
-      _ <- producer.commitTransaction
-    } yield ()).handleErrorWith(KafkaTransactionError(_, producer))
+  )(implicit F: MonadCancelThrow[F]): F[Unit] =
+    // should be no need to wait for RecordMetadatas or errors, since commitTransaction flushes and throws
+    transactionally(
+      sendAndForgetBatch(records) *> producer.sendOffsetsToTransaction(
+        offsets,
+        groupMetadata,
+      )
+    )
+
+  /** Runs `body` inside a transaction on this producer.
+    *
+    * `body` is cancellable, in which case the transaction is aborted.
+    * `beginTransaction`, `commitTransaction` and error handling are
+    * uncancelable, so the producer is always left in a known state.
+    */
+  def transactionally[A](body: F[A])(implicit
+      F: MonadCancelThrow[F]
+  ): F[A] =
+    F.uncancelable(poll =>
+      producer.beginTransaction.handleErrorWith(
+        KafkaTransactionError.beforeBegin[F, Unit](_)
+      ) *>
+      F.onCancel(
+        poll(body) <* producer.commitTransaction,
+        producer.abortTransaction,
+      ).handleErrorWith(KafkaTransactionError(_, producer))
+    )
 }
