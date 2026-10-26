@@ -228,12 +228,20 @@ case class ProducerOps[F[_], K, V](producer: ProducerApi[F, K, V]) {
   ): Pipe[F, ProducerRecord[K, V], Unit] =
     pipeSendBatchChunkN(n, allowFewer).apply(_).void
 
+  @deprecated(
+    "Use TransactionalProducerApi, which prevents concurrent transactions on one producer",
+    "9.0.0",
+  )
   def transaction[G[_]: Foldable](
       records: G[ProducerRecord[K, V]]
   )(implicit F: MonadCancelThrow[F]): F[Unit] =
     // should be no need to wait for RecordMetadatas or errors, since commitTransaction flushes and throws
     transactionally(producer.sendAndForgetBatch(records))
 
+  @deprecated(
+    "Use TransactionalProducerApi, which prevents concurrent transactions on one producer",
+    "9.0.0",
+  )
   def transaction[G[_]: Foldable](
       records: G[ProducerRecord[K, V]],
       offsets: Map[TopicPartition, OffsetAndMetadata],

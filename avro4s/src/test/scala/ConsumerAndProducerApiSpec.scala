@@ -32,6 +32,7 @@ import org.scalatest.EitherValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.propspec.AnyPropSpec
 import org.scalatestplus.scalacheck.*
+import scala.annotation.nowarn
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 import scala.util.Random
@@ -346,7 +347,9 @@ class ConsumerAndProducerApiSpec
         )
         _ <- Stream.eval(p.initTransactions)
         _ <- Stream.eval(
-          p.transaction(values.map(producerRecord(topic)))
+          p.transaction(values.map(producerRecord(topic))): @nowarn(
+            "cat=deprecation"
+          )
         )
         _ <- Stream.eval(c.subscribe(topic))
         v <- c
