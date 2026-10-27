@@ -211,7 +211,7 @@ lazy val commonSettings = Seq(
     "org.apache.avro" % "avro" % V.avro, // CVE-2023-39410, didn't work as Runtime
     "org.apache.commons" % "commons-compress" % V.commonsCompress, // CVE-2023-42503, didn't work as Runtime
     "org.apache.commons" % "commons-lang3" % V.commonsLang, // CVE-2025-48924 / GHSA-j288-q9x7-2f5v
-    "com.chuusai" %% "shapeless" % "2.3.9",
+    "com.chuusai" %% "shapeless" % "2.3.13",
     "io.prometheus" % "prometheus-metrics-core" % V.prometheus,
     "io.prometheus" % "prometheus-metrics-instrumentation-jvm" % V.prometheus,
     "io.prometheus" % "prometheus-metrics-exposition-formats" % V.prometheus,
