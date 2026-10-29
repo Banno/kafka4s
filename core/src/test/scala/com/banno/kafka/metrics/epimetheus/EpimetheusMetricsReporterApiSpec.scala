@@ -14,27 +14,23 @@
  * limitations under the License.
  */
 
-package com.banno.kafka.metrics.prometheus
+package com.banno.kafka.metrics.epimetheus
 
-import cats.syntax.all.*
+import cats.syntax.all._
 import cats.effect.IO
-import com.banno.kafka.*
-import com.banno.kafka.producer.*
-import com.banno.kafka.consumer.*
+import com.banno.kafka._
+import com.banno.kafka.producer._
+import com.banno.kafka.consumer._
 import natchez.Trace.Implicits.noop
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
-import io.prometheus.metrics.model.registry.PrometheusRegistry as JPrometheusRegistry
-import munit.*
+import io.prometheus.client.CollectorRegistry
+import munit._
 
-import scala.jdk.CollectionConverters.*
-import io.prometheus.metrics.model.snapshots.CounterSnapshot.CounterDataPointSnapshot
-import io.prometheus.metrics.model.snapshots.GaugeSnapshot.GaugeDataPointSnapshot
-import io.prometheus.metrics.model.snapshots.MetricSnapshots as JMetricsSnapshots
+import scala.jdk.CollectionConverters._
+import scala.concurrent.duration._
 
-import scala.concurrent.duration.*
-
-class PrometheusMetricsReporterApiSpec
+class EpimetheusMetricsReporterApiSpec
     extends CatsEffectSuite
     with DockerizedKafka {
   // This test allocates a lot of consumers. It was timing out in the GitHub
@@ -43,22 +39,18 @@ class PrometheusMetricsReporterApiSpec
   override val munitIOTimeout = Duration(1, MINUTES)
 
   private def assertTotals(
-      metrics: JMetricsSnapshots,
+      registry: CollectorRegistry,
       metric: String,
       expected: Option[List[Double]],
   ): Unit =
     assertEquals(
-      metrics
-        .iterator()
-        .asScala
-        .toList
-        .find(_.getMetadata.getName == metric)
+      registry.metricFamilySamples.asScala
+        .find(_.name == metric)
         .map(
-          _.getDataPoints.asScala.toList.map {
-            case counter: CounterDataPointSnapshot => counter.getValue
-            case gauge: GaugeDataPointSnapshot => gauge.getValue
-            case e => throw new Exception(s"Got snapshot ${e}")
-          }
+          _.samples.asScala
+            .filter(_.name == s"${metric}_total")
+            .map(_.value)
+            .toList
         ),
       expected,
     )
@@ -66,7 +58,7 @@ class PrometheusMetricsReporterApiSpec
   // When Kafka clients change their metrics, this test will help identify the
   // changes we need to make
   test(
-    "Prometheus reporter should register collectors for all known Kafka metrics and unregister on close"
+    "Epimetheus reporter should register Epimetheus collectors for all known Kafka metrics and unregister on close"
   ) {
     for {
       topic <- createTopic[IO](2)
@@ -77,21 +69,21 @@ class PrometheusMetricsReporterApiSpec
       () <- ProducerApi
         .resource[IO, String, String](
           BootstrapServers(bootstrapServer),
-          MetricReporters[ProducerPrometheusReporter],
+          MetricReporters[ProducerEpimetheusReporter],
         )
         .use(p =>
           ConsumerApi
             .resource[IO, String, String](
               BootstrapServers(bootstrapServer),
               ClientId("c1"),
-              MetricReporters[ConsumerPrometheusReporter],
+              MetricReporters[ConsumerEpimetheusReporter],
             )
             .use(c1 =>
               ConsumerApi
                 .resource[IO, String, String](
                   BootstrapServers(bootstrapServer),
                   ClientId("c2"),
-                  MetricReporters[ConsumerPrometheusReporter],
+                  MetricReporters[ConsumerEpimetheusReporter],
                 )
                 .use(c2 =>
                   for {
@@ -107,36 +99,33 @@ class PrometheusMetricsReporterApiSpec
 
                     _ <- IO
                       .sleep(
-                        PrometheusMetricsReporterApi.defaultUpdatePeriod + (1 second)
+                        EpimetheusMetricsReporterApi.defaultUpdatePeriod + (1 second)
                       )
 
-                    metrics = JPrometheusRegistry.defaultRegistry.scrape()
-
+                    registry = CollectorRegistry.defaultRegistry
                     () = assertEquals(
-                      metrics.asScala.toList.count(
-                        _.getMetadata.getName.startsWith("kafka_producer")
-                      ),
-                      53,
+                      registry.metricFamilySamples.asScala
+                        .count(_.name.startsWith("kafka_producer")),
+                      56,
                     )
                     () = assertTotals(
-                      metrics,
+                      registry,
                       "kafka_producer_record_send",
                       List(2.0).some,
                     )
 
                     () = assertEquals(
-                      metrics.asScala.toList.count(
-                        _.getMetadata.getName.startsWith("kafka_consumer")
-                      ),
-                      48,
+                      registry.metricFamilySamples.asScala
+                        .count(_.name.startsWith("kafka_consumer")),
+                      50,
                     )
                     () = assertTotals(
-                      metrics,
+                      registry,
                       "kafka_consumer_records_consumed",
                       List(2.0, 2.0).some,
                     )
                     () = assertTotals(
-                      metrics,
+                      registry,
                       "kafka_consumer_topic_records_consumed",
                       List(2.0, 2.0).some,
                     )
@@ -145,11 +134,8 @@ class PrometheusMetricsReporterApiSpec
             )
         )
       finalMetricCount =
-        JPrometheusRegistry.defaultRegistry
-          .scrape()
-          .asScala
-          .toList
-          .count(_.getMetadata.getName.startsWith("kafka_producer"))
+        CollectorRegistry.defaultRegistry.metricFamilySamples.asScala
+          .count(_.name.startsWith("kafka_producer"))
       () = assertEquals(finalMetricCount, 0)
     } yield ()
   }
