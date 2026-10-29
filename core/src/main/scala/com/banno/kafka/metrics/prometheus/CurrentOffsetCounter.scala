@@ -21,6 +21,7 @@ import cats.syntax.all._
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import io.prometheus.client._
 
+
 import scala.math.max
 
 object CurrentOffsetCounter {
