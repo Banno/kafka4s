@@ -24,7 +24,7 @@ lazy val Vulnerables = new {
   val fs2 = "3.14.0" // GHSA-rrw2-px9j-qffj
   val org_lz4_lz4Java = "1.8.1" // GHSA-vqf4-7m7x-wgfc
   val at_yawk_lz4Java = "1.14.0" // GHSA-cmp6-m4wj-q63q, GHSA-mcr4-qmvw-px4g
-  val jackson = "2.22.4" // GHSA-72hv-8253-57qq
+  val jackson = "2.23.0" // GHSA-72hv-8253-57qq
   val httpCore5 = "5.4.4" // GHSA-hf6x-8p5f-cgmf
   val httpClient5 = "5.6.5" // GHSA-hjcp-jmpx-g3qm
 }
@@ -36,7 +36,7 @@ val V = new {
   val cats = "2.13.0"
   val catsEffect = "3.7.1"
   val commonsCompress = "1.28.0"
-  val confluent = "8.3.2"
+  val confluent = "8.3.3"
   val commonsLang = "3.21.0"
   val curator = "5.9.0"
   val disciplineMunit = "2.0.0"
